@@ -4,3 +4,6 @@ server:
 springdoc:
   api-docs:
     enabled: true
+
+application:
+  baseDiskPath:
