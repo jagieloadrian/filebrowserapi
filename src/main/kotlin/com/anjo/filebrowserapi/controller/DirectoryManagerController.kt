@@ -14,6 +14,6 @@ class DirectoryManagerController(
 
     @GetMapping("/directories/tree")
     fun getDirectoriesTree(): ResponseEntity<List<String>> {
-        return ResponseEntity.ok(listOf(directoryManagerService.showBaseDirectory()))
+        return ResponseEntity.ok(directoryManagerService.showBaseDirectory())
     }
 }
