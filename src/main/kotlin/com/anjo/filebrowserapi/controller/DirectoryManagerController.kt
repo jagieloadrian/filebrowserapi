@@ -1,0 +1,19 @@
+package com.anjo.filebrowserapi.controller
+
+import com.anjo.filebrowserapi.service.DirectoryManagerService
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+
+@RestController
+@RequestMapping("/api/v1")
+class DirectoryManagerController(
+    private val directoryManagerService: DirectoryManagerService
+) {
+
+    @GetMapping("/directories/tree")
+    fun getDirectoriesTree(): ResponseEntity<List<String>> {
+        return ResponseEntity.ok(listOf(directoryManagerService.currentDir()))
+    }
+}
