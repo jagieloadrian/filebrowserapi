@@ -23,6 +23,9 @@ dependencies {
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
+    //logger
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
+
     //swagger-ui
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0")
 
