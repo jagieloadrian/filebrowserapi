@@ -16,7 +16,17 @@ class GlobalControllerAdvice {
             HttpStatus.UNPROCESSABLE_ENTITY
         )
     }
+
+    @ExceptionHandler(value = [BadInputPathException::class])
+    fun handleBadInputException(exception: Exception):ResponseEntity<ErrorResponse> {
+        return ResponseEntity(
+            ErrorResponse(exception.javaClass.simpleName, exception.message),
+            HttpStatus.BAD_REQUEST
+        )
+    }
 }
 
 data class ErrorResponse(val error: String, val message: String?)
 class CannotRealizeException(msg: String) : Exception(msg)
+
+class BadInputPathException(msg:String) : Exception(msg)

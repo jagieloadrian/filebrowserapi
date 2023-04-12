@@ -29,7 +29,11 @@ dependencies {
     //swagger-ui
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0")
 
+    //tests
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("com.ninja-squad:springmockk:4.0.2")
+    testImplementation("io.kotest:kotest-assertions-core:5.5.5")
+
 }
 
 tasks.withType<KotlinCompile> {

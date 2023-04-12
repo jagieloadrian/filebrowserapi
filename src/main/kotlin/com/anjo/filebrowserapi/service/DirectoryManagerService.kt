@@ -33,8 +33,18 @@ class DirectoryManagerService(
         val mergePath = "${mergePath(path)}/$directoryName"
         val directory = File(mergePath)
 
-        directory.mkdir()
-        return formatDirectoryPath(directory.path, generateDefaultPath())
+        if (directory.mkdir()) {
+            return formatDirectoryPath(directory.path, generateDefaultPath())
+        } else {
+            throw CannotRealizeException(
+                "Directory with name: $directoryName in path: ${
+                    formatDirectoryPath(
+                        directory.path,
+                        generateDefaultPath()
+                    )
+                } exist"
+            )
+        }
     }
 
     fun addDirectoriesRecursively(pathMultiDirectories: String): String {
@@ -60,8 +70,13 @@ class DirectoryManagerService(
         }
 
         val targetDir = File(targetPath)
-        sourceDir.renameTo(targetDir)
-        return formatDirectoryPath(targetDir.path, generateDefaultPath())
+
+        val response = sourceDir.renameTo(targetDir)
+        if (response) {
+            return formatDirectoryPath(targetDir.path, generateDefaultPath())
+        } else {
+            throw CannotRealizeException("Cannot rename not existing directory")
+        }
     }
 
     fun deleteDirectory(path: String) {
@@ -75,7 +90,9 @@ class DirectoryManagerService(
 
     private fun mergePath(path: String?): String {
         val calculatePath = path?.let {
-            "${generateDefaultPath()}/$path"
+            if (it.isNotBlank()) {
+                "${generateDefaultPath()}/$path"
+            } else generateDefaultPath()
         } ?: run {
             generateDefaultPath()
         }
@@ -94,10 +111,15 @@ class DirectoryManagerService(
     }
 
     private fun validPath(path: String?) {
-        val extractFile =
-            path?.let { File("${generateDefaultPath()}/$it") }
-                ?: throw CannotRealizeException("Path: /$path to create directory is not exist")
+        if (path.isNullOrBlank()) {
+            return
+        } else {
+            isExistPath(path)
+        }
+    }
 
+    private fun isExistPath(path: String) {
+        val extractFile = File("${generateDefaultPath()}/$path")
         if (!extractFile.exists()) {
             throw CannotRealizeException("Path: $path to create directory is not exist")
         }
