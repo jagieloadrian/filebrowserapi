@@ -2,5 +2,12 @@ package com.anjo.filebrowserapi
 
 object TestObjects {
 
-    val PATH_TO_RESOURCES = "/src/test/resources"
+    const val PATH_TO_RESOURCES = "/src/test/resources"
+    const val BASE_FOLDER = "filebrowser"
+
+    val PATH_TO_BASE_FOLDER = "${System.getProperty("user.dir")}$PATH_TO_RESOURCES/$BASE_FOLDER"
+
+    const val FIRST_NAME = "firstName"
+    const val SECOND_NAME = "secondName"
+    const val THIRD_NAME = "thirdName"
 }

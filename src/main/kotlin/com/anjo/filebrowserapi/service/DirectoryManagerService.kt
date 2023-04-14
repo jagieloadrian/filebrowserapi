@@ -71,8 +71,7 @@ class DirectoryManagerService(
 
         val targetDir = File(targetPath)
 
-        val response = sourceDir.renameTo(targetDir)
-        if (response) {
+        if (sourceDir.renameTo(targetDir)) {
             return formatDirectoryPath(targetDir.path, generateDefaultPath())
         } else {
             throw CannotRealizeException("Cannot rename not existing directory")
