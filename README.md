@@ -4,6 +4,8 @@
 
  Simple application to managed files and folders by http requests. You can here create, rename, delete folders. 
 
+Remember in your path you need create directory with name "filebrowser", but do not provide this name in configuration
+
 ## Getting Started
 How to run app locally
 

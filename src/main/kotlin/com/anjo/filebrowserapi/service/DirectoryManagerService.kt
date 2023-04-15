@@ -3,7 +3,7 @@ package com.anjo.filebrowserapi.service
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.constants.Constant.BASE_DIRECTORY
 import com.anjo.filebrowserapi.exception.CannotRealizeException
-import com.anjo.filebrowserapi.utils.StringUtils.Companion.formatDirectoryPath
+import com.anjo.filebrowserapi.utils.StringUtils.Companion.formatResponsePath
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Service
 import java.io.File
@@ -22,7 +22,7 @@ class DirectoryManagerService(
             file.isDirectory
         }
             .map { file ->
-                formatDirectoryPath(file.path, generateDefaultPath())
+                formatResponsePath(file.path, generateDefaultPath())
             }
             .drop(1)
             .toList()
@@ -34,11 +34,11 @@ class DirectoryManagerService(
         val directory = File(mergePath)
 
         if (directory.mkdir()) {
-            return formatDirectoryPath(directory.path, generateDefaultPath())
+            return formatResponsePath(directory.path, generateDefaultPath())
         } else {
             throw CannotRealizeException(
                 "Directory with name: $directoryName in path: ${
-                    formatDirectoryPath(
+                    formatResponsePath(
                         directory.path,
                         generateDefaultPath()
                     )
@@ -50,7 +50,7 @@ class DirectoryManagerService(
     fun addDirectoriesRecursively(pathMultiDirectories: String): String {
         val directories = File("${generateDefaultPath()}/$pathMultiDirectories")
         directories.mkdirs()
-        return formatDirectoryPath(directories.path, generateDefaultPath())
+        return formatResponsePath(directories.path, generateDefaultPath())
     }
 
     fun renameDirectory(newName: String, path: String): String {
@@ -72,7 +72,7 @@ class DirectoryManagerService(
         val targetDir = File(targetPath)
 
         if (sourceDir.renameTo(targetDir)) {
-            return formatDirectoryPath(targetDir.path, generateDefaultPath())
+            return formatResponsePath(targetDir.path, generateDefaultPath())
         } else {
             throw CannotRealizeException("Cannot rename not existing directory")
         }
