@@ -1,58 +1,40 @@
 package com.anjo.filebrowserapi.service
 
-import com.anjo.filebrowserapi.configuration.AppConfiguration
-import com.anjo.filebrowserapi.constants.Constant
-import com.anjo.filebrowserapi.exception.CannotRealizeException
 import com.anjo.filebrowserapi.utils.StringUtils.Companion.formatResponsePath
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
 
 @Service
 class FileManagerService(
-    private val properties: AppConfiguration
+    private val modifierUtils: PathModifierUtils
 ) {
-
-    fun uploadFile(uploadFile: MultipartFile, path: String?) :String{
-        validPath(path)
-        val fileName = uploadFile.originalFilename!!
-        val mergedPath = "${mergePath(path)}/$fileName"
+    private val defaultPath = modifierUtils.generateDefaultPath()
+    private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
+    fun uploadFile(uploadFile: MultipartFile, path: String?): String {
+        modifierUtils.validPath(path)
+        val extension = uploadFile.resource.file.extension
+        val fileName = validFileName(uploadFile.originalFilename, extension)
+        val mergedPath = "${modifierUtils.mergePath(path)}/$fileName"
         val targetLocation = Path.of(mergedPath)
 
         Files.copy(uploadFile.inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING)
 
-        return formatResponsePath(mergedPath, generateDefaultPath())
+        return formatResponsePath(mergedPath, defaultPath)
     }
 
 
-    private fun validPath(path: String?) {
-        if (path.isNullOrBlank()) {
-            return
+    fun validFileName(filename:String?, extension:String):String{
+        return if (filename.isNullOrEmpty()) {
+            val randomString = UUID.randomUUID().toString().take(8)
+            "$randomString-${formatDate.format(LocalDateTime.now())}.$extension"
         } else {
-            isExistPath(path)
+            filename
         }
-    }
-
-    private fun isExistPath(path: String) {
-        val extractFile = File("${generateDefaultPath()}/$path")
-        if (!extractFile.exists()) {
-            throw CannotRealizeException("Path: $path to create file is not exist")
-        }
-    }
-    private fun mergePath(path: String?): String {
-        val calculatePath = path?.let {
-            if (it.isNotBlank()) {
-                "${generateDefaultPath()}/$path"
-            } else generateDefaultPath()
-        } ?: run {
-            generateDefaultPath()
-        }
-        return calculatePath
-    }
-    private fun generateDefaultPath(): String {
-        return properties.baseDiskPath + Constant.BASE_DIRECTORY
     }
 }

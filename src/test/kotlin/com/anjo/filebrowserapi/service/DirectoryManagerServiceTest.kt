@@ -28,6 +28,8 @@ class DirectoryManagerServiceTest {
     private val appConfiguration =
         AppConfiguration(baseDiskPath = "${System.getProperty("user.dir")}$PATH_TO_RESOURCES")
 
+    private val modifierUtils = PathModifierUtils(appConfiguration)
+
     @InjectMockKs
     private lateinit var service: DirectoryManagerService
 
@@ -117,7 +119,7 @@ class DirectoryManagerServiceTest {
         val exception = shouldThrow<CannotRealizeException> { service.addDirectory(name, wrongPath) }
 
         //then
-        exception.message shouldBe "Path: $wrongPath to create directory is not exist"
+        exception.message shouldBe "Path: $wrongPath to create file or directory is not exist"
     }
 
     @Test
@@ -199,7 +201,6 @@ class DirectoryManagerServiceTest {
     fun `given path when delete folder then result not throw error`() {
         //given
         val givenPath = FIRST_NAME
-
         val tempFolder = createFolder(givenPath)
         tempFolder.mkdir()
 
@@ -216,7 +217,6 @@ class DirectoryManagerServiceTest {
     fun `given path to not empty folder when delete folder then return CannotRealizeException`() {
         //given
         val givenPath = FIRST_NAME
-
         val tempFolder = createFolder(givenPath)
         tempFolder.mkdir()
 
