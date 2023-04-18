@@ -237,12 +237,6 @@ class DirectoryManagerServiceTest {
     }
 
     companion object {
-        @JvmStatic
-        @BeforeAll
-        fun setUpClass() {
-            val baseDirectory = File(PATH_TO_BASE_FOLDER)
-            baseDirectory.mkdir()
-        }
 
         @JvmStatic
         @AfterAll

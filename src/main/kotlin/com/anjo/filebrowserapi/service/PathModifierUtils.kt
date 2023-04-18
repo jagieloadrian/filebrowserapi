@@ -14,6 +14,13 @@ class PathModifierUtils(
 ) {
     private val baseDirectory = "/filebrowser"
 
+    init {
+        val baseFolder = File("${properties.baseDiskPath}$baseDirectory")
+        if(!baseFolder.exists()){
+            baseFolder.mkdir()
+        }
+    }
+
     fun mergePath(path: String?): String {
         val calculatePath = path?.let {
             if (it.isNotBlank()) {
@@ -36,7 +43,7 @@ class PathModifierUtils(
     fun isExistPath(path: String, operationType: OperationType) {
         val extractFile = File("${generateDefaultPath()}/$path")
         if (!extractFile.exists()) {
-            throw CannotRealizeException("Path: $path to ${operationType.name} file or directory is not exist")
+            throw CannotRealizeException("Path: $path to ${operationType.description} file or directory is not exist")
         }
     }
 
