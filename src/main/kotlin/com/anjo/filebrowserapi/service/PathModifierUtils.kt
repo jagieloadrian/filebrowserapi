@@ -35,7 +35,6 @@ class PathModifierUtils(
 
     fun isExistPath(path: String, operationType: OperationType) {
         val extractFile = File("${generateDefaultPath()}/$path")
-        println(extractFile.absoluteFile)
         if (!extractFile.exists()) {
             throw CannotRealizeException("Path: $path to ${operationType.name} file or directory is not exist")
         }
@@ -45,5 +44,7 @@ class PathModifierUtils(
         return properties.baseDiskPath + baseDirectory
     }
 
-    private fun formatPath(path: String) = if (path.first().equals(Regex("/"))) path.drop(1) else path
+    fun formatPath(path: String): String {
+        return if (path.first() == '/') path.drop(1) else path
+    }
 }
