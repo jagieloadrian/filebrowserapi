@@ -17,7 +17,7 @@ class GlobalControllerAdvice {
         )
     }
 
-    @ExceptionHandler(value = [BadInputPathException::class])
+    @ExceptionHandler(value = [BadInputException::class])
     fun handleBadInputException(exception: Exception):ResponseEntity<ErrorResponse> {
         return ResponseEntity(
             ErrorResponse(exception.javaClass.simpleName, exception.message),
@@ -29,4 +29,4 @@ class GlobalControllerAdvice {
 data class ErrorResponse(val error: String, val message: String?)
 class CannotRealizeException(msg: String) : Exception(msg)
 
-class BadInputPathException(msg:String) : Exception(msg)
+class BadInputException(msg:String) : Exception(msg)

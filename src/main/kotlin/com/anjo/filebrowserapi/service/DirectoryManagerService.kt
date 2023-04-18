@@ -1,7 +1,8 @@
 package com.anjo.filebrowserapi.service
 
 import com.anjo.filebrowserapi.exception.CannotRealizeException
-import com.anjo.filebrowserapi.utils.StringUtils.Companion.formatResponsePath
+import com.anjo.filebrowserapi.model.OperationType
+import com.anjo.filebrowserapi.utils.CommonUtils.Companion.formatResponsePath
 import org.springframework.stereotype.Service
 import java.io.File
 
@@ -26,7 +27,7 @@ class DirectoryManagerService(
     }
 
     fun addDirectory(directoryName: String, path: String?): String {
-        modifierUtils.validPath(path)
+        modifierUtils.validPath(path, OperationType.CREATE)
         val mergePath = "${modifierUtils.mergePath(path)}/$directoryName"
         val directory = File(mergePath)
 
@@ -51,7 +52,7 @@ class DirectoryManagerService(
     }
 
     fun renameDirectory(newName: String, path: String): String {
-        val validPath = if (path.first().equals("/")) path.drop(1) else path
+        val validPath = formatPath(path)
         val extractMidPath = validPath.split("/").dropLast(1)
 
         val sourceDir = File("${defaultPath}/$path")
@@ -74,6 +75,8 @@ class DirectoryManagerService(
             throw CannotRealizeException("Cannot rename not existing directory")
         }
     }
+
+    private fun formatPath(path: String) = if (path.first().equals("/")) path.drop(1) else path
 
     fun deleteDirectory(path: String) {
         val generatePath = "${defaultPath}/$path"
