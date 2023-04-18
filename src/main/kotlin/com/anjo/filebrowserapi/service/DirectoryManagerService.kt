@@ -76,7 +76,7 @@ class DirectoryManagerService(
         }
     }
 
-    private fun formatPath(path: String) = if (path.first().equals("/")) path.drop(1) else path
+    private fun formatPath(path: String) = if (path.first().equals(Regex("/"))) path.drop(1) else path
 
     fun deleteDirectory(path: String) {
         val generatePath = "${defaultPath}/$path"

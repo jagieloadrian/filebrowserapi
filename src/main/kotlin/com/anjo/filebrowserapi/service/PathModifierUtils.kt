@@ -3,7 +3,6 @@ package com.anjo.filebrowserapi.service
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.CannotRealizeException
 import com.anjo.filebrowserapi.model.OperationType
-import org.intellij.lang.annotations.RegExp
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Service
 import java.io.File
