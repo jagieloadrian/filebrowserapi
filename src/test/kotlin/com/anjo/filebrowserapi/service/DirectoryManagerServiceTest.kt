@@ -114,12 +114,13 @@ class DirectoryManagerServiceTest {
         //given
         val name = FIRST_NAME
         val wrongPath = "/$SECOND_NAME"
+        val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
 
         //when
         val exception = shouldThrow<CannotRealizeException> { service.addDirectory(name, wrongPath) }
 
         //then
-        exception.message shouldBe "Path: $wrongPath to create file or directory is not exist"
+        exception.message shouldBe expectedMessage
     }
 
     @Test
@@ -127,12 +128,13 @@ class DirectoryManagerServiceTest {
         //given
         val name = FIRST_NAME
         createFolder(name)
+        val expectedMessage = "Directory with name: $name in path:"
 
         //when
         val exception = shouldThrow<CannotRealizeException> { service.addDirectory(name, null) }
 
         //then
-        exception.message shouldStartWith "Directory with name: $name in path:"
+        exception.message shouldStartWith expectedMessage
     }
 
     @Test
@@ -189,12 +191,13 @@ class DirectoryManagerServiceTest {
         //given
         val name = "/$THIRD_NAME"
         val givenPath = FIRST_NAME
+        val expectedMessage = "Cannot rename not existing directory"
 
         //when
         val exception = shouldThrow<CannotRealizeException> { service.renameDirectory(name, givenPath) }
 
         //then
-        exception.message shouldBe "Cannot rename not existing directory"
+        exception.message shouldBe expectedMessage
     }
 
     @Test
@@ -219,15 +222,15 @@ class DirectoryManagerServiceTest {
         val givenPath = FIRST_NAME
         val tempFolder = createFolder(givenPath)
         tempFolder.mkdir()
-
         val file = File("$PATH_TO_BASE_FOLDER/$givenPath/data.txt")
         file.createNewFile()
+        val expectedMessage = "Cannot remove not empty directory"
 
         //when
         val exception = shouldThrow<CannotRealizeException> { service.deleteDirectory(givenPath) }
 
         //then
-        exception.message shouldBe "Cannot remove not empty directory"
+        exception.message shouldBe expectedMessage
     }
 
     private fun createFolder(path: String): File {

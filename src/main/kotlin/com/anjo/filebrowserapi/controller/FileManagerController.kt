@@ -26,6 +26,7 @@ class FileManagerController(
     @GetMapping("/{filename:.+}",
         produces = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun getFile(@PathVariable filename:String, @RequestParam ("path", required = false) path: String? ):ResponseEntity<ByteArray>{
+        //TODO add resolving producing type :)
         return ResponseEntity.ok(fileManagerService.getFile(filename, path))
     }
 
