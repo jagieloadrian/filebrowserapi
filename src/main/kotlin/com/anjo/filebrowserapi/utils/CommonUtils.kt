@@ -1,8 +1,10 @@
 package com.anjo.filebrowserapi.utils
 
-class StringUtils {
+class CommonUtils {
     companion object {
-        fun formatDirectoryPath(fullPath: String, defaultPath: String): String {
+        const val EIGHT = 8
+
+        fun formatResponsePath(fullPath: String, defaultPath: String): String {
             return fullPath.substringAfter(defaultPath)
         }
     }

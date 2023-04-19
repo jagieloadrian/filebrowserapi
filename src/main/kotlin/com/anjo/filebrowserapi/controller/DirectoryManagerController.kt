@@ -6,17 +6,17 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/directories")
 class DirectoryManagerController(
     private val directoryManagerService: DirectoryManagerService
 ) {
 
-    @GetMapping("/directories")
+    @GetMapping
     fun getDirectoriesTree(@RequestParam("path", required = false) path: String?): ResponseEntity<List<String>> {
         return ResponseEntity.ok(directoryManagerService.showDirectoriesTree(path))
     }
 
-    @PostMapping("/directories")
+    @PostMapping
     fun addDirectory(
         @RequestParam("directoryName") directoryName: String,
         @RequestParam("path", required = false) path: String?
@@ -24,7 +24,7 @@ class DirectoryManagerController(
         return ResponseEntity(directoryManagerService.addDirectory(directoryName, path), HttpStatus.CREATED)
     }
 
-    @PostMapping("/directories/recursively")
+    @PostMapping("/recursively")
     fun addDirectoriesRecursively(@RequestParam("path") pathMultiDirectories: String): ResponseEntity<String> {
         return ResponseEntity(
             directoryManagerService.addDirectoriesRecursively(pathMultiDirectories),
@@ -32,7 +32,7 @@ class DirectoryManagerController(
         )
     }
 
-    @PatchMapping("/directories")
+    @PatchMapping
     fun renameDirectory(
         @RequestParam("sourcePath") path: String,
         @RequestParam("newDirName") newName: String
@@ -40,7 +40,7 @@ class DirectoryManagerController(
         return ResponseEntity.ok(directoryManagerService.renameDirectory(newName, path))
     }
 
-    @DeleteMapping("directories")
+    @DeleteMapping
     fun deleteDirectory(@RequestParam("path") path: String): ResponseEntity<Unit> {
         return ResponseEntity(directoryManagerService.deleteDirectory(path), HttpStatus.NO_CONTENT)
     }
