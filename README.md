@@ -26,15 +26,13 @@ Java 17 or above
 
 ## Getting Started
 How to run app locally
-
-1. In `application.yaml`, set your workingPath, using Intellij/other IDE and build by gradle plugin and start by default compiler</br>
+* In `application.yaml`, set your workingPath, using Intellij/other IDE and build by gradle plugin and start by default compiler</br>
 
    *OR* 
- 
-2. Use gradle, build project, in working directory go to `build/libs` and in here set in command line
+* Use gradle, build project, in working directory go to `build/libs` and in here set in command line
    `java -Dapplication.baseDiskPath="yourWorkingPath" -jar filebrowserapi-0.0.1-SNAPSHOT.jar`, where `yourWorkingPath` is a path direct to your folder,
    where app will be working.
 
-3. Path to swagger: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)
+ Path to swagger: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)
 
    Remember in your path you need create directory with name "filebrowser", but do not provide this name in configuration
