@@ -5,9 +5,9 @@
  Simple application to managed files and folders by http requests. You can here create, rename, delete folders and files.
 
 
- Most free solutions and apps don't meet my expectations.
- I wanted to create an app to manage folders and files, supporting most extensions. 
- The application is lightweight, doesn't have UI, it's served only via http request. 
+ Most free solutions and apps don't meet with my expectations.<br>
+ I wanted to create an app to manage folders and files, supporting most extensions.<br>
+ The application is lightweight, doesn't have UI, it's served only via http request.<br>
 
  I use in this project: 
  * Kotlin 1.7.22  
@@ -28,8 +28,8 @@ Java 17 or above
 How to run app locally
 
 1. In `application.yaml`, set your workingPath, using Intellij/other IDE and build by gradle plugin and start by default compiler</br>
- 
-   OR
+
+   *OR* 
  
 2. Use gradle, build project, in working directory go to `build/libs` and in here set in command line
    `java -Dapplication.baseDiskPath="yourWorkingPath" -jar filebrowserapi-0.0.1-SNAPSHOT.jar`, where `yourWorkingPath` is a path direct to your folder,
