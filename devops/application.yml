@@ -1,0 +1,9 @@
+server:
+  port: 8080
+
+springdoc:
+  api-docs:
+    enabled: true
+
+application:
+  baseDiskPath: ${DISK_PATH}

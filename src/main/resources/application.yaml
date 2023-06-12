@@ -6,4 +6,4 @@ springdoc:
     enabled: true
 
 application:
-  baseDiskPath:
+  baseDiskPath: ${DISK_PATH}
