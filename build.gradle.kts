@@ -1,9 +1,9 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    val kotlinVersion = "1.7.22"
-    id("org.springframework.boot") version "3.0.5"
-    id("io.spring.dependency-management") version "1.1.0"
+    val kotlinVersion = "1.9.23"
+    id("org.springframework.boot") version "3.3.1"
+    id("io.spring.dependency-management") version "1.1.6"
     kotlin("jvm") version kotlinVersion
     kotlin("plugin.spring") version kotlinVersion
 }
@@ -23,15 +23,15 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
     //logger
-    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
+    runtimeOnly("io.github.oshai:kotlin-logging:7.0.0")
 
     //swagger-ui
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
 
     //tests
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("com.ninja-squad:springmockk:4.0.2")
-    testImplementation("io.kotest:kotest-assertions-core:5.5.5")
+    testImplementation("io.kotest:kotest-assertions-core:5.9.1")
     implementation(kotlin("stdlib-jdk8"))
 
 }
