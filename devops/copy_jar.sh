@@ -1,6 +1,7 @@
 #!/bin/bash
 dir=$(pwd)
-echo $dir
+echo "$dir"
 cd ..
-cd build/libs
+echo $(pwd)
+cd /FilebrowserBE/build/libs
 cp filebrowserapi.jar $dir

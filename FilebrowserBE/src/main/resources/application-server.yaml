@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: filebrowser-be
+  main:
+    web-application-type: none
+
+application:
+  baseDiskPath: ${DISK_PATH}
+
+grpc:
+  server:
+    port: 9090
+
+logging:
+  level:
+    root: info

@@ -1,0 +1,85 @@
+package com.anjo.filebrowserapi.grpc
+
+import com.anjo.filebrowser.Filebrowser
+import com.anjo.filebrowser.Filebrowser.FileResponse
+import com.anjo.filebrowser.Filebrowser.StringResponse
+import com.anjo.filebrowser.Filebrowser.StringsResponse
+import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
+import com.anjo.filebrowserapi.facade.DirectoryManager
+import com.anjo.filebrowserapi.facade.FileManager
+import com.anjo.filebrowserapi.utils.ByteArrayToMultiPartFile
+import com.google.protobuf.Empty
+import com.google.protobuf.kotlin.toByteString
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.context.annotation.Profile
+import org.springframework.stereotype.Service
+import org.springframework.web.multipart.MultipartFile
+
+
+@Profile("server")
+@Service
+class FilebrowserGrpc(private val directoryManager: DirectoryManager,
+                      private val fileManager: FileManager) : FilebrowserApiCoroutineImplBase() {
+    private val logger = KotlinLogging.logger {}
+
+
+    override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
+        val fileTree = fileManager.showFilesTree(request.path)
+        return StringsResponse.newBuilder()
+                .addAllDirectories(fileTree)
+                .build()
+    }
+
+    override suspend fun uploadFile(request: Filebrowser.UploadFile): StringResponse {
+        val uploadFileLocation = with(getMultipartFile(request)) {
+            fileManager.uploadFile(this, request.path)
+        }
+        return StringResponse.newBuilder()
+                .setPath(uploadFileLocation)
+                .build()
+    }
+
+    override suspend fun getFile(request: Filebrowser.FileOperation): FileResponse {
+        val file = fileManager.getFile(request.name, request.path)
+        return FileResponse.newBuilder()
+                .setData(file.toByteString())
+                .build()
+    }
+
+    override suspend fun deleteFile(request: Filebrowser.FileOperation): Empty {
+        fileManager.deleteFile(request.name, request.path)
+        return Empty.newBuilder()
+                .build()
+    }
+
+    override suspend fun showDirectoriesTree(request: Filebrowser.PathRequest): StringsResponse {
+       logger.info { "I was hit" }
+        val allDirectories = fileManager.showFilesTree(request.path)
+        return StringsResponse.newBuilder()
+                .addAllDirectories(allDirectories)
+                .build()
+    }
+
+    override suspend fun addDirectory(request: Filebrowser.FileOperation): StringResponse {
+        val directoryPath = directoryManager.addDirectory(request.name, request.path)
+        return StringResponse.newBuilder()
+                .setPath(directoryPath)
+                .build()
+    }
+
+    override suspend fun addDirectoriesRecursively(request: Filebrowser.PathRequest): StringResponse {
+        return super.addDirectoriesRecursively(request)
+    }
+
+    override suspend fun renameDirectory(request: Filebrowser.FileOperation): StringResponse {
+        return super.renameDirectory(request)
+    }
+
+    override suspend fun deleteDirectory(request: Filebrowser.PathRequest): Empty {
+        return super.deleteDirectory(request)
+    }
+
+    private fun getMultipartFile(request: Filebrowser.UploadFile): MultipartFile {
+        return ByteArrayToMultiPartFile(request.data.toByteArray(), request.name, request.contentType)
+    }
+}
