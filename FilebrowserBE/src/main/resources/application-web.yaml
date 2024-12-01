@@ -17,4 +17,4 @@ springdoc:
   show-actuator: true
 
 application:
-  baseDiskPath: ${DISK_PATH}
+  path:

@@ -46,6 +46,13 @@ class FilebrowserGrpc(private val directoryManager: DirectoryManager,
                 .build()
     }
 
+    override suspend fun renameFile(request: Filebrowser.FileOperation): StringResponse {
+        val filePath = fileManager.renameFile(request.name, request.path)
+        return StringResponse.newBuilder()
+                .setPath(filePath)
+                .build()
+    }
+
     override suspend fun deleteFile(request: Filebrowser.FileOperation): Empty {
         fileManager.deleteFile(request.name, request.path)
         return Empty.newBuilder()
@@ -53,7 +60,6 @@ class FilebrowserGrpc(private val directoryManager: DirectoryManager,
     }
 
     override suspend fun showDirectoriesTree(request: Filebrowser.PathRequest): StringsResponse {
-       logger.info { "I was hit" }
         val allDirectories = fileManager.showFilesTree(request.path)
         return StringsResponse.newBuilder()
                 .addAllDirectories(allDirectories)
@@ -68,15 +74,23 @@ class FilebrowserGrpc(private val directoryManager: DirectoryManager,
     }
 
     override suspend fun addDirectoriesRecursively(request: Filebrowser.PathRequest): StringResponse {
-        return super.addDirectoriesRecursively(request)
+        val directoryPath = directoryManager.addDirectoriesRecursively(request.path)
+        return StringResponse.newBuilder()
+                .setPath(directoryPath)
+                .build()
     }
 
     override suspend fun renameDirectory(request: Filebrowser.FileOperation): StringResponse {
-        return super.renameDirectory(request)
+        val directoryPath = directoryManager.renameDirectory(request.name, request.path)
+        return StringResponse.newBuilder()
+                .setPath(directoryPath)
+                .build()
     }
 
     override suspend fun deleteDirectory(request: Filebrowser.PathRequest): Empty {
-        return super.deleteDirectory(request)
+        directoryManager.deleteDirectory(request.path)
+        return Empty.newBuilder()
+                .build()
     }
 
     private fun getMultipartFile(request: Filebrowser.UploadFile): MultipartFile {

@@ -26,20 +26,15 @@ import java.io.File
 
 
 @ExtendWith(MockKExtension::class)
-class DirectoryManagerServiceTest {
+class DirectoryManagerTest {
 
     private val appConfiguration =
-        AppConfiguration(baseDiskPath = "${System.getProperty("user.dir")}$PATH_TO_RESOURCES")
+        AppConfiguration(path = "${System.getProperty("user.dir")}$PATH_TO_RESOURCES")
 
     private val modifierUtils = PathModifierUtils(appConfiguration)
 
     @InjectMockKs
-    private lateinit var service: DirectoryManagerService
-
-    @BeforeEach
-    fun setup() {
-        MockKAnnotations.init(this)
-    }
+    private lateinit var service: DirectoryManager
 
     @AfterEach
     fun cleanUp() {
@@ -243,7 +238,6 @@ class DirectoryManagerServiceTest {
     }
 
     companion object {
-
         @JvmStatic
         @AfterAll
         fun clearAfterTests() {

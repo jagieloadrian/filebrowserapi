@@ -15,7 +15,7 @@ class PathModifierUtils(
     private val baseDirectory = "/filebrowser"
 
     init {
-        val baseFolder = File("${properties.baseDiskPath}$baseDirectory")
+        val baseFolder = File("${properties.getPath()}$baseDirectory")
         if(!baseFolder.exists()){
             baseFolder.mkdir()
         }
@@ -46,8 +46,22 @@ class PathModifierUtils(
         }
     }
 
+    fun extractMidPath(sourcePath:String): List<String> {
+        return sourcePath.split("/").dropLast(1)
+    }
+
+    fun generatePathToRename(extractMidPath: List<String>, newName: String): String {
+        return if (extractMidPath.isNotEmpty()) {
+            val joinMidPath = extractMidPath.joinToString(separator = "/")
+            "${generateDefaultPath()}/$joinMidPath/$newName"
+        } else {
+            "${generateDefaultPath()}/$newName"
+        }
+    }
+
+
     fun generateDefaultPath(): String {
-        return properties.baseDiskPath + baseDirectory
+        return properties.getPath() + baseDirectory
     }
 
     fun formatPath(path: String): String {

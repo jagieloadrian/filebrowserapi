@@ -8,6 +8,7 @@ service FilebrowserApi {
   rpc showFilesTree(PathRequest)returns (StringsResponse);
   rpc uploadFile(UploadFile)returns (StringResponse);
   rpc getFile(FileOperation)returns (FileResponse);
+  rpc renameFile(FileOperation)returns (StringResponse);
   rpc deleteFile(FileOperation)returns (google.protobuf.Empty); //empty
   rpc showDirectoriesTree(PathRequest)returns (StringsResponse);
   rpc addDirectory(FileOperation)returns (StringResponse);

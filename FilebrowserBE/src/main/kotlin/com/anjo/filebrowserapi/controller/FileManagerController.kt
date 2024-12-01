@@ -1,6 +1,6 @@
 package com.anjo.filebrowserapi.controller
 
-import com.anjo.filebrowserapi.service.FileManagerService
+import com.anjo.filebrowserapi.service.FileManager
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -19,28 +19,28 @@ import org.springframework.web.multipart.MultipartFile
 @Profile("web")
 @RequestMapping("/api/v1/files")
 class FileManagerController(
-    private val fileManagerService: FileManagerService
+    private val fileManager: FileManager
 ) {
 
     @GetMapping
     fun getFilesTree(@RequestParam("path", required = false)path: String?):ResponseEntity<List<String>> {
-        return ResponseEntity.ok(fileManagerService.showFilesTree(path))
+        return ResponseEntity.ok(fileManager.showFilesTree(path))
     }
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun uploadFile(@RequestBody uploadFile: MultipartFile, @RequestParam path: String?) : ResponseEntity<String> {
-        return ResponseEntity.ok(fileManagerService.uploadFile(uploadFile, path))
+        return ResponseEntity.ok(fileManager.uploadFile(uploadFile, path))
     }
 
     @GetMapping("/{filename:.+}",
         produces = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun getFile(@PathVariable filename:String, @RequestParam ("path", required = false) path: String? ):ResponseEntity<ByteArray>{
         //TODO add resolving producing type :)
-        return ResponseEntity.ok(fileManagerService.getFile(filename, path))
+        return ResponseEntity.ok(fileManager.getFile(filename, path))
     }
 
     @DeleteMapping("/{filename:.+}")
     fun deleteFile(@PathVariable filename:String, @RequestParam ("path", required = false) path: String? ):ResponseEntity<Unit>{
-        return ResponseEntity(fileManagerService.deleteFile(filename, path), HttpStatus.NO_CONTENT)
+        return ResponseEntity(fileManager.deleteFile(filename, path), HttpStatus.NO_CONTENT)
     }
 }

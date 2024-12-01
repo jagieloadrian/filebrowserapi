@@ -1,6 +1,8 @@
 package com.anjo.filebrowserapi.configuration
 
+import com.anjo.filebrowserapi.exception.GrpcGlobalControllerAdvice
 import com.anjo.filebrowserapi.grpc.FilebrowserGrpc
+import com.anjo.filebrowserapi.logging.GrpcLoggingInterceptor
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.Server
 import io.grpc.ServerBuilder
@@ -13,7 +15,9 @@ import javax.annotation.PreDestroy
 
 @Configuration
 @Profile("server")
-class GrpcServerConfig(private val filebrowserGrpc: FilebrowserGrpc) : ApplicationRunner {
+class GrpcServerConfig(private val filebrowserGrpc: FilebrowserGrpc,
+                       private val loggingInterceptor: GrpcLoggingInterceptor,
+                       private val globalControllerAdvice: GrpcGlobalControllerAdvice) : ApplicationRunner {
     private val logger = KotlinLogging.logger {}
 
     @Value("\${grpc.server.port:9090}")
@@ -25,6 +29,8 @@ class GrpcServerConfig(private val filebrowserGrpc: FilebrowserGrpc) : Applicati
         server = ServerBuilder
                 .forPort(port)
                 .addService(filebrowserGrpc)
+                .intercept(loggingInterceptor)
+                .intercept(globalControllerAdvice)
                 .build()
         server.start()
         return server

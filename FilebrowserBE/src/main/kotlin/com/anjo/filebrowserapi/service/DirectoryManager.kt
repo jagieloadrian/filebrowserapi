@@ -10,8 +10,8 @@ import java.io.File
 
 
 @Service
-class DirectoryManagerService(
-    private val modifierUtils: PathModifierUtils
+class DirectoryManager(
+        private val modifierUtils: PathModifierUtils
 ) : DirectoryManager {
     private val logger = KotlinLogging.logger {}
     private val defaultPath = modifierUtils.generateDefaultPath()
@@ -22,11 +22,11 @@ class DirectoryManagerService(
         return File(mergePath).walk().filter { file ->
             file.isDirectory
         }
-            .map { file ->
-                formatResponsePath(file.path, defaultPath)
-            }
-            .drop(1)
-            .toList()
+                .map { file ->
+                    formatResponsePath(file.path, defaultPath)
+                }
+                .drop(1)
+                .toList()
     }
 
     override fun addDirectory(directoryName: String, path: String?): String {
@@ -38,12 +38,12 @@ class DirectoryManagerService(
             return formatResponsePath(directory.path, defaultPath)
         } else {
             throw CannotRealizeException(
-                "Directory with name: $directoryName in path: ${
-                    formatResponsePath(
-                        directory.path,
-                        defaultPath
-                    )
-                } exist"
+                    "Directory with name: $directoryName in path: ${
+                        formatResponsePath(
+                                directory.path,
+                                defaultPath
+                        )
+                    } exist"
             )
         }
     }
@@ -56,26 +56,24 @@ class DirectoryManagerService(
 
     override fun renameDirectory(newName: String, path: String): String {
         val validPath = modifierUtils.formatPath(path)
-        val extractMidPath = validPath.split("/").dropLast(1)
+        val extractMidPath = modifierUtils.extractMidPath(validPath)
 
         val sourceDir = File("${defaultPath}/$path")
-
-        val joinMidPath: String
-        val targetPath: String
-
-        if (extractMidPath.isNotEmpty()) {
-            joinMidPath = extractMidPath.joinToString(separator = "/")
-            targetPath = "${defaultPath}/$joinMidPath/$newName"
-        } else {
-            targetPath = "${defaultPath}/$newName"
-        }
-
+        val targetPath = modifierUtils.generatePathToRename(extractMidPath, newName)
         val targetDir = File(targetPath)
 
         if (sourceDir.renameTo(targetDir)) {
+            checkIfSuccess(targetDir)
             return formatResponsePath(targetDir.path, defaultPath)
         } else {
             throw CannotRealizeException("Cannot rename not existing directory")
+        }
+    }
+
+    private fun checkIfSuccess(targetDir: File) {
+        when (targetDir.exists() && targetDir.isDirectory) {
+            true  -> { return }
+            false -> { throw CannotRealizeException("Exception during operation") }
         }
     }
 

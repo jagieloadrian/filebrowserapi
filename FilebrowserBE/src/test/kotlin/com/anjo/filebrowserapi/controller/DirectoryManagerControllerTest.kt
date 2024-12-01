@@ -2,7 +2,7 @@ package com.anjo.filebrowserapi.controller
 
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
-import com.anjo.filebrowserapi.service.DirectoryManagerService
+import com.anjo.filebrowserapi.service.DirectoryManager
 import io.kotest.assertions.assertSoftly
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -19,7 +19,7 @@ import org.springframework.http.HttpStatusCode
 @ExtendWith(MockKExtension::class)
 class DirectoryManagerControllerTest(
     @MockK
-    private val service: DirectoryManagerService
+    private val service: DirectoryManager
 ) {
 
     @InjectMockKs

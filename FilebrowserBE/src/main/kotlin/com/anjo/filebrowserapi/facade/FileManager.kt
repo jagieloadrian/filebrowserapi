@@ -6,5 +6,6 @@ interface FileManager {
     fun showFilesTree(path: String?): List<String>
     fun uploadFile(uploadFile:MultipartFile, path: String?): String
     fun getFile(fileName:String, path: String?): ByteArray
+    fun renameFile(newName:String, path: String?): String
     fun deleteFile(fileName:String, path: String?)
 }

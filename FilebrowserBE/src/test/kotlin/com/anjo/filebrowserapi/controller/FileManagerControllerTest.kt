@@ -4,7 +4,7 @@ import com.anjo.filebrowserapi.TestObjects
 import com.anjo.filebrowserapi.TestObjects.FIRST_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.PATH_TO_BASE_FOLDER
 import com.anjo.filebrowserapi.TestObjects.SECOND_FILE_NAME
-import com.anjo.filebrowserapi.service.FileManagerService
+import com.anjo.filebrowserapi.service.FileManager
 import io.kotest.assertions.assertSoftly
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -25,7 +25,7 @@ import java.io.File
 @ExtendWith(MockKExtension::class)
 class FileManagerControllerTest(
     @MockK
-    private val service: FileManagerService
+    private val service: FileManager
 ) {
 
     @InjectMockKs

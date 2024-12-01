@@ -15,7 +15,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.mockk.MockKAnnotations
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterAll
@@ -28,15 +27,14 @@ import org.springframework.web.multipart.MultipartFile
 import java.io.File
 
 @ExtendWith(MockKExtension::class)
-class FileManagerServiceTest {
+class FileManagerTest {
 
-    private val appConfiguration =
-        AppConfiguration(baseDiskPath = "${System.getProperty("user.dir")}${PATH_TO_RESOURCES}")
+    private val appConfiguration = AppConfiguration(path = "${System.getProperty("user.dir")}$PATH_TO_RESOURCES")
 
     private val modifierUtils = PathModifierUtils(appConfiguration)
 
     @InjectMockKs
-    private lateinit var service: FileManagerService
+    private lateinit var service: FileManager
 
     companion object {
 
@@ -48,21 +46,16 @@ class FileManagerServiceTest {
         }
     }
 
-    @BeforeEach
-    fun setup() {
-        MockKAnnotations.init(this)
-    }
-
     @AfterEach
     fun cleanUp() {
         val files =
             File("${System.getProperty("user.dir")}${PATH_TO_RESOURCES}/${BASE_FOLDER}").walk()
-                .map { file ->
-                    file.path
-                }
-                .drop(1)
-                .sortedDescending()
-                .toList()
+                    .map { file ->
+                        file.path
+                    }
+                    .drop(1)
+                    .sortedDescending()
+                    .toList()
 
         files.forEach { s ->
             val temp = File(s)

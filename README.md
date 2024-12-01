@@ -30,7 +30,7 @@ How to run app locally
 
    *OR* 
 * Use gradle, build project, in working directory go to `build/libs` and in here set in command line
-   `java -Dapplication.baseDiskPath="yourWorkingPath" -jar filebrowserapi-0.0.1-SNAPSHOT.jar`, where `yourWorkingPath` is a path direct to your folder,
+   `java -Dapplication.path="yourWorkingPath" -jar filebrowserapi-0.0.1-SNAPSHOT.jar`, where `yourWorkingPath` is a path direct to your folder,
    where app will be working.
 
  Path to swagger: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)

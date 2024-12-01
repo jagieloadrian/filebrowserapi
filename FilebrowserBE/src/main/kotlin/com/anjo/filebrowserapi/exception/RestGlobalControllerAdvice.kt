@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice
 @Profile("web")
-class GlobalControllerAdvice {
+class RestGlobalControllerAdvice {
 
 
     @ExceptionHandler(value = [CannotRealizeException::class])

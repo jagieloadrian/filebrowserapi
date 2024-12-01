@@ -1,6 +1,7 @@
 package com.anjo.filebrowserapi.service
 
 import com.anjo.filebrowserapi.exception.BadInputException
+import com.anjo.filebrowserapi.exception.CannotRealizeException
 import com.anjo.filebrowserapi.facade.FileManager
 import com.anjo.filebrowserapi.model.OperationType.CREATE
 import com.anjo.filebrowserapi.model.OperationType.DELETE
@@ -18,7 +19,7 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 @Service
-class FileManagerService(
+class FileManager(
         private val modifierUtils: PathModifierUtils
 ) : FileManager {
     private val defaultPath = modifierUtils.generateDefaultPath()
@@ -50,6 +51,29 @@ class FileManagerService(
         return targetFile.readBytes()
     }
 
+    override fun renameFile(newName: String, path: String?): String {
+        val validPath = path?.let { modifierUtils.formatPath(it) } ?: defaultPath
+        val extractMidPath = modifierUtils.extractMidPath(validPath)
+
+        val sourceFile = File("${defaultPath}/$path")
+        val targetPath = modifierUtils.generatePathToRename(extractMidPath, newName)
+        val targetDir = File(targetPath)
+
+        if (sourceFile.renameTo(targetDir)) {
+            checkIfSuccess(targetDir)
+            return formatResponsePath(targetDir.path, defaultPath)
+        } else {
+            throw CannotRealizeException("Cannot rename not existing directory")
+        }
+    }
+
+    private fun checkIfSuccess(targetDir: File) {
+        when (targetDir.exists() && !targetDir.isDirectory) {
+            true  -> { return }
+            false -> { throw CannotRealizeException("Exception during operation") }
+        }
+    }
+
     override fun deleteFile(fileName: String, path: String?) {
         modifierUtils.validPath(path, DELETE)
         val mergedPath = "${modifierUtils.mergePath(path)}/$fileName"
@@ -59,7 +83,6 @@ class FileManagerService(
             throw BadInputException("Cannot remove non existing file")
         }
     }
-
 
     private fun validFileName(filename: String?): String {
         return if (filename.isNullOrEmpty()) {

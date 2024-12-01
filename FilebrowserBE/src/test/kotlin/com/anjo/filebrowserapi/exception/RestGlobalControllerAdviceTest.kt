@@ -12,10 +12,10 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatusCode
 
 @ExtendWith(MockKExtension::class)
-class GlobalControllerAdviceTest {
+class RestGlobalControllerAdviceTest {
 
     @InjectMockKs
-    private lateinit var advice: GlobalControllerAdvice
+    private lateinit var advice: RestGlobalControllerAdvice
 
     @BeforeEach
     fun setup() {
