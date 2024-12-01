@@ -23,7 +23,6 @@ class GrpcLoggingInterceptor : ServerInterceptor {
         return object : ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(
                 next?.startCall(call, headers)
         ) {
-
             override fun onComplete() {
                 val duration = System.currentTimeMillis() - startTime
                 logger.info { "Completed gRPC call: $methodName in ${duration}ms" }
