@@ -14,15 +14,13 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
-import io.mockk.MockKAnnotations
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.io.File
+import kotlin.test.AfterTest
+import kotlin.test.Test
 
 
 @ExtendWith(MockKExtension::class)
@@ -36,7 +34,7 @@ class DirectoryManagerTest {
     @InjectMockKs
     private lateinit var service: DirectoryManager
 
-    @AfterEach
+    @AfterTest
     fun cleanUp() {
         val files = File("${System.getProperty("user.dir")}$PATH_TO_RESOURCES/$BASE_FOLDER").walk().filter { file ->
             file.isDirectory

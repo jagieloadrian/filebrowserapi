@@ -10,13 +10,13 @@ import java.io.File
 @Service
 @EnableConfigurationProperties(AppConfiguration::class)
 class PathModifierUtils(
-    private val properties: AppConfiguration
+        private val properties: AppConfiguration
 ) {
     private val baseDirectory = "/filebrowser"
 
     init {
         val baseFolder = File("${properties.getPath()}$baseDirectory")
-        if(!baseFolder.exists()){
+        if (!baseFolder.exists()) {
             baseFolder.mkdir()
         }
     }
@@ -34,19 +34,19 @@ class PathModifierUtils(
 
     fun validPath(path: String?, operationType: OperationType) {
         when (path.isNullOrBlank()) {
-            true -> return
+            true  -> return
             false -> isExistPath(path, operationType)
         }
     }
 
-    fun isExistPath(path: String, operationType: OperationType) {
+    private fun isExistPath(path: String, operationType: OperationType) {
         val extractFile = File("${generateDefaultPath()}/$path")
         if (!extractFile.exists()) {
             throw CannotRealizeException("Path: $path to ${operationType.description} file or directory is not exist")
         }
     }
 
-    fun extractMidPath(sourcePath:String): List<String> {
+    fun extractMidPath(sourcePath: String): List<String> {
         return sourcePath.split("/").dropLast(1)
     }
 

@@ -5,16 +5,16 @@ import jakarta.annotation.PostConstruct
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties("application")
-class AppConfiguration(private var path: String) {
+class AppConfiguration(private var path: String?) {
     private val logger = KotlinLogging.logger {}
 
     fun getPath() = path
 
     @PostConstruct
     private fun validateBasePath() {
-        if (path.isBlank() || path.isEmpty()) {
+        if (path.isNullOrBlank() || path.isNullOrEmpty()) {
             path = System.getProperty("user.dir")
-            logger.info { "Property applicaiton.path was blank. Deafulting to: $path" }
+            logger.info { "Property application.path was blank. Defaulting to: $path" }
         }
     }
 }

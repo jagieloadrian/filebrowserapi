@@ -3,11 +3,9 @@ package com.anjo.filebrowserapi.exception
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import io.kotest.assertions.assertSoftly
 import io.kotest.matchers.shouldBe
-import io.mockk.MockKAnnotations
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatusCode
 
@@ -17,10 +15,6 @@ class RestGlobalControllerAdviceTest {
     @InjectMockKs
     private lateinit var advice: RestGlobalControllerAdvice
 
-    @BeforeEach
-    fun setup() {
-        MockKAnnotations.init(this)
-    }
     @Test
     fun `given error when handleCannotRealizeException then return responseEntity`() {
         //given

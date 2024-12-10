@@ -10,7 +10,6 @@ import com.anjo.filebrowserapi.facade.FileManager
 import com.anjo.filebrowserapi.utils.ByteArrayToMultiPartFile
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
@@ -20,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile
 @Service
 class FilebrowserGrpc(private val directoryManager: DirectoryManager,
                       private val fileManager: FileManager) : FilebrowserApiCoroutineImplBase() {
-    private val logger = KotlinLogging.logger {}
 
 
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {

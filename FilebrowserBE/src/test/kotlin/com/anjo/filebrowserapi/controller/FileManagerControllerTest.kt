@@ -13,14 +13,14 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatusCode
 import org.springframework.mock.web.MockMultipartFile
 import java.io.File
+import kotlin.test.AfterTest
+import kotlin.test.Test
 
 @ExtendWith(MockKExtension::class)
 class FileManagerControllerTest(
@@ -126,7 +126,7 @@ class FileManagerControllerTest(
         return file
     }
 
-    @AfterEach
+    @AfterTest
     fun cleanUp() {
         val files =
             File("${System.getProperty("user.dir")}${TestObjects.PATH_TO_RESOURCES}/${TestObjects.BASE_FOLDER}").walk()

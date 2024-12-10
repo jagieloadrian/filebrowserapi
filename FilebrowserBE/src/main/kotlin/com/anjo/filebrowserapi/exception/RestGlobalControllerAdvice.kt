@@ -29,6 +29,3 @@ class RestGlobalControllerAdvice {
 }
 
 data class ErrorResponse(val error: String, val message: String?)
-class CannotRealizeException(msg: String) : Exception(msg)
-
-class BadInputException(msg:String) : Exception(msg)
