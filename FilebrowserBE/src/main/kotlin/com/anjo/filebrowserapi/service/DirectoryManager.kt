@@ -26,6 +26,8 @@ class DirectoryManager(
                     formatResponsePath(file.path, defaultPath)
                 }
                 .drop(1)
+                // walk() order is filesystem-dependent; sort for stable responses
+                .sorted()
                 .toList()
     }
 

@@ -9,6 +9,7 @@ Last update: 2026-11-04 (branch `feature/5-implement-docker-image`)
   Verified locally: REST, Swagger, upload, gRPC port, graceful shutdown.
 - CI: `.github/workflows/ci.yml` — build+test on PR/main, image pushed to `ghcr.io/jagieloadrian/filebrowserapi` on `main` and `v*` tags.
 - `roadmap.md` with analysis and phased plan.
+- Tree listings (`showFilesTree`, `showDirectoriesTree`) sorted: `File.walk()` order is filesystem-dependent, broke tests on GitHub runner.
 
 ## Decisions
 - No `.gitlab-ci.yml` existed in repo or history; GitHub Actions workflow written from scratch.

@@ -30,6 +30,8 @@ class FileManager(
         return File(mergePath).walk()
                 .map { file -> formatResponsePath(file.path, defaultPath) }
                 .drop(1)
+                // walk() order is filesystem-dependent; sort for stable responses
+                .sorted()
                 .toList()
     }
 
