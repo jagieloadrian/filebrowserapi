@@ -7,5 +7,5 @@ import org.springframework.boot.runApplication
 class FilebrowserapiApplication
 
 fun main(args: Array<String>) {
-    runApplication<FilebrowserapiApplication>()
+    runApplication<FilebrowserapiApplication>(*args)
 }

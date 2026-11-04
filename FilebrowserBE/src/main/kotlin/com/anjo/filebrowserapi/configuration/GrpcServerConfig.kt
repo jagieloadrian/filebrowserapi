@@ -11,7 +11,8 @@ import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
-import javax.annotation.PreDestroy
+import jakarta.annotation.PreDestroy
+import kotlin.concurrent.thread
 
 @Configuration
 @Profile("server")
@@ -48,6 +49,7 @@ class GrpcServerConfig(private val filebrowserGrpc: FilebrowserGrpc,
     override fun run(args: ApplicationArguments?) {
         runGrpcServer()
         logger.info { "gRPC server start on port: $port" }
-        server.awaitTermination()
+        // ponytail: gRPC threads are daemons; non-daemon waiter keeps JVM alive without blocking context startup
+        thread(name = "grpc-await-termination") { server.awaitTermination() }
     }
 }
