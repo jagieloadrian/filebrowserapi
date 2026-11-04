@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package com.anjo.filebrowser;
+
+service FilebrowserApi {
+  rpc showFilesTree(PathRequest)returns (StringsResponse);
+  rpc uploadFile(UploadFile)returns (StringResponse);
+  rpc getFile(FileOperation)returns (FileResponse);
+  rpc renameFile(FileOperation)returns (StringResponse);
+  rpc deleteFile(FileOperation)returns (google.protobuf.Empty); //empty
+  rpc showDirectoriesTree(PathRequest)returns (StringsResponse);
+  rpc addDirectory(FileOperation)returns (StringResponse);
+  rpc addDirectoriesRecursively(PathRequest)returns (StringResponse);
+  rpc renameDirectory(FileOperation)returns (StringResponse);
+  rpc deleteDirectory(PathRequest)returns (google.protobuf.Empty);
+}
+
+message PathRequest {
+  string path = 1;
+}
+
+message StringsResponse {
+  repeated string directories = 1;
+}
+
+message StringResponse {
+  string path = 1;
+}
+
+message FileOperation {
+  string name = 1;
+  string path = 2;
+}
+
+message UploadFile {
+  bytes data = 1;
+  string name = 2;
+  string contentType = 3;
+  optional string path = 4;
+}
+
+message FileResponse {
+  bytes data = 1;
+}
