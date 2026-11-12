@@ -1,0 +1,49 @@
+name: devops
+
+on:
+  pull_request:
+    paths: ['.devops/helm/**', '.github/workflows/devops.yml']
+  push:
+    branches: [main]
+    paths: ['.devops/helm/**', '.github/workflows/devops.yml']
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  KUBECONFORM_VERSION: v0.8.0
+  CRD_SCHEMAS: https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json
+  RELEASE: .devops/helm/release.yaml
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Checkout chart (homelab-infra)
+        uses: actions/checkout@v7
+        with:
+          repository: jagieloadrian/homelab-infra
+          path: homelab-infra
+          sparse-checkout: charts
+
+      - name: Install kubeconform
+        run: curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | sudo tar xz -C /usr/local/bin kubeconform
+
+      - name: Kubernetes manifests
+        run: |
+          kc() { kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" "$@"; }
+          kc .devops/helm
+          for name in $(yq -N '.metadata.name' "$RELEASE"); do
+            dir=$(mktemp -d)
+            N=$name yq 'select(.metadata.name == strenv(N)) | .spec.values' "$RELEASE" \
+              | helm template "$name" homelab-infra/charts/app -f - > "$dir/all.yaml"
+            N=$name yq 'select(.metadata.name == strenv(N))
+              | {"resources": ["all.yaml"], "patches": .spec.postRenderers[0].kustomize.patches}' "$RELEASE" > "$dir/kustomization.yaml"
+            kubectl kustomize "$dir" | kc -
+          done
