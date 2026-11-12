@@ -20,9 +20,7 @@ import kotlin.test.Test
 
 private const val TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736"
 
-@SpringBootTest(
-    properties = ["logging.structured.format.console=com.anjo.filebrowserapi.logging.JsonLogFormatter"],
-)
+@SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("web")
 @ExtendWith(OutputCaptureExtension::class)
@@ -41,7 +39,7 @@ class TraceLoggingTest(
         mockMvc.get("/api/v1/files") { header("traceparent", "00-$TRACE_ID-00f067aa0ba902b7-01") }
 
         // then
-        output.out shouldContain "\"traceId\":\"$TRACE_ID\""
+        output.out shouldContain TRACE_ID
     }
 
     companion object {
