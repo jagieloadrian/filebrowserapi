@@ -7,7 +7,7 @@ import org.springframework.boot.logging.structured.StructuredLogFormatter
 class JsonLogFormatter : StructuredLogFormatter<ILoggingEvent> {
     private val writer =
         JsonWriter
-            .of<ILoggingEvent> { members ->
+            .of { members ->
                 members.add("timestamp") { event: ILoggingEvent -> event.instant.toString() }
                 members.add("level") { event: ILoggingEvent -> event.level.toString() }
                 members.add("message") { event: ILoggingEvent -> event.formattedMessage }

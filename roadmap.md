@@ -12,13 +12,10 @@ Done:
 - One REST error body `{error, message, details}`, probes `/health/live` and `/health/ready`, Prometheus `/metrics`,
   JSON logs with `traceId` from `traceparent`.
 - Jib image (`eclipse-temurin:21-jre`, amd64 + arm64, UID 10001), GitHub Actions CI, GHCR, Dependabot.
-- Phase 1 (security and correctness), see below.
+- Phases 1 and 2, see below.
 
 Open problems:
 - No authentication.
-- REST has no `renameFile`, which gRPC already exposes.
-- gRPC code generators drift from the runtime: `protoc` 3.22 vs `protobuf-kotlin` 4.29, `protoc-gen-grpc-java` 1.54
-  vs `grpc` 1.56, `protoc-gen-grpc-kotlin` 1.3 vs stub 1.4.
 - `FilebrowserUI` is a "Hello World" stub.
 
 ## Phase 1: Security and correctness (P0), done 2026-11-12
@@ -43,13 +40,14 @@ Open problems:
    Tomcat multipart, so a broken stream never leaves a partial file.
 9. Done: version `1.0-SNAPSHOT`. Renames use `Files.move` (former phase 2 item).
 
-## Phase 2: API parity and quality
-1. REST `PATCH /api/v1/files` (rename), matching gRPC.
-2. Align the gRPC and protobuf generator versions with the runtime in `gradle/libs.versions.toml`; framework and
-   Gradle upgrades come through Dependabot PRs.
-3. gRPC health service and a tracing interceptor, so the `server` profile has probes and `traceId` too.
-
-Done when: REST and gRPC expose the same operations and both profiles report health.
+## Phase 2: API parity and quality, done 2026-11-12
+1. Done: REST `PATCH /api/v1/files?sourcePath=&newFileName=` renames a file, matching gRPC `renameFile`.
+2. Done: one version per family in `gradle/libs.versions.toml` (protoc = protobuf runtime, gRPC generator = gRPC
+   runtime, `grpc-bom` aligns every `io.grpc` module). Dependencies moved to the latest stable releases on Maven
+   Central: Gradle 9.9.1, Kotlin 2.4.21, Spring Boot 4.1.2, gRPC 1.85.1, protobuf 4.36.2, Kotest 6.2.7.
+3. Done: the `server` profile runs on `spring-boot-starter-grpc-server`: `grpc.health.v1.Health`, reflection,
+   observation interceptor (`traceId` from `traceparent`, gRPC metrics), graceful shutdown (15 s). Exceptions map
+   through a `GrpcExceptionHandler` bean instead of a custom interceptor.
 
 ## Phase 3: Authentication
 1. The OIDC provider (Authelia in the homelab) owns users and roles; the app keeps no user store. Its OIDC client
@@ -68,6 +66,7 @@ Done when: every REST route and RPC rejects unauthenticated calls and no token a
    the image tag, `devops.yml` validates with `helm template` and kubeconform.
 2. Local start with one command (`runLocal`).
 3. A read-only root filesystem needs a writable `/tmp` volume: multipart and gRPC uploads spool there.
+4. Probes: HTTP `/health/live` and `/health/ready` for `web`, the native Kubernetes `grpc` probe on 9090 for `server`.
 
 Done when: a push to `main` rolls the new image out to the cluster.
 

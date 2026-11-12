@@ -21,6 +21,10 @@ kotlin {
     }
 }
 
+ktlint {
+    version.set(libs.versions.ktlint.engine)
+}
+
 tasks.test {
     useJUnitPlatform()
 }

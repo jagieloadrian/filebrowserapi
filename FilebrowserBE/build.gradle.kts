@@ -1,6 +1,7 @@
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
 plugins {
     alias(libs.plugins.spring.boot)
-    alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.protobuf)
@@ -17,22 +18,27 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.spring.boot.starter.web)
+    implementation(platform(SpringBootPlugin.BOM_COORDINATES))
+    implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.coroutines.core)
     implementation(libs.micrometer.prometheus)
     implementation(libs.micrometer.tracing.otel)
+    implementation(libs.spring.boot.tracing.otel)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.kotlin.reflect)
-    implementation(libs.grpc.netty)
+    implementation(platform(libs.grpc.bom))
+    implementation(libs.spring.boot.starter.grpc.server)
     implementation(libs.grpc.protobuf)
     implementation(libs.grpc.kotlin.stub)
     implementation(libs.protobuf.kotlin)
     implementation(libs.kotlin.logging)
     implementation(libs.springdoc.openapi)
 
-    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.spring.boot.micrometer.metrics.test)
+    testImplementation(libs.spring.boot.starter.grpc.server.test)
     testImplementation(libs.springmockk)
     testImplementation(libs.kotest.assertions)
     testImplementation(libs.kotest.property)
@@ -48,24 +54,24 @@ protobuf {
                 .toString()
     }
     plugins {
-        create("grpc") {
+        maybeCreate("grpc").apply {
             artifact =
                 libs.grpc.protoc.gen.java
                     .get()
                     .toString()
         }
-        create("grpckt") {
+        maybeCreate("grpckt").apply {
             artifact = "${libs.grpc.protoc.gen.kotlin.get()}:jdk8@jar"
         }
     }
     generateProtoTasks {
         all().forEach {
             it.plugins {
-                create("grpc")
-                create("grpckt")
+                maybeCreate("grpc")
+                maybeCreate("grpckt")
             }
             it.builtins {
-                create("kotlin")
+                maybeCreate("kotlin")
             }
         }
     }
@@ -79,9 +85,14 @@ kotlin {
 }
 
 ktlint {
+    version.set(libs.versions.ktlint.engine)
     filter {
         exclude { it.file.path.contains("/build/generated/") }
     }
+}
+
+jacoco {
+    toolVersion = libs.versions.jacoco.get()
 }
 
 tasks.test {

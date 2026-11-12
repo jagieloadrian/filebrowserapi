@@ -6,9 +6,13 @@ import io.grpc.Metadata
 import io.grpc.ServerCall
 import io.grpc.ServerCallHandler
 import io.grpc.ServerInterceptor
+import org.springframework.core.annotation.Order
+import org.springframework.grpc.server.GlobalServerInterceptor
 import org.springframework.stereotype.Component
 
 @Component
+@GlobalServerInterceptor
+@Order(20)
 class GrpcLoggingInterceptor : ServerInterceptor {
     private val logger = KotlinLogging.logger {}
 

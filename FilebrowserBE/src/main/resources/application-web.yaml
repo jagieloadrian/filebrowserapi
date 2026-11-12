@@ -5,6 +5,9 @@ spring:
     web-application-type: servlet
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  grpc:
+    server:
+      enabled: false
   servlet:
     multipart:
       max-file-size: ${application.max-upload-size}

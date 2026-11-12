@@ -1,6 +1,6 @@
 # Project Status
 
-Last update: 2026-11-12, branch `feature-7/path-safety`.
+Last update: 2026-11-12, branch `feature-8/phase-2-dependencies`.
 
 ## Completed
 
@@ -39,6 +39,14 @@ Project aligned with the coding standards from the `standards` MCP server:
   `getFile`/`uploadFile` are streaming RPCs (breaking proto change).
 - Version `1.0-SNAPSHOT`. 126 tests, gate green.
 
+### 2026-11-12, `feature-8/phase-2-dependencies` (from `main`): roadmap phase 2 done, dependencies current
+- Latest stable from Maven Central: Gradle 9.9.1, Kotlin 2.4.21, ktlint 1.8.0, JaCoCo 0.8.16, Spring Boot 4.1.2
+  (Jackson 3, springdoc 3.2.0, springmockk 5.0.1), gRPC 1.85.1, protobuf 4.36.2, grpc-kotlin 1.5.0, Kotest 6.2.7,
+  coroutines 1.11.0, kotlin-logging 8.0.7. Generators share the runtime versions.
+- REST `PATCH /api/v1/files` renames a file.
+- gRPC runs on `spring-boot-starter-grpc-server`: health service, reflection, tracing; custom server config deleted.
+- 130 tests, gate green; jar smoke-tested in both profiles.
+
 ## Decisions
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
@@ -56,7 +64,13 @@ Project aligned with the coding standards from the `standards` MCP server:
 - Content type from Spring `MediaTypeFactory`, not `Files.probeContentType` (needs OS MIME files absent in the image).
 - gRPC uploads spool to `java.io.tmpdir` before the copy, like Tomcat multipart: no partial files.
 
+- Spring BOM through native `platform()`: the `io.spring.dependency-management` plugin forced Kotlin 2.4 onto ktlint's
+  embedded compiler (ktlint needs 2.2). gRPC uses `grpc-bom` 1.85.1, newer than Spring's managed 1.84.1.
+- Tracing via `spring-boot-micrometer-tracing-opentelemetry`, not the OTel starter (its OTLP registry pushes metrics
+  to localhost by default).
+- gRPC port property is `spring.grpc.server.port`; the old `grpc.server.port` is gone.
+
 ## Next steps and risks
-- Push `feature-7/path-safety` (on top of `main`, which has feature-6 as PR #2) and open a PR; check CI.
-- gRPC clients must move to the streaming `uploadFile`/`getFile`.
-- Roadmap phase 2 (REST file rename, generator versions, gRPC health/tracing), then phase 3 (OIDC).
+- Push `feature-8/phase-2-dependencies` and open a PR; check CI on Gradle 9.
+- gRPC clients must move to the streaming `uploadFile`/`getFile`; deployments to `SPRING_GRPC_SERVER_PORT`.
+- Roadmap phase 3 (OIDC via Authelia).

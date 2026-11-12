@@ -10,11 +10,11 @@
  The application is lightweight, doesn't have UI, it's served only via http request.<br>
 
  I use in this project: 
- * Kotlin 2.0.21
- * SpringBoot 3.4.0
- * Gradle 8.5
- * gRPC + Protobuf
- * Kotest
+ * Kotlin 2.4.21
+ * Spring Boot 4.1.2 (Spring gRPC server starter for the `server` profile)
+ * Gradle 9.9.1
+ * gRPC 1.85.1 + Protobuf 4.36.2
+ * Kotest 6
 
 ### Future Features
 * add database to easier managing of paths, serializing files
@@ -43,6 +43,9 @@ How to run app locally
 * An upload never replaces an existing file unless it sets `overwrite` (REST `?overwrite=true`, gRPC field `overwrite`);
   otherwise 409 / `ALREADY_EXISTS`.
 * Names must not be blank or contain `/` (400 / `INVALID_ARGUMENT`); no path may leave the base directory.
+* REST and gRPC expose the same operations (`PATCH /api/v1/files?sourcePath=&newFileName=` renames a file).
+* The `server` profile serves gRPC on `spring.grpc.server.port` (default 9090, env `SPRING_GRPC_SERVER_PORT`) with
+  the standard `grpc.health.v1.Health` service, server reflection and `traceId` from `traceparent` in logs.
 * gRPC `uploadFile` is client-streaming (name, path and `overwrite` in the first message); `getFile` streams 64 KiB
   chunks. REST downloads carry the file's `Content-Type` and an attachment `Content-Disposition`.
 
