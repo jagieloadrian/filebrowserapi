@@ -18,7 +18,6 @@
 
 ### Future Features
 * add database to easier managing of paths, serializing files
-* add keycloak to managing security
 * add configuration for kubernetes 
 
 ## Prerequisites
@@ -36,6 +35,21 @@ How to run app locally
  Path to swagger: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)
 
    The app creates the `filebrowser` directory inside that path on startup.
+
+### Authentication
+Every REST route under `/api/v1` and every gRPC method needs `Authorization: Bearer <JWT access token>` from the OIDC
+provider. The app verifies signature (issuer JWKS), `iss`, `aud`, `exp` and `nbf`, and refuses to start without:
+
+    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://auth.example.com
+    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=filebrowser
+
+Roles come from the `groups` claim: `filebrowser-reader` may read (GET, `showFilesTree`, `getFile`,
+`showDirectoriesTree`), `filebrowser-writer` may read and write. Anything else is denied: 401 without or with an
+invalid token, 403 without the role (gRPC: `UNAUTHENTICATED`, `PERMISSION_DENIED`). Public: `/health/**`, `/metrics`,
+Swagger, gRPC `grpc.health.v1.Health`.
+
+The OIDC client (Authelia) must issue JWT access tokens (`access_token_signed_response_alg: RS256`; Authelia issues
+opaque ones by default) whose `aud` contains the client ID and which carry the `groups` claim.
 
 ### API rules
 * `application.max-upload-size` (default `1GB`, env `APPLICATION_MAX_UPLOAD_SIZE`) limits one upload: REST answers 413,
@@ -58,11 +72,15 @@ Build it into the local Docker daemon:
 
 Run the REST API (port 8080, profile `web`, files in volume `/data`):
 
-    docker run -p 8080:8080 -v filebrowser-data:/data ghcr.io/jagieloadrian/filebrowserapi:local
+    docker run -p 8080:8080 -v filebrowser-data:/data \
+        -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://auth.example.com \
+        -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=filebrowser ghcr.io/jagieloadrian/filebrowserapi:local
 
 Run the gRPC server (port 9090, profile `server`):
 
-    docker run -p 9090:9090 -e SPRING_PROFILES_ACTIVE=server -v filebrowser-data:/data ghcr.io/jagieloadrian/filebrowserapi:local
+    docker run -p 9090:9090 -e SPRING_PROFILES_ACTIVE=server -v filebrowser-data:/data \
+        -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://auth.example.com \
+        -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=filebrowser ghcr.io/jagieloadrian/filebrowserapi:local
 
 The container logs JSON with `timestamp`, `level`, `message`, `logger` and `traceId` (from `traceparent`).
 The REST profile serves `/health/live`, `/health/ready` and Prometheus metrics at `/metrics`.

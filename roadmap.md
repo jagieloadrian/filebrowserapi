@@ -12,10 +12,9 @@ Done:
 - One REST error body `{error, message, details}`, probes `/health/live` and `/health/ready`, Prometheus `/metrics`,
   JSON logs with `traceId` from `traceparent`.
 - Jib image (`eclipse-temurin:21-jre`, amd64 + arm64, UID 10001), GitHub Actions CI, GHCR, Dependabot.
-- Phases 1 and 2, see below.
+- Phases 1 to 3, see below.
 
-Open problems:
-- No authentication.
+Open problems: none known; next work is deployment (phase 4).
 - `FilebrowserUI` is a "Hello World" stub.
 
 ## Phase 1: Security and correctness (P0), done 2026-11-12
@@ -49,17 +48,17 @@ Open problems:
    observation interceptor (`traceId` from `traceparent`, gRPC metrics), graceful shutdown (15 s). Exceptions map
    through a `GrpcExceptionHandler` bean instead of a custom interceptor.
 
-## Phase 3: Authentication
-1. The OIDC provider (Authelia in the homelab) owns users and roles; the app keeps no user store. Its OIDC client
-   must issue JWT access tokens, because Authelia issues opaque ones by default.
-2. Spring Security OAuth2 Resource Server with `issuer-uri` and `audiences`; the same JWT check in gRPC through a
-   `ServerInterceptor`.
-3. Roles from the `groups` claim with the app prefix (`filebrowser-reader`, `filebrowser-writer`), mapped to
-   authorities in one place, deny by default.
-4. Tests: every protected route and RPC answers 401 without a token and 403 with a token that lacks the role.
-5. Optional: per-user directories keyed by `sub` (`/data/filebrowser/<sub>`), never by e-mail.
-
-Done when: every REST route and RPC rejects unauthenticated calls and no token appears in logs.
+## Phase 3: Authentication, done 2026-11-12
+1. Done: the OIDC provider owns users and roles; the app has no user store. Its OIDC client must issue JWT access
+   tokens (Authelia issues opaque ones by default).
+2. Done: Spring Security resource server with `issuer-uri` and `audiences` (startup fails without an audience); gRPC
+   uses Spring gRPC's `GrpcSecurity` with the same decoder and converter.
+3. Done: `groups` mapped to `ROLE_*` in one place (`security/SecurityConfig.kt`): `filebrowser-reader` reads,
+   `filebrowser-writer` reads and writes, everything else is denied; health, metrics and API docs stay public.
+4. Done: tests sign real JWTs against a local OIDC discovery and JWKS endpoint; every REST route and every RPC (taken
+   from the service descriptor) answers 401/`UNAUTHENTICATED` without or with a bad token (wrong `aud`, `iss`,
+   expired, foreign key) and 403/`PERMISSION_DENIED` without the role; tokens never reach the logs.
+5. Not done (optional): per-user directories keyed by `sub`.
 
 ## Phase 4: Deployment
 1. Blocked until the infra repo provides the `charts/app` values: `.devops/helm/release.yaml` HelmRelease, CI bumps
