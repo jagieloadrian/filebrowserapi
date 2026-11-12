@@ -1,9 +1,12 @@
 package com.anjo.filebrowserapi.security
 
+import com.anjo.filebrowser.Filebrowser
 import com.anjo.filebrowser.FilebrowserApiGrpc
+import com.anjo.filebrowser.FilebrowserApiGrpcKt
 import com.anjo.filebrowserapi.TestTokens
 import com.anjo.filebrowserapi.TestTokens.READER
 import com.anjo.filebrowserapi.TestTokens.WRITER
+import com.google.protobuf.kotlin.toByteString
 import io.grpc.CallOptions
 import io.grpc.Channel
 import io.grpc.ClientInterceptors
@@ -14,9 +17,12 @@ import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import io.grpc.stub.ClientCalls
 import io.grpc.stub.MetadataUtils
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -87,6 +93,29 @@ class GrpcSecurityTest(
         // when & then
         call(FilebrowserApiGrpc.getShowFilesTreeMethod().fullMethodName, token) shouldBe Status.Code.UNAUTHENTICATED
     }
+
+    @Test
+    fun `should keep users apart when a file is streamed in`() =
+        runTest {
+            // given
+            val owner = FilebrowserApiGrpcKt.FilebrowserApiCoroutineStub(withToken(TestTokens.token(WRITER, subject = "alice")))
+            val other = FilebrowserApiGrpcKt.FilebrowserApiCoroutineStub(withToken(TestTokens.token(WRITER, subject = "bob")))
+            val file =
+                Filebrowser.UploadFile
+                    .newBuilder()
+                    .setName("private.txt")
+                    .setData("secret".toByteArray().toByteString())
+                    .build()
+            owner.uploadFile(flowOf(file))
+
+            // when
+            val ownView = owner.showFilesTree(Filebrowser.PathRequest.getDefaultInstance()).directoriesList
+            val otherView = other.showFilesTree(Filebrowser.PathRequest.getDefaultInstance()).directoriesList
+
+            // then
+            ownView shouldContain "/private.txt"
+            otherView shouldNotContain "/private.txt"
+        }
 
     @Test
     fun `should never log the token when RPC is authorized`(output: CapturedOutput) {

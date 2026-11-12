@@ -6,8 +6,11 @@ import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
 import com.anjo.filebrowserapi.validation.NAME_RULE
 import com.anjo.filebrowserapi.validation.isValidName
+import com.anjo.filebrowserapi.validation.isValidSubject
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 
 private const val BASE_FOLDER = "filebrowser"
@@ -16,30 +19,42 @@ private const val BASE_FOLDER = "filebrowser"
 class PathModifierUtils(
     private val properties: AppConfiguration,
 ) {
-    private val baseDirectory: Path = Path.of(properties.path, BASE_FOLDER).toAbsolutePath().normalize()
+    private val rootDirectory: Path = Path.of(properties.path, BASE_FOLDER).toAbsolutePath().normalize()
 
     init {
-        val baseFolder = baseDirectory.toFile()
-        if (!baseFolder.exists()) {
-            baseFolder.mkdir()
+        val rootFolder = rootDirectory.toFile()
+        if (!rootFolder.exists()) {
+            rootFolder.mkdir()
         }
     }
 
-    fun resolve(vararg segments: String?): File {
+    fun resolve(vararg segments: String?): File = resolveIn(baseDirectory(), segments)
+
+    fun resolveEntry(vararg segments: String?): File {
+        val base = baseDirectory()
+        val target = resolveIn(base, segments)
+        if (target.toPath() == base) throw BadInputException("The base directory cannot be changed")
+        return target
+    }
+
+    private fun resolveIn(
+        base: Path,
+        segments: Array<out String?>,
+    ): File {
         val target =
             segments
                 .filterNotNull()
                 .filter { it.isNotBlank() }
-                .fold(baseDirectory) { parent, segment -> parent.resolve(segment.trimStart('/')) }
+                .fold(base) { parent, segment -> parent.resolve(segment.trimStart('/')) }
                 .normalize()
-        if (!target.startsWith(baseDirectory)) throw BadInputException("Path is outside the base directory")
+        if (!target.startsWith(base)) throw BadInputException("Path is outside the base directory")
         return target.toFile()
     }
 
-    fun resolveEntry(vararg segments: String?): File {
-        val target = resolve(*segments)
-        if (target.toPath() == baseDirectory) throw BadInputException("The base directory cannot be changed")
-        return target
+    private fun baseDirectory(): Path {
+        val subject = SecurityContextHolder.getContext().authentication?.name ?: throw IllegalStateException("No authenticated user")
+        if (!isValidSubject(subject)) throw BadInputException("The token subject cannot name a directory")
+        return Files.createDirectories(rootDirectory.resolve(subject))
     }
 
     fun mergePath(path: String?): String = resolve(path).path
@@ -76,7 +91,7 @@ class PathModifierUtils(
     private fun requireName(name: String): String =
         name.also { if (!isValidName(it)) throw BadInputException("Invalid name '$it': $NAME_RULE") }
 
-    fun generateDefaultPath(): String = baseDirectory.toString()
+    fun generateDefaultPath(): String = baseDirectory().toString()
 
     fun formatPath(path: String): String = if (path.first() == '/') path.drop(1) else path
 }

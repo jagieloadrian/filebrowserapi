@@ -3,6 +3,8 @@ package com.anjo.filebrowserapi.service
 import com.anjo.filebrowserapi.TestObjects.BASE_FOLDER
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
+import com.anjo.filebrowserapi.TestObjects.USER
+import com.anjo.filebrowserapi.TestObjects.signIn
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
@@ -16,10 +18,13 @@ import io.kotest.property.arbitrary.element
 import io.kotest.property.arbitrary.list
 import io.kotest.property.checkAll
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.NullAndEmptySource
 import org.junit.jupiter.params.provider.ValueSource
+import org.springframework.security.core.context.SecurityContextHolder
 import java.io.File
 import java.nio.file.Path
 import kotlin.test.Test
@@ -30,6 +35,16 @@ class PathModifierUtilsTest {
 
     private val utils by lazy { PathModifierUtils(AppConfiguration(workDir.toString())) }
     private val basePath: String get() = "$workDir/$BASE_FOLDER"
+
+    @BeforeEach
+    fun signInUser() {
+        signIn()
+    }
+
+    @AfterEach
+    fun signOut() {
+        SecurityContextHolder.clearContext()
+    }
 
     @Test
     fun `should create base folder when initialized`() {
@@ -155,6 +170,35 @@ class PathModifierUtilsTest {
 
         // then
         result.path shouldBe "$basePath/$FIRST_NAME/$SECOND_NAME"
+    }
+
+    @Test
+    fun `should not reach another user's directory when path climbs out of own directory`() {
+        // given
+        utils.resolveName(null, FIRST_NAME).mkdirs()
+        signIn("user-2")
+
+        // when & then
+        shouldThrow<BadInputException> { utils.resolve("../$USER/$FIRST_NAME") }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["", ".", "..", "../evil", "a/b", ".hidden"])
+    fun `should throw BadInputException when token subject cannot name a directory`(sub: String) {
+        // given
+        signIn(sub)
+
+        // when & then
+        shouldThrow<BadInputException> { utils.generateDefaultPath() }
+    }
+
+    @Test
+    fun `should throw IllegalStateException when nobody is signed in`() {
+        // given
+        SecurityContextHolder.clearContext()
+
+        // when & then
+        shouldThrow<IllegalStateException> { utils.resolve(FIRST_NAME) }
     }
 
     @Test

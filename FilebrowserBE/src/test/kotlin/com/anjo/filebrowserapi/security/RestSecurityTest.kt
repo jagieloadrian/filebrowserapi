@@ -25,6 +25,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request
 import java.nio.file.Files
 import java.time.Instant
@@ -134,6 +135,25 @@ class RestSecurityTest(
         // then
         response.contentAsString shouldContain "\"security\":[{\"bearer\":[]}]"
         response.contentAsString shouldContain "\"bearer\":{\"type\":\"http\",\"scheme\":\"bearer\",\"bearerFormat\":\"JWT\"}"
+    }
+
+    @Test
+    fun `should keep users apart when two users list directories`() {
+        // given
+        val owner = TestTokens.token(WRITER, subject = "alice")
+        val other = TestTokens.token(WRITER, subject = "bob")
+        mockMvc.post(DIRECTORIES) {
+            param("directoryName", "private")
+            header(HttpHeaders.AUTHORIZATION, "Bearer $owner")
+        }
+
+        // when
+        val ownView = call(HttpMethod.GET, DIRECTORIES, owner).contentAsString
+        val otherView = call(HttpMethod.GET, DIRECTORIES, other).contentAsString
+
+        // then
+        ownView shouldContain "/private"
+        otherView shouldNotContain "private"
     }
 
     @Test

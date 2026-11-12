@@ -46,13 +46,14 @@ object TestTokens {
         audience: String = AUDIENCE,
         expiresAt: Instant = Instant.now().plusSeconds(300),
         signingKey: PrivateKey = keys.private,
+        subject: String = "user-1",
     ): String {
         val claims =
             JWTClaimsSet
                 .Builder()
                 .issuer(issuer)
                 .audience(audience)
-                .subject("user-1")
+                .subject(subject)
                 .claim("groups", groups.toList())
                 .issueTime(Date())
                 .expirationTime(Date.from(expiresAt))

@@ -23,7 +23,7 @@ private const val RANDOM_NAME_LENGTH = 8
 class FileManager(
     private val modifierUtils: PathModifierUtils,
 ) {
-    private val defaultPath = modifierUtils.generateDefaultPath()
+    private val defaultPath: String get() = modifierUtils.generateDefaultPath()
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
 
     fun showFilesTree(path: String?): List<String> {
