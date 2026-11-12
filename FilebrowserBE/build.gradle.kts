@@ -1,4 +1,5 @@
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
+import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
     alias(libs.plugins.spring.boot)
@@ -126,6 +127,14 @@ tasks.jacocoTestCoverageVerification {
 
 tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
+tasks.register<BootRun>("runLocal") {
+    group = "application"
+    description = "Runs the REST API without OIDC: .devops/application-local.yaml over application.yaml"
+    mainClass = tasks.bootRun.flatMap { it.mainClass }
+    classpath = sourceSets.main.get().runtimeClasspath
+    args("--spring.config.additional-location=file:${rootProject.file(".devops/application-local.yaml")}")
 }
 
 tasks.bootJar {

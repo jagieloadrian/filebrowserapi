@@ -30,6 +30,7 @@ import tools.jackson.databind.json.JsonMapper
 const val READER = "filebrowser-reader"
 const val WRITER = "filebrowser-writer"
 private const val ROLE_PREFIX = "ROLE_"
+private const val LOCAL_USER = "local"
 
 private val GRPC_READS =
     listOf(
@@ -45,6 +46,7 @@ private val GRPC_WRITES = FilebrowserApiGrpc.getServiceDescriptor().methods.map 
 @SecurityScheme(name = "bearer", type = SecuritySchemeType.HTTP, scheme = "bearer", bearerFormat = "JWT")
 class SecurityConfig {
     @Bean
+    @Profile("!local")
     fun jwtAuthenticationConverter(
         @Value("\${spring.security.oauth2.resourceserver.jwt.audiences:}") audiences: List<String>,
     ): JwtAuthenticationConverter {
@@ -60,7 +62,7 @@ class SecurityConfig {
     }
 
     @Bean
-    @Profile("web")
+    @Profile("web & !local")
     fun webSecurity(
         http: HttpSecurity,
         converter: JwtAuthenticationConverter,
@@ -97,7 +99,7 @@ class SecurityConfig {
     }
 
     @Bean
-    @Profile("server")
+    @Profile("server & !local")
     @GlobalServerInterceptor
     fun grpcAuthorization(
         grpc: GrpcSecurity,
@@ -116,6 +118,17 @@ class SecurityConfig {
                     .denyAll()
             }.oauth2ResourceServer { it.jwt { jwt -> jwt.jwtAuthenticationConverter(converter) } }
             .build()
+
+    @Bean
+    @Profile("web & local")
+    fun localSecurity(http: HttpSecurity): SecurityFilterChain {
+        http {
+            csrf { disable() }
+            anonymous { principal = LOCAL_USER }
+            authorizeHttpRequests { authorize(anyRequest, permitAll) }
+        }
+        return http.build()
+    }
 
     private fun JsonMapper.writeError(
         response: HttpServletResponse,

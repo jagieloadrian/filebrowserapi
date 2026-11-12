@@ -1,0 +1,5 @@
+spring:
+  profiles:
+    active: web,local
+application:
+  path: build/local-data
