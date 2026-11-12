@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "com.anjo"
-version = "1.0-SNPASHOT"
+version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
