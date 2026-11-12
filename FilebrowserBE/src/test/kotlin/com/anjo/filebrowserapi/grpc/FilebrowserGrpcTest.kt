@@ -5,11 +5,14 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
+import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.FileManager
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
+import io.grpc.Status
+import io.grpc.StatusException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
+import org.springframework.util.unit.DataSize
 import java.io.InputStream
 import java.nio.file.Path
 import kotlin.random.Random
@@ -30,7 +34,7 @@ import kotlin.test.Test
 class FilebrowserGrpcTest {
     private val directoryManager = mockk<DirectoryManager>()
     private val fileManager = mockk<FileManager>()
-    private val service = FilebrowserGrpc(directoryManager, fileManager)
+    private val service = FilebrowserGrpc(directoryManager, fileManager, AppConfiguration(maxUploadSize = DataSize.ofBytes(16)))
 
     @TempDir
     private lateinit var workDir: Path
@@ -80,6 +84,25 @@ class FilebrowserGrpcTest {
             // then
             result.path shouldBe expected
             received shouldBe TEST_MESSAGE
+        }
+
+    @Test
+    fun `should throw RESOURCE_EXHAUSTED when upload stream exceeds max upload size`() =
+        runTest {
+            // given
+            val chunk =
+                Filebrowser.UploadFile
+                    .newBuilder()
+                    .setName(FIRST_FILE_NAME)
+                    .setData(ByteArray(10).toByteString())
+                    .build()
+
+            // when
+            val result = shouldThrow<StatusException> { service.uploadFile(flowOf(chunk, chunk)) }
+
+            // then
+            result.status.code shouldBe Status.Code.RESOURCE_EXHAUSTED
+            verify(exactly = 0) { fileManager.uploadFile(any(), any(), any(), any()) }
         }
 
     @Test

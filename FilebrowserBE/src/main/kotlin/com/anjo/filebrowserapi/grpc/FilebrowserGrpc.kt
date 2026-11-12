@@ -5,11 +5,14 @@ import com.anjo.filebrowser.Filebrowser.FileResponse
 import com.anjo.filebrowser.Filebrowser.StringResponse
 import com.anjo.filebrowser.Filebrowser.StringsResponse
 import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
+import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.FileManager
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
+import io.grpc.Status
+import io.grpc.StatusException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -26,6 +29,7 @@ internal const val CHUNK_SIZE = 64 * 1024
 class FilebrowserGrpc(
     private val directoryManager: DirectoryManager,
     private val fileManager: FileManager,
+    private val properties: AppConfiguration,
 ) : FilebrowserApiCoroutineImplBase() {
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
         val fileTree = fileManager.showFilesTree(request.path)
@@ -40,8 +44,13 @@ class FilebrowserGrpc(
             val spool = Files.createTempFile("upload-", null)
             try {
                 var head: Filebrowser.UploadFile? = null
+                var size = 0L
                 Files.newOutputStream(spool).use { out ->
                     requests.collect { chunk ->
+                        size += chunk.data.size()
+                        if (size > properties.maxUploadSize.toBytes()) {
+                            throw StatusException(Status.RESOURCE_EXHAUSTED.withDescription("Upload exceeds the maximum upload size"))
+                        }
                         head = head ?: chunk
                         chunk.data.writeTo(out)
                     }

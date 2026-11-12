@@ -41,7 +41,7 @@ class GrpcServerConfigTest {
     private val config =
         GrpcServerConfig(
             GrpcServerProperties(port),
-            FilebrowserGrpc(mockk<DirectoryManager>(), fileManager),
+            FilebrowserGrpc(mockk<DirectoryManager>(), fileManager, AppConfiguration()),
             GrpcLoggingInterceptor(),
             GrpcGlobalControllerAdvice(),
         ).apply { run(null) }
@@ -121,7 +121,7 @@ class GrpcServerConfigTest {
         val input =
             GrpcServerConfig(
                 GrpcServerProperties(port),
-                FilebrowserGrpc(mockk<DirectoryManager>(), fileManager),
+                FilebrowserGrpc(mockk<DirectoryManager>(), fileManager, AppConfiguration()),
                 GrpcLoggingInterceptor(),
                 GrpcGlobalControllerAdvice(),
             )
