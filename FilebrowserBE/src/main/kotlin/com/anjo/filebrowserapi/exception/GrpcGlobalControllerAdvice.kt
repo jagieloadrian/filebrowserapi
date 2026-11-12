@@ -62,13 +62,23 @@ class GrpcGlobalControllerAdvice : ServerInterceptor {
         logger.error(exception) { "Exception during gRPC endpoint call: ${call?.methodDescriptor?.fullMethodName}" }
         val status =
             when (exception) {
-                is IllegalArgumentException -> Status.INVALID_ARGUMENT.withDescription(exception.message)
-                is IllegalStateException -> Status.FAILED_PRECONDITION.withDescription(exception.message)
-                is FileBrowserException -> grpcStatus(exception).withDescription(exception.message)
-                else ->
+                is IllegalArgumentException -> {
+                    Status.INVALID_ARGUMENT.withDescription(exception.message)
+                }
+
+                is IllegalStateException -> {
+                    Status.FAILED_PRECONDITION.withDescription(exception.message)
+                }
+
+                is FileBrowserException -> {
+                    grpcStatus(exception).withDescription(exception.message)
+                }
+
+                else -> {
                     Status.UNKNOWN
                         .withDescription("Unexpected error occurred")
                         .withCause(exception)
+                }
             }
         return status
     }

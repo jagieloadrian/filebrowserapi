@@ -1,6 +1,7 @@
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
 plugins {
     alias(libs.plugins.spring.boot)
-    alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.protobuf)
@@ -17,6 +18,7 @@ repositories {
 }
 
 dependencies {
+    implementation(platform(SpringBootPlugin.BOM_COORDINATES))
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.validation)
@@ -79,9 +81,14 @@ kotlin {
 }
 
 ktlint {
+    version.set(libs.versions.ktlint.engine)
     filter {
         exclude { it.file.path.contains("/build/generated/") }
     }
+}
+
+jacoco {
+    toolVersion = libs.versions.jacoco.get()
 }
 
 tasks.test {
