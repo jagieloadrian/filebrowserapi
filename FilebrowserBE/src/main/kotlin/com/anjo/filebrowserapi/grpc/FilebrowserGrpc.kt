@@ -63,7 +63,7 @@ class FilebrowserGrpc(
     }
 
     override suspend fun showDirectoriesTree(request: Filebrowser.PathRequest): StringsResponse {
-        val allDirectories = fileManager.showFilesTree(request.path)
+        val allDirectories = directoryManager.showDirectoriesTree(request.path)
         return StringsResponse
             .newBuilder()
             .addAllDirectories(allDirectories)

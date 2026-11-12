@@ -110,6 +110,20 @@ class FilebrowserGrpcTest {
         }
 
     @Test
+    fun `should return directories tree from directory manager when showDirectoriesTree is called`() =
+        runTest {
+            // given
+            val expected = listOf("/$FIRST_NAME/$SECOND_NAME")
+            every { directoryManager.showDirectoriesTree(FIRST_NAME) } returns expected
+
+            // when
+            val result = service.showDirectoriesTree(pathRequest(FIRST_NAME))
+
+            // then
+            result.directoriesList shouldBe expected
+        }
+
+    @Test
     fun `should return directory path when addDirectory is called`() =
         runTest {
             // given
