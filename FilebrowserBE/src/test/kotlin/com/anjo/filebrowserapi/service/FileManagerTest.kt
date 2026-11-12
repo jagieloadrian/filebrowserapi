@@ -61,7 +61,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given base directory with 2 files and null path when show files tree then return properly list`() {
+    fun `should return sorted files when base directory has two files and path is null`() {
         createFile(FIRST_FILE_NAME)
         createFile(SECOND_FILE_NAME)
 
@@ -75,7 +75,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given empty base directory and null path when show files tree then return empty list`() {
+    fun `should return empty list when base directory is empty and path is null`() {
         // when
         val result = service.showFilesTree(null)
 
@@ -84,7 +84,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given base directory with few folders and path when show files tree from specific path then return properly list`() {
+    fun `should return files under path when path points to folder`() {
         createFolder(FIRST_NAME)
         createFile("${FIRST_NAME}/${SECOND_FILE_NAME}")
         createFile("${FIRST_NAME}/${FIRST_FILE_NAME}")
@@ -100,7 +100,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given file and path null when create file then return path`() {
+    fun `should return file path when uploading file without path`() {
         // given
         val file = createFile(FIRST_FILE_NAME)
 
@@ -117,7 +117,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given file name and wrong path when create file then return CannotRealizeException`() {
+    fun `should throw CannotRealizeException when uploading file to missing path`() {
         // given
         val wrongPath = "/${SECOND_NAME}"
         val file = createFile(FIRST_FILE_NAME)
@@ -132,7 +132,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given file name when getFile then return file`() {
+    fun `should return file content when file exists`() {
         // given
         val expect = createFile(FIRST_FILE_NAME)
 
@@ -147,7 +147,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given file name and wrong path when getFile then throw CannotRealizeException`() {
+    fun `should throw CannotRealizeException when reading file from missing path`() {
         // given
         val wrongPath = FIRST_NAME
         val expectedMessage = "Path: $FIRST_NAME to read file or directory is not exist"
@@ -160,7 +160,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given non existing file name without path when delete file then throw CannotRealizeException`() {
+    fun `should throw BadInputException when deleting missing file without path`() {
         // given
         val expectedMessage = "Cannot remove non existing file"
 
@@ -172,7 +172,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `given non existing file name with path when delete file then throw CannotRealizeException`() {
+    fun `should throw CannotRealizeException when deleting file from missing path`() {
         // given
         val wrongPath = FIRST_NAME
         val expectedMessage = "Path: $FIRST_NAME to delete file or directory is not exist"

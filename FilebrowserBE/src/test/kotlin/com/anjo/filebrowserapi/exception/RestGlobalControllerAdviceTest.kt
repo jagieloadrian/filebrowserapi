@@ -1,50 +1,56 @@
 package com.anjo.filebrowserapi.exception
 
+import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
-import io.kotest.assertions.assertSoftly
+import com.anjo.filebrowserapi.controller.DirectoryManagerController
+import com.anjo.filebrowserapi.service.DirectoryManager
+import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
-import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.http.HttpStatusCode
+import io.mockk.every
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import kotlin.test.Test
 
-@ExtendWith(MockKExtension::class)
-class RestGlobalControllerAdviceTest {
-    @InjectMockKs
-    private lateinit var advice: RestGlobalControllerAdvice
+@WebMvcTest(DirectoryManagerController::class)
+@ActiveProfiles("web")
+class RestGlobalControllerAdviceTest(
+    @Autowired private val mockMvc: MockMvc,
+) {
+    @MockkBean
+    private lateinit var service: DirectoryManager
 
     @Test
-    fun `given error when handleCannotRealizeException then return responseEntity`() {
+    fun `should return 422 with error body when CannotRealizeException is thrown`() {
         // given
-        val expectedCode = 422
-        val exception = CannotRealizeException(TEST_MESSAGE)
-        val expectedBody = ErrorResponse(exception.javaClass.simpleName, TEST_MESSAGE)
+        every { service.deleteDirectory(FIRST_NAME) } throws CannotRealizeException(TEST_MESSAGE)
 
         // when
-        val result = advice.handleCannotRealizeException(exception)
+        val response = deleteDirectory()
 
         // then
-        assertSoftly {
-            result.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            result.body shouldBe expectedBody
-        }
+        response.status shouldBe 422
+        response.contentAsString shouldBe """{"error":"CannotRealizeException","message":"$TEST_MESSAGE"}"""
     }
 
     @Test
-    fun `given error when handleBadInputException then return responseEntity`() {
+    fun `should return 400 with error body when BadInputException is thrown`() {
         // given
-        val expectedCode = 400
-        val exception = BadInputException(TEST_MESSAGE)
-        val expectedBody = ErrorResponse(exception.javaClass.simpleName, TEST_MESSAGE)
+        every { service.deleteDirectory(FIRST_NAME) } throws BadInputException(TEST_MESSAGE)
 
         // when
-        val result = advice.handleBadInputException(exception)
+        val response = deleteDirectory()
 
         // then
-        assertSoftly {
-            result.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            result.body shouldBe expectedBody
-        }
+        response.status shouldBe 400
+        response.contentAsString shouldBe """{"error":"BadInputException","message":"$TEST_MESSAGE"}"""
     }
+
+    private fun deleteDirectory() =
+        mockMvc
+            .delete("/api/v1/directories") { param("path", FIRST_NAME) }
+            .andReturn()
+            .response
 }

@@ -52,7 +52,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given empty base directory and null path when show directories tree then return empty list`() {
+    fun `should return empty list when base directory is empty and path is null`() {
         // when
         val result = service.showDirectoriesTree(null)
 
@@ -61,7 +61,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given base directory with 2 folders and null path when show directories tree then return properly list`() {
+    fun `should return directories when base directory has two folders and path is null`() {
         createFolder(FIRST_NAME)
         createFolder(SECOND_NAME)
 
@@ -75,7 +75,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given base directory with few folders and path when show directories tree from specific path then return properly list`() {
+    fun `should return subdirectories when path points to folder`() {
         createFolder(FIRST_NAME)
         createFolder("$FIRST_NAME/$SECOND_NAME")
         createFolder("$FIRST_NAME/$THIRD_NAME")
@@ -90,7 +90,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given directory name and path null when create directory then return path`() {
+    fun `should return directory path when creating directory without path`() {
         // given
         val name = FIRST_NAME
         val expected = "/$FIRST_NAME"
@@ -105,7 +105,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given directory name and wrong path when create directory then return CannotRealizeException`() {
+    fun `should throw CannotRealizeException when creating directory in missing path`() {
         // given
         val name = FIRST_NAME
         val wrongPath = "/$SECOND_NAME"
@@ -119,7 +119,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given exist directory name and null path when create directory then return CannotRealizeException`() {
+    fun `should throw CannotRealizeException when directory already exists`() {
         // given
         val name = FIRST_NAME
         createFolder(name)
@@ -133,7 +133,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given directories names when create directory recursively then return path to last directory`() {
+    fun `should return last directory path when creating directories recursively`() {
         // given
         val names = "$FIRST_NAME/$SECOND_NAME/$THIRD_NAME"
         val expected = "/$FIRST_NAME/$SECOND_NAME/$THIRD_NAME"
@@ -148,7 +148,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given name without slash when rename directory then return properly path`() {
+    fun `should return renamed path when name has no slash`() {
         // given
         val name = SECOND_NAME
         val expected = "/$SECOND_NAME"
@@ -165,7 +165,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given name with slash when rename directory then return properly path`() {
+    fun `should return renamed path when name has slash`() {
         // given
         val name = "/$THIRD_NAME"
         val expected = "/$THIRD_NAME"
@@ -182,7 +182,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given name and non existing path when rename directory then return CannotRealizeException`() {
+    fun `should throw CannotRealizeException when renaming missing directory`() {
         // given
         val name = "/$THIRD_NAME"
         val givenPath = FIRST_NAME
@@ -196,7 +196,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given path when delete folder then result not throw error`() {
+    fun `should delete folder when folder is empty`() {
         // given
         val givenPath = FIRST_NAME
         val tempFolder = createFolder(givenPath)
@@ -212,7 +212,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `given path to not empty folder when delete folder then return CannotRealizeException`() {
+    fun `should throw CannotRealizeException when deleting non-empty folder`() {
         // given
         val givenPath = FIRST_NAME
         val tempFolder = createFolder(givenPath)
