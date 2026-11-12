@@ -3,8 +3,6 @@ package com.anjo.filebrowserapi.service
 import com.anjo.filebrowserapi.TestObjects.BASE_FOLDER
 import com.anjo.filebrowserapi.TestObjects.FIRST_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
-import com.anjo.filebrowserapi.TestObjects.PATH_TO_BASE_FOLDER
-import com.anjo.filebrowserapi.TestObjects.PATH_TO_RESOURCES
 import com.anjo.filebrowserapi.TestObjects.SECOND_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.configuration.AppConfiguration
@@ -15,49 +13,25 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.io.TempDir
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.web.multipart.MultipartFile
 import java.io.File
-import kotlin.test.AfterTest
+import java.nio.file.Path
 import kotlin.test.Test
 
-@ExtendWith(MockKExtension::class)
 class FileManagerTest {
-    private val appConfiguration = AppConfiguration(path = "${System.getProperty("user.dir")}$PATH_TO_RESOURCES")
+    @TempDir
+    private lateinit var workDir: Path
 
-    private val modifierUtils = PathModifierUtils(appConfiguration)
+    private val baseFolder: String get() = "$workDir/$BASE_FOLDER"
 
-    @InjectMockKs
-    private lateinit var service: FileManager
+    private val service by lazy { FileManager(PathModifierUtils(AppConfiguration(workDir.toString()))) }
 
-    companion object {
-        @JvmStatic
-        @AfterAll
-        fun clearAfterTests() {
-            val baseDirectory = File(PATH_TO_BASE_FOLDER)
-            baseDirectory.deleteRecursively()
-        }
-    }
-
-    @AfterTest
-    fun cleanUp() {
-        val files =
-            File("${System.getProperty("user.dir")}${PATH_TO_RESOURCES}/${BASE_FOLDER}")
-                .walk()
-                .map { file ->
-                    file.path
-                }.drop(1)
-                .sortedDescending()
-                .toList()
-
-        files.forEach { s ->
-            val temp = File(s)
-            temp.deleteRecursively()
-        }
+    @BeforeEach
+    fun createBaseFolder() {
+        File(baseFolder).mkdirs()
     }
 
     @Test
@@ -185,14 +159,13 @@ class FileManagerTest {
     }
 
     private fun createFile(fileName: String): File {
-        val file = File("$PATH_TO_BASE_FOLDER/$fileName")
+        val file = File("$baseFolder/$fileName")
         file.createNewFile()
-        println(file.name)
         return file
     }
 
     private fun createFolder(path: String): File {
-        val tempFolder = File("$PATH_TO_BASE_FOLDER/$path")
+        val tempFolder = File("$baseFolder/$path")
         tempFolder.mkdir()
         return tempFolder
     }
