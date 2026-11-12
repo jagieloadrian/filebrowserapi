@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.protobuf)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.jib)
     jacoco
 }
 
@@ -113,4 +114,55 @@ tasks.check {
 
 tasks.bootJar {
     archiveFileName.set("filebrowserapi.jar")
+}
+
+val jibExtraDirectory = layout.buildDirectory.dir("jib-extra")
+
+val prepareJibDataDirectory by tasks.registering {
+    val dataDirectory = jibExtraDirectory.map { it.dir("data").asFile }
+    outputs.dir(jibExtraDirectory)
+    doLast { dataDirectory.get().mkdirs() }
+}
+
+tasks.matching { it.name.startsWith("jib") }.configureEach {
+    dependsOn(prepareJibDataDirectory)
+}
+
+jib {
+    from {
+        image = "eclipse-temurin:21-jre"
+        platforms {
+            platform {
+                architecture = "amd64"
+                os = "linux"
+            }
+            platform {
+                architecture = "arm64"
+                os = "linux"
+            }
+        }
+    }
+    to {
+        image = "ghcr.io/jagieloadrian/filebrowserapi:${findProperty("imageTag") ?: "local"}"
+    }
+    container {
+        user = "10001:10001"
+        ports = listOf("8080", "9090")
+        volumes = listOf("/data")
+        environment =
+            mapOf(
+                "SPRING_PROFILES_ACTIVE" to "web",
+                "APPLICATION_PATH" to "/data",
+                "LOGGING_STRUCTURED_FORMAT_CONSOLE" to "com.anjo.filebrowserapi.logging.JsonLogFormatter",
+            )
+    }
+    extraDirectories {
+        paths {
+            path {
+                setFrom(jibExtraDirectory.get().asFile)
+                into = "/"
+            }
+        }
+        permissions.set(mapOf("/data" to "777"))
+    }
 }
