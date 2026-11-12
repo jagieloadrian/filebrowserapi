@@ -1,145 +1,93 @@
 package com.anjo.filebrowserapi.controller
 
-import com.anjo.filebrowserapi.TestObjects
 import com.anjo.filebrowserapi.TestObjects.FIRST_FILE_NAME
-import com.anjo.filebrowserapi.TestObjects.PATH_TO_BASE_FOLDER
-import com.anjo.filebrowserapi.TestObjects.SECOND_FILE_NAME
+import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
+import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.service.FileManager
-import io.kotest.assertions.assertSoftly
-import io.kotest.matchers.collections.shouldContainExactly
+import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
-import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.every
-import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.impl.annotations.MockK
-import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.http.HttpStatusCode
+import io.mockk.just
+import io.mockk.verify
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.mock.web.MockMultipartFile
-import java.io.File
-import kotlin.test.AfterTest
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
+import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.multipart
 import kotlin.test.Test
 
-@ExtendWith(MockKExtension::class)
+@WebMvcTest(FileManagerController::class)
+@ActiveProfiles("web")
 class FileManagerControllerTest(
-    @MockK
-    private val service: FileManager
+    @Autowired private val mockMvc: MockMvc,
 ) {
+    @MockkBean
+    private lateinit var service: FileManager
 
-    @InjectMockKs
-    private lateinit var controller: FileManagerController
+    @Test
+    fun `should return files tree when GET is called`() {
+        // given
+        every { service.showFilesTree(FIRST_NAME) } returns listOf("/$FIRST_NAME/$FIRST_FILE_NAME")
 
-    @BeforeEach
-    fun setup() {
-        MockKAnnotations.init(this)
-    }
+        // when
+        val response = mockMvc.get(FILES) { param("path", FIRST_NAME) }.andReturn().response
 
-    companion object {
-        @JvmStatic
-        @BeforeAll
-        fun setUpClass() {
-            val baseDirectory = File(PATH_TO_BASE_FOLDER)
-            baseDirectory.mkdir()
-        }
-
+        // then
+        response.status shouldBe 200
+        response.contentAsString shouldBe """["/$FIRST_NAME/$FIRST_FILE_NAME"]"""
     }
 
     @Test
-    fun `given request when getFilesTree then return list of string`() {
-        //given
-        val expected = listOf("/${FIRST_FILE_NAME}", "/${SECOND_FILE_NAME}")
-        val expectedCode = 200
+    fun `should return stored path when file is uploaded`() {
+        // given
+        val input = MockMultipartFile("uploadFile", FIRST_FILE_NAME, "text/plain", TEST_MESSAGE.toByteArray())
+        every { service.uploadFile(any(), FIRST_NAME) } returns "/$FIRST_NAME/$FIRST_FILE_NAME"
 
-        every { service.showFilesTree(any()) } returns expected
-        //when
-        val response = controller.getFilesTree(null)
+        // when
+        val response =
+            mockMvc
+                .multipart(FILES) {
+                    file(input)
+                    param("path", FIRST_NAME)
+                }.andReturn()
+                .response
 
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            response.body shouldContainExactly expected
-        }
+        // then
+        response.status shouldBe 200
+        response.contentAsString shouldBe "/$FIRST_NAME/$FIRST_FILE_NAME"
     }
 
     @Test
-    fun `given request when uploadFile then return list of string`() {
-        //given
-        val expected = "/$FIRST_FILE_NAME"
-        val expectedCode = 200
-        val tempFile = createFile()
+    fun `should return file bytes when file is requested`() {
+        // given
+        every { service.getFile(FIRST_FILE_NAME, null) } returns TEST_MESSAGE.toByteArray()
 
-        val mockFile = MockMultipartFile(FIRST_FILE_NAME, tempFile.inputStream())
+        // when
+        val response = mockMvc.get("$FILES/$FIRST_FILE_NAME").andReturn().response
 
-        every { service.uploadFile(any(), any()) } returns expected
-        //when
-        val response = controller.uploadFile(mockFile, null)
-
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            response.body shouldBe expected
-        }
-    }
-
-
-    @Test
-    fun `given request when getFile then return file`() {
-        //given
-        val fileName = FIRST_FILE_NAME
-        val expectedCode = 200
-        val tempFile = createFile()
-
-        val expectedFile = MockMultipartFile(fileName, tempFile.inputStream()).bytes
-
-        every { service.getFile(any(), any()) } returns expectedFile
-        //when
-        val response = controller.getFile(fileName, null)
-
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            response.body shouldBe expectedFile
-        }
+        // then
+        response.status shouldBe 200
+        response.contentAsByteArray shouldBe TEST_MESSAGE.toByteArray()
     }
 
     @Test
-    fun `given path when deleteFile then return only statusCode`() {
-        //given
-        val expectedCode = 204
+    fun `should return 204 when file is deleted`() {
+        // given
+        every { service.deleteFile(FIRST_FILE_NAME, null) } just Runs
 
-        every { service.deleteFile(any(), any()) } returns Unit
-        //when
-        val response = controller.deleteFile(FIRST_FILE_NAME, null)
+        // when
+        val response = mockMvc.delete("$FILES/$FIRST_FILE_NAME").andReturn().response
 
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-        }
+        // then
+        response.status shouldBe 204
+        verify(exactly = 1) { service.deleteFile(FIRST_FILE_NAME, null) }
     }
 
-    private fun createFile(): File {
-        val file = File("${PATH_TO_BASE_FOLDER}/$FIRST_FILE_NAME")
-        file.createNewFile()
-        println(file.name)
-        return file
-    }
-
-    @AfterTest
-    fun cleanUp() {
-        val files =
-            File("${System.getProperty("user.dir")}${TestObjects.PATH_TO_RESOURCES}/${TestObjects.BASE_FOLDER}").walk()
-                .map { file ->
-                    file.path
-                }
-                .drop(1)
-                .sortedDescending()
-                .toList()
-
-        files.forEach { s ->
-            val temp = File(s)
-            temp.deleteRecursively()
-        }
+    private companion object {
+        const val FILES = "/api/v1/files"
     }
 }

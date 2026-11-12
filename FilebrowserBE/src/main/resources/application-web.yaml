@@ -3,6 +3,8 @@ spring:
     name: filebrowser-be
   main:
     web-application-type: servlet
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
 
 server:
   port: 8080
@@ -16,5 +18,20 @@ springdoc:
     enabled: true
   show-actuator: true
 
-application:
-  path:
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health, prometheus
+      path-mapping:
+        prometheus: metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        live:
+          include: livenessState
+        ready:
+          include: readinessState

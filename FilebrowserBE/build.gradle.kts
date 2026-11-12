@@ -1,10 +1,12 @@
 plugins {
-    val kotlinVersion = "2.0.21"
-    id("org.springframework.boot") version "3.4.0"
-    id("io.spring.dependency-management") version "1.1.6"
-    kotlin("jvm") version kotlinVersion
-    kotlin("plugin.spring") version kotlinVersion
-    id("com.google.protobuf") version "0.9.2"
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.protobuf)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.jib)
+    jacoco
 }
 
 group = "com.anjo"
@@ -15,50 +17,44 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter")
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.micrometer.prometheus)
+    implementation(libs.micrometer.tracing.otel)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.kotlin.reflect)
+    implementation(libs.grpc.netty)
+    implementation(libs.grpc.protobuf)
+    implementation(libs.grpc.kotlin.stub)
+    implementation(libs.protobuf.kotlin)
+    implementation(libs.kotlin.logging)
+    implementation(libs.springdoc.openapi)
 
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    //grpc
-    implementation("io.grpc:grpc-netty:1.56.0") // Server gRPC
-    implementation("io.grpc:grpc-protobuf:1.56.0") // handle Protobuf
-    implementation("io.grpc:grpc-kotlin-stub:1.4.1")
-    implementation("com.google.protobuf:protobuf-kotlin:4.29.0")
-
-
-    //logger
-    implementation("io.github.oshai:kotlin-logging:7.0.0")
-
-    //swagger-ui
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
-
-    //tests
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("com.ninja-squad:springmockk:4.0.2")
-    testImplementation("io.kotest:kotest-assertions-core:5.9.1")
-    testImplementation("io.grpc:grpc-testing:1.57.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.springmockk)
+    testImplementation(libs.kotest.assertions)
+    testImplementation(libs.coroutines.test)
     testImplementation(kotlin("test"))
 }
 
-
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.22.2"
+        artifact =
+            libs.protobuf.protoc
+                .get()
+                .toString()
     }
-
     plugins {
         create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.54.0"
+            artifact =
+                libs.grpc.protoc.gen.java
+                    .get()
+                    .toString()
         }
         create("grpckt") {
-            artifact = "io.grpc:protoc-gen-grpc-kotlin:1.3.0:jdk8@jar"
+            artifact = "${libs.grpc.protoc.gen.kotlin.get()}:jdk8@jar"
         }
     }
-
     generateProtoTasks {
         all().forEach {
             it.plugins {
@@ -74,12 +70,99 @@ protobuf {
 
 kotlin {
     jvmToolchain(21)
+    compilerOptions {
+        allWarningsAsErrors = true
+    }
+}
+
+ktlint {
+    filter {
+        exclude { it.file.path.contains("/build/generated/") }
+    }
 }
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+val generatedProtoClasses = "com/anjo/filebrowser/*"
+
+tasks.jacocoTestReport {
+    classDirectories.setFrom(classDirectories.files.map { fileTree(it) { exclude(generatedProtoClasses) } })
+}
+
+tasks.jacocoTestCoverageVerification {
+    classDirectories.setFrom(classDirectories.files.map { fileTree(it) { exclude(generatedProtoClasses) } })
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                minimum = "0.80".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                minimum = "0.75".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
 tasks.bootJar {
     archiveFileName.set("filebrowserapi.jar")
+}
+
+val jibExtraDirectory = layout.buildDirectory.dir("jib-extra")
+
+val prepareJibDataDirectory by tasks.registering {
+    val dataDirectory = jibExtraDirectory.map { it.dir("data").asFile }
+    outputs.dir(jibExtraDirectory)
+    doLast { dataDirectory.get().mkdirs() }
+}
+
+tasks.matching { it.name.startsWith("jib") }.configureEach {
+    dependsOn(prepareJibDataDirectory)
+}
+
+jib {
+    from {
+        image = "eclipse-temurin:21-jre"
+        platforms {
+            platform {
+                architecture = "amd64"
+                os = "linux"
+            }
+            platform {
+                architecture = "arm64"
+                os = "linux"
+            }
+        }
+    }
+    to {
+        image = "ghcr.io/jagieloadrian/filebrowserapi:${findProperty("imageTag") ?: "local"}"
+    }
+    container {
+        user = "10001:10001"
+        ports = listOf("8080", "9090")
+        volumes = listOf("/data")
+        environment =
+            mapOf(
+                "SPRING_PROFILES_ACTIVE" to "web",
+                "APPLICATION_PATH" to "/data",
+                "LOGGING_STRUCTURED_FORMAT_CONSOLE" to "com.anjo.filebrowserapi.logging.JsonLogFormatter",
+            )
+    }
+    extraDirectories {
+        paths {
+            path {
+                setFrom(jibExtraDirectory.get().asFile)
+                into = "/"
+            }
+        }
+        permissions.set(mapOf("/data" to "777"))
+    }
 }

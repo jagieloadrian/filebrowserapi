@@ -16,40 +16,36 @@ import org.springframework.web.bind.annotation.RestController
 @Profile("web")
 @RequestMapping("/api/v1/directories")
 class DirectoryManagerController(
-    private val directoryManager: DirectoryManager
+    private val directoryManager: DirectoryManager,
 ) {
-
     @GetMapping
-    fun getDirectoriesTree(@RequestParam("path", required = false) path: String?): ResponseEntity<List<String>> {
-        return ResponseEntity.ok(directoryManager.showDirectoriesTree(path))
-    }
+    fun getDirectoriesTree(
+        @RequestParam("path", required = false) path: String?,
+    ): ResponseEntity<List<String>> = ResponseEntity.ok(directoryManager.showDirectoriesTree(path))
 
     @PostMapping
     fun addDirectory(
         @RequestParam("directoryName") directoryName: String,
-        @RequestParam("path", required = false) path: String?
-    ): ResponseEntity<String> {
-        return ResponseEntity(directoryManager.addDirectory(directoryName, path), HttpStatus.CREATED)
-    }
+        @RequestParam("path", required = false) path: String?,
+    ): ResponseEntity<String> = ResponseEntity(directoryManager.addDirectory(directoryName, path), HttpStatus.CREATED)
 
     @PostMapping("/recursively")
-    fun addDirectoriesRecursively(@RequestParam("path") pathMultiDirectories: String): ResponseEntity<String> {
-        return ResponseEntity(
+    fun addDirectoriesRecursively(
+        @RequestParam("path") pathMultiDirectories: String,
+    ): ResponseEntity<String> =
+        ResponseEntity(
             directoryManager.addDirectoriesRecursively(pathMultiDirectories),
-            HttpStatus.CREATED
+            HttpStatus.CREATED,
         )
-    }
 
     @PatchMapping
     fun renameDirectory(
         @RequestParam("sourcePath") path: String,
-        @RequestParam("newDirName") newName: String
-    ): ResponseEntity<String> {
-        return ResponseEntity.ok(directoryManager.renameDirectory(newName, path))
-    }
+        @RequestParam("newDirName") newName: String,
+    ): ResponseEntity<String> = ResponseEntity.ok(directoryManager.renameDirectory(newName, path))
 
     @DeleteMapping
-    fun deleteDirectory(@RequestParam("path") path: String): ResponseEntity<Unit> {
-        return ResponseEntity(directoryManager.deleteDirectory(path), HttpStatus.NO_CONTENT)
-    }
+    fun deleteDirectory(
+        @RequestParam("path") path: String,
+    ): ResponseEntity<Unit> = ResponseEntity(directoryManager.deleteDirectory(path), HttpStatus.NO_CONTENT)
 }

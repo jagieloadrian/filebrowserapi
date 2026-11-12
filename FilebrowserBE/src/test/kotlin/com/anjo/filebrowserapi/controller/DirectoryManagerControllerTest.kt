@@ -3,113 +3,103 @@ package com.anjo.filebrowserapi.controller
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.service.DirectoryManager
-import io.kotest.assertions.assertSoftly
-import io.kotest.matchers.collections.shouldContainExactly
+import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
-import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.every
-import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.impl.annotations.MockK
-import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.BeforeEach
+import io.mockk.just
+import io.mockk.verify
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
+import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.patch
+import org.springframework.test.web.servlet.post
 import kotlin.test.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.http.HttpStatusCode
 
-@ExtendWith(MockKExtension::class)
+@WebMvcTest(DirectoryManagerController::class)
+@ActiveProfiles("web")
 class DirectoryManagerControllerTest(
-    @MockK
-    private val service: DirectoryManager
+    @Autowired private val mockMvc: MockMvc,
 ) {
+    @MockkBean
+    private lateinit var service: DirectoryManager
 
-    @InjectMockKs
-    private lateinit var controller: DirectoryManagerController
+    @Test
+    fun `should return directories tree when GET is called`() {
+        // given
+        every { service.showDirectoriesTree(null) } returns listOf("/$FIRST_NAME", "/$SECOND_NAME")
 
-    @BeforeEach
-    fun setup() {
-        MockKAnnotations.init(this)
+        // when
+        val response = mockMvc.get(DIRECTORIES).andReturn().response
+
+        // then
+        response.status shouldBe 200
+        response.contentAsString shouldBe """["/$FIRST_NAME","/$SECOND_NAME"]"""
     }
 
     @Test
-    fun `given request when getDirectoriesTree then return list of string`() {
-        //given
-        val expected = listOf("/$FIRST_NAME", "/$SECOND_NAME")
-        val expectedCode = 200
+    fun `should return 201 with path when directory is created`() {
+        // given
+        every { service.addDirectory(FIRST_NAME, null) } returns "/$FIRST_NAME"
 
-        every { service.showDirectoriesTree(any()) } returns expected
-        //when
-        val response = controller.getDirectoriesTree(null)
+        // when
+        val response = mockMvc.post(DIRECTORIES) { param("directoryName", FIRST_NAME) }.andReturn().response
 
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            response.body shouldContainExactly expected
-        }
+        // then
+        response.status shouldBe 201
+        response.contentAsString shouldBe "/$FIRST_NAME"
     }
 
     @Test
-    fun `given directory name when addDirectory then return properly path`() {
-        //given
-        val expected = "/$FIRST_NAME"
-        val expectedCode = 201
+    fun `should return 201 with last path when directories are created recursively`() {
+        // given
+        val input = "$FIRST_NAME/$SECOND_NAME"
+        every { service.addDirectoriesRecursively(input) } returns "/$input"
 
-        every { service.addDirectory(any(), any()) } returns expected
-        //when
-        val response = controller.addDirectory(FIRST_NAME, null)
+        // when
+        val response = mockMvc.post("$DIRECTORIES/recursively") { param("path", input) }.andReturn().response
 
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            response.body shouldBe expected
-        }
+        // then
+        response.status shouldBe 201
+        response.contentAsString shouldBe "/$input"
     }
 
     @Test
-    fun `given directory names when addDirectoriesRecursively then return properly path`() {
-        //given
-        val expected = "/$FIRST_NAME/$SECOND_NAME"
-        val expectedCode = 201
+    fun `should return new path when directory is renamed`() {
+        // given
+        every { service.renameDirectory(SECOND_NAME, FIRST_NAME) } returns "/$SECOND_NAME"
 
-        every { service.addDirectoriesRecursively(any()) } returns expected
-        //when
-        val response = controller.addDirectoriesRecursively("$FIRST_NAME/$SECOND_NAME")
+        // when
+        val response =
+            mockMvc
+                .patch(DIRECTORIES) {
+                    param("sourcePath", FIRST_NAME)
+                    param("newDirName", SECOND_NAME)
+                }.andReturn()
+                .response
 
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            response.body shouldBe expected
-        }
+        // then
+        response.status shouldBe 200
+        response.contentAsString shouldBe "/$SECOND_NAME"
     }
 
     @Test
-    fun `given new name and path when renameDirectory then return properly path`() {
-        //given
-        val expected = "/$FIRST_NAME/$SECOND_NAME"
-        val expectedCode = 200
+    fun `should return 204 when directory is deleted`() {
+        // given
+        every { service.deleteDirectory(FIRST_NAME) } just Runs
 
-        every { service.renameDirectory(any(), any()) } returns expected
-        //when
-        val response = controller.renameDirectory("$FIRST_NAME/$FIRST_NAME", SECOND_NAME)
+        // when
+        val response = mockMvc.delete(DIRECTORIES) { param("path", FIRST_NAME) }.andReturn().response
 
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-            response.body shouldBe expected
-        }
+        // then
+        response.status shouldBe 204
+        verify(exactly = 1) { service.deleteDirectory(FIRST_NAME) }
     }
 
-    @Test
-    fun `given path when deleteDirectory then return only statusCode`() {
-        //given
-        val expectedCode = 204
-
-        every { service.deleteDirectory(any()) } returns Unit
-        //when
-        val response = controller.deleteDirectory("$FIRST_NAME/$FIRST_NAME")
-
-        //then
-        assertSoftly {
-            response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
-        }
+    private companion object {
+        const val DIRECTORIES = "/api/v1/directories"
     }
 }

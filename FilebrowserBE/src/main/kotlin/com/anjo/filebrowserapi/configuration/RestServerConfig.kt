@@ -8,8 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @Configuration
 @Profile("web")
-class RestServerConfig: WebMvcConfigurer {
-
+class RestServerConfig : WebMvcConfigurer {
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(RestLoggerInterceptor())
     }

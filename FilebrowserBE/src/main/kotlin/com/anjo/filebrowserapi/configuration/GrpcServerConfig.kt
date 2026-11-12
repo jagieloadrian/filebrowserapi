@@ -6,50 +6,45 @@ import com.anjo.filebrowserapi.logging.GrpcLoggingInterceptor
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.Server
 import io.grpc.ServerBuilder
-import org.springframework.beans.factory.annotation.Value
+import jakarta.annotation.PreDestroy
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
-import jakarta.annotation.PreDestroy
-import kotlin.concurrent.thread
+import java.util.concurrent.TimeUnit
+
+private const val SHUTDOWN_TIMEOUT_SECONDS = 15L
 
 @Configuration
 @Profile("server")
-class GrpcServerConfig(private val filebrowserGrpc: FilebrowserGrpc,
-                       private val loggingInterceptor: GrpcLoggingInterceptor,
-                       private val globalControllerAdvice: GrpcGlobalControllerAdvice) : ApplicationRunner {
+class GrpcServerConfig(
+    private val properties: GrpcServerProperties,
+    private val filebrowserGrpc: FilebrowserGrpc,
+    private val loggingInterceptor: GrpcLoggingInterceptor,
+    private val globalControllerAdvice: GrpcGlobalControllerAdvice,
+) : ApplicationRunner {
     private val logger = KotlinLogging.logger {}
-
-    @Value("\${grpc.server.port:9090}")
-    private val port: Int = 9090
     private lateinit var server: Server
 
-
-    fun runGrpcServer(): Server {
-        server = ServerBuilder
-                .forPort(port)
+    override fun run(args: ApplicationArguments?) {
+        server =
+            ServerBuilder
+                .forPort(properties.port)
                 .addService(filebrowserGrpc)
                 .intercept(loggingInterceptor)
                 .intercept(globalControllerAdvice)
                 .build()
-        server.start()
-        return server
+                .start()
+        logger.info { "gRPC server started on port: ${properties.port}" }
     }
 
     @PreDestroy
     fun shutdown() {
-        if (::server.isInitialized) {
-            logger.info { "Shutting down gRPC server..." }
-            server.shutdown()
-            logger.info { "gRPC server shut down" }
+        if (!::server.isInitialized) return
+        logger.info { "Shutting down gRPC server..." }
+        if (!server.shutdown().awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            server.shutdownNow()
         }
-    }
-
-    override fun run(args: ApplicationArguments?) {
-        runGrpcServer()
-        logger.info { "gRPC server start on port: $port" }
-        // ponytail: gRPC threads are daemons; non-daemon waiter keeps JVM alive without blocking context startup
-        thread(name = "grpc-await-termination") { server.awaitTermination() }
+        logger.info { "gRPC server shut down" }
     }
 }

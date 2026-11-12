@@ -12,16 +12,17 @@ import org.springframework.stereotype.Component
 class GrpcLoggingInterceptor : ServerInterceptor {
     private val logger = KotlinLogging.logger {}
 
-    override fun <ReqT : Any?, RespT : Any?> interceptCall(call: ServerCall<ReqT, RespT>?,
-                                                           headers: Metadata?,
-                                                           next: ServerCallHandler<ReqT, RespT>?
+    override fun <ReqT : Any?, RespT : Any?> interceptCall(
+        call: ServerCall<ReqT, RespT>?,
+        headers: Metadata?,
+        next: ServerCallHandler<ReqT, RespT>?,
     ): ServerCall.Listener<ReqT> {
         val methodName = call?.methodDescriptor?.fullMethodName
         logger.info { "Received gRPC call: $methodName with headers: $headers" }
 
         val startTime = System.currentTimeMillis()
         return object : ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(
-                next?.startCall(call, headers)
+            next?.startCall(call, headers),
         ) {
             override fun onComplete() {
                 val duration = System.currentTimeMillis() - startTime

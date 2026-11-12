@@ -1,69 +1,94 @@
-# Roadmap — FileBrowserAPI
+# Roadmap: FileBrowserAPI
 
-Stan na 2026-11-04. Projekt: Kotlin 2.0 + Spring Boot 3.4, moduł `FilebrowserBE` z dwoma trybami
-uruchomienia (profil `web` = REST :8080, profil `server` = gRPC :9090), pusty moduł `FilebrowserUI`.
+Updated 2026-11-12. Kotlin 2.0 + Spring Boot 3.4, module `FilebrowserBE` with two run modes (profile `web` = REST on
+8080, profile `server` = gRPC on 9090) and an empty `FilebrowserUI` module.
 
-## Analiza — stan obecny
+## Current state
 
-**Mocne strony**
-- Prosta, czytelna warstwa serwisów (`FileManager`, `DirectoryManager`) współdzielona przez REST i gRPC.
-- Testy jednostkowe serwisów i kontrolerów (33 testy, zielone).
-- Swagger UI, Actuator, logowanie żądań (interceptory REST i gRPC).
-- Obraz Docker (multi-stage, non-root, wolumen `/data`) + CI w GitHub Actions.
+Done:
+- Shared service layer (`FileManager`, `DirectoryManager`) used by REST and gRPC.
+- Gate `./gradlew check build`: ktlint (`ktlint_official`), warnings as errors, tests, JaCoCo (line > 80 %,
+  branch > 75 %).
+- One REST error body `{error, message, details}`, probes `/health/live` and `/health/ready`, Prometheus `/metrics`,
+  JSON logs with `traceId` from `traceparent`.
+- Jib image (`eclipse-temurin:21-jre`, amd64 + arm64, UID 10001), GitHub Actions CI, GHCR, Dependabot.
 
-**Problemy znalezione w analizie**
-- **Bezpieczeństwo: path traversal.** Parametr `path` jest doklejany do katalogu bazowego bez normalizacji
-  (`File("${defaultPath}/$path")`), więc `../../etc` wychodzi poza `/filebrowser`. Brak uwierzytelniania.
-- Pobieranie pliku zwraca `multipart/form-data` zamiast właściwego typu MIME; cały plik ładowany do pamięci (`readBytes`).
-- Brak limitów rozmiaru uploadu (domyślne 1 MB Springa, 4 MB gRPC — niespójne).
-- REST nie ma `renameFile`, które gRPC już ma — brak parzystości API.
-- Rozjechane wersje zależności: `grpc-netty` 1.56, `grpc-testing` 1.57, `protoc-gen-grpc-java` 1.54,
-  `protoc` 3.22 vs runtime `protobuf-kotlin` 4.29, `protoc-gen-grpc-kotlin` 1.3 vs stub 1.4.
-- Literówka w wersji: `1.0-SNPASHOT`.
-- `FilebrowserUI` to pusty stub z `jvmToolchain(17)` (BE używa 21).
-- Test gRPC startuje prawdziwy serwer na stałym porcie 9090 — konflikt, gdy port zajęty.
-- README: instrukcja „utwórz katalog filebrowser” jest nieaktualna (aplikacja tworzy go sama).
+Open problems (file references point into `FilebrowserBE/src/main/kotlin/com/anjo/filebrowserapi`):
+- **Security: path traversal.** Every user-supplied name is appended to the base directory without normalisation:
+  `path`, `fileName` (REST `{filename}`, gRPC `name`), `directoryName`, `newName`
+  (`service/PathModifierUtils.kt:55`) and the recursive directory path. `../../etc` leaves `/filebrowser`.
+  No authentication.
+- **Data loss: uploads overwrite existing files silently** (`StandardCopyOption.REPLACE_EXISTING`,
+  `service/FileManager.kt:47`).
+- **gRPC logs every request header** (`logging/GrpcLoggingInterceptor.kt:21`). Once tokens arrive they end up in logs.
+- Errors are not typed. `CannotRealizeException` means "not found", "already exists" and "not empty" at once, REST
+  answers 422 for all of them, gRPC maps it to `DATA_LOSS` (`exception/GrpcGlobalControllerAdvice.kt:67`). Reading a
+  missing file throws `FileNotFoundException` from `readBytes` (`service/FileManager.kt:59`) and returns 500;
+  deleting a missing file returns 400 (`service/FileManager.kt:94`).
+- Blank or slash-containing names are not rejected at validation.
+- Renames use `File.renameTo` (`service/FileManager.kt:73`, `service/DirectoryManager.kt:70`), which only returns
+  `false` and hides the reason.
+- File download answers `multipart/form-data` instead of the file's MIME type and loads the whole file into memory.
+- Upload size limits are implicit (Spring 1 MB, gRPC 4 MB) and differ.
+- REST has no `renameFile`, which gRPC already exposes.
+- gRPC code generators drift from the runtime: `protoc` 3.22 vs `protobuf-kotlin` 4.29, `protoc-gen-grpc-java` 1.54
+  vs `grpc` 1.56, `protoc-gen-grpc-kotlin` 1.3 vs stub 1.4.
+- Version typo `1.0-SNPASHOT`.
+- `FilebrowserUI` is a "Hello World" stub.
 
-## Etap 1 — Bezpieczeństwo i poprawność (P0)
-1. Normalizacja ścieżek w jednym miejscu (`PathModifierUtils`): `Path.normalize()` + sprawdzenie
-   `startsWith(baseDir)`; odrzucenie `..` i ścieżek absolutnych. Test regresyjny na traversal.
-2. Limity uploadu: `spring.servlet.multipart.max-file-size` oraz `maxInboundMessageSize` w gRPC, spójne wartości.
-3. Poprawny `Content-Type` przy pobieraniu (`Files.probeContentType`) + `Content-Disposition`.
-4. Streaming dużych plików (`Resource`/`InputStreamResource` w REST, streaming RPC w gRPC) zamiast `readBytes`.
-5. Poprawić wersję `1.0-SNAPSHOT`.
+## Phase 1: Security and correctness (P0)
+1. One function in `PathModifierUtils` resolves every user-supplied segment (path, file name, directory name, new
+   name): `Path.normalize()`, then a `startsWith(baseDir)` check; `..` and absolute paths are rejected. Regression
+   tests for each entry point, plus a Kotest `checkAll` property test for the resolver (adds `kotest-property`).
+2. Upload no longer overwrites: 409 when the file exists, unless the request sets an explicit `overwrite` flag.
+3. gRPC logging interceptor logs the method name and duration only, never headers.
+4. Request validation in a `validation` package: blank names and names containing `/` are rejected before any file
+   system call.
+5. Typed domain errors with a status, mapped once per transport: not found 404 / `NOT_FOUND`, already exists 409 /
+   `ALREADY_EXISTS`, not empty 409 / `FAILED_PRECONDITION`, bad input 400 / `INVALID_ARGUMENT`. Changing 422 to
+   404/409 changes the API contract: decide between `/api/v2` and treating it as a bug fix before starting.
+6. Explicit upload limits: `spring.servlet.multipart.max-file-size` and gRPC `maxInboundMessageSize`, same value.
+7. Correct `Content-Type` on download (`Files.probeContentType`) and `Content-Disposition`.
+8. Stream large files (`Resource` in REST, streaming RPC in gRPC) instead of `readBytes`.
+9. Fix the version to `1.0-SNAPSHOT`.
 
-## Etap 2 — Spójność API i jakość
-1. Endpoint REST `PATCH /api/v1/files` (rename) — parzystość z gRPC.
-2. Jednolity format błędów (RFC 7807 `ProblemDetail`) w REST; mapowanie wyjątków na `Status` w gRPC już jest — uzupełnić testy.
-3. Test gRPC na `InProcessServerBuilder` lub porcie losowym (0) zamiast stałego 9090.
-4. Testy integracyjne REST na prawdziwym systemie plików (`@SpringBootTest` + `@TempDir`).
-5. Wyrównanie wersji gRPC/protobuf (jedna wersja `grpc`, protoc 4.x), aktualizacja Spring Boot do 3.5.x, Gradle do 8.14.
-6. Dependabot (Gradle, GitHub Actions, Docker) — automatyczne PR z aktualizacjami.
+Done when: no request can touch a path outside the base directory, no write replaces a file without `overwrite`,
+and every expected failure has its own status in REST and gRPC, each covered by a test.
 
-## Etap 3 — Uwierzytelnianie i autoryzacja
-1. Spring Security + OAuth2 Resource Server (JWT) — Keycloak jako IdP (zgodnie z README).
-2. Autoryzacja w gRPC przez `ServerInterceptor` weryfikujący ten sam JWT.
-3. Opcjonalnie: izolacja katalogów per użytkownik (`/data/filebrowser/<user>`).
+## Phase 2: API parity and quality
+1. REST `PATCH /api/v1/files` (rename), matching gRPC.
+2. `Files.move` instead of `File.renameTo`, so rename failures map to typed errors.
+3. Align the gRPC and protobuf generator versions with the runtime in `gradle/libs.versions.toml`; framework and
+   Gradle upgrades come through Dependabot PRs.
+4. gRPC health service and a tracing interceptor, so the `server` profile has probes and `traceId` too.
 
-## Etap 4 — Wdrożenie i operacje
-1. `HEALTHCHECK` w Dockerfile (actuator `/actuator/health`), probe `liveness`/`readiness`.
-2. Obraz multi-arch (`linux/amd64`, `linux/arm64`) w CI.
-3. Manifesty Kubernetes (Deployment, Service, PVC) — ewentualnie Helm, gdy pojawi się więcej niż jedno środowisko.
-4. Metryki Prometheus (`micrometer-registry-prometheus`) i ustrukturyzowane logi JSON.
-5. Release przez tag `v*` — CI już publikuje obraz do GHCR; dodać changelog / GitHub Release.
+Done when: REST and gRPC expose the same operations and both profiles report health.
 
-## Etap 5 — Funkcje
-1. Kopiowanie i przenoszenie plików/katalogów, usuwanie rekurencyjne (z potwierdzeniem).
-2. Metadane plików w odpowiedziach (rozmiar, data modyfikacji, typ) zamiast samych ścieżek.
-3. Wyszukiwanie po nazwie/rozszerzeniu, paginacja dużych drzew.
-4. Baza danych (README) — tylko jeśli pojawią się dane, których system plików nie trzyma
-   (udostępnianie, tagi, uprawnienia). Do tego czasu YAGNI.
+## Phase 3: Authentication
+1. The OIDC provider (Authelia in the homelab) owns users and roles; the app keeps no user store. Its OIDC client
+   must issue JWT access tokens, because Authelia issues opaque ones by default.
+2. Spring Security OAuth2 Resource Server with `issuer-uri` and `audiences`; the same JWT check in gRPC through a
+   `ServerInterceptor`.
+3. Roles from the `groups` claim with the app prefix (`filebrowser-reader`, `filebrowser-writer`), mapped to
+   authorities in one place, deny by default.
+4. Tests: every protected route and RPC answers 401 without a token and 403 with a token that lacks the role.
+5. Optional: per-user directories keyed by `sub` (`/data/filebrowser/<sub>`), never by e-mail.
 
-## Etap 6 — FilebrowserUI
-1. Decyzja: klient (Compose Desktop / web SPA na gRPC-Web lub REST) albo usunięcie pustego modułu.
-2. Jeśli klient: przeglądanie drzewa, upload drag&drop, pobieranie, rename/delete.
+Done when: every REST route and RPC rejects unauthenticated calls and no token appears in logs.
 
-## Zrobione
-- [x] Obraz Docker działający dla obu profili (`web`, `server`).
-- [x] CI w GitHub Actions: build + testy, obraz do `ghcr.io` na `main` i tagach `v*`.
-- [x] Naprawiony zawieszający się test gRPC / blokujący start kontekstu.
+## Phase 4: Deployment
+1. Blocked until the infra repo provides the `charts/app` values: `.devops/helm/release.yaml` HelmRelease, CI bumps
+   the image tag, `devops.yml` validates with `helm template` and kubeconform.
+2. Local start with one command (`runLocal`).
+
+Done when: a push to `main` rolls the new image out to the cluster.
+
+## Phase 5: Features
+1. Copy and move files and directories, recursive delete with confirmation.
+2. File metadata in responses (size, modification date, type) instead of bare paths.
+3. Search by name or extension.
+4. A database only when data appears that the file system cannot hold (sharing, tags, permissions).
+
+## Phase 6: FilebrowserUI
+1. Decide: build a client (Compose Multiplatform or web SPA) or delete the stub module.
+2. A web client needs CORS hosts from configuration.
