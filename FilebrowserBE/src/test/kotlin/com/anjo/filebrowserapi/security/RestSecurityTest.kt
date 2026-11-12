@@ -127,6 +127,16 @@ class RestSecurityTest(
     }
 
     @Test
+    fun `should document bearer JWT scheme for every operation when OpenAPI is requested`() {
+        // when
+        val response = mockMvc.get("/v3/api-docs").andReturn().response
+
+        // then
+        response.contentAsString shouldContain "\"security\":[{\"bearer\":[]}]"
+        response.contentAsString shouldContain "\"bearer\":{\"type\":\"http\",\"scheme\":\"bearer\",\"bearerFormat\":\"JWT\"}"
+    }
+
+    @Test
     fun `should never log the token when request is authorized`(output: CapturedOutput) {
         // given
         val token = TestTokens.token(WRITER)

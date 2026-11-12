@@ -3,6 +3,10 @@ package com.anjo.filebrowserapi.security
 import com.anjo.filebrowser.FilebrowserApiGrpc
 import com.anjo.filebrowserapi.model.ApiError
 import io.grpc.health.v1.HealthGrpc
+import io.swagger.v3.oas.annotations.OpenAPIDefinition
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
+import io.swagger.v3.oas.annotations.security.SecurityScheme
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -37,6 +41,8 @@ private val GRPC_READS =
 private val GRPC_WRITES = FilebrowserApiGrpc.getServiceDescriptor().methods.map { it.fullMethodName } - GRPC_READS.toSet()
 
 @Configuration
+@OpenAPIDefinition(security = [SecurityRequirement(name = "bearer")])
+@SecurityScheme(name = "bearer", type = SecuritySchemeType.HTTP, scheme = "bearer", bearerFormat = "JWT")
 class SecurityConfig {
     @Bean
     fun jwtAuthenticationConverter(
