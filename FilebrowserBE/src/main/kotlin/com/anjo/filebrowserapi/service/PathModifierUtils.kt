@@ -37,10 +37,7 @@ class PathModifierUtils(
         path: String?,
         operationType: OperationType,
     ) {
-        when (path.isNullOrBlank()) {
-            true -> return
-            false -> isExistPath(path, operationType)
-        }
+        if (!path.isNullOrBlank()) isExistPath(path, operationType)
     }
 
     private fun isExistPath(

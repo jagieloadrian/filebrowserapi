@@ -79,14 +79,7 @@ class FileManager(
     }
 
     private fun checkIfSuccess(targetDir: File) {
-        when (targetDir.exists() && !targetDir.isDirectory) {
-            true -> {
-                return
-            }
-            false -> {
-                throw CannotRealizeException("Exception during operation")
-            }
-        }
+        if (!targetDir.isFile) throw CannotRealizeException("Exception during operation")
     }
 
     fun deleteFile(
