@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.protobuf)
     alias(libs.plugins.ktlint)
+    jacoco
 }
 
 group = "com.anjo"
@@ -81,6 +82,33 @@ ktlint {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+val generatedProtoClasses = "com/anjo/filebrowser/*"
+
+tasks.jacocoTestReport {
+    classDirectories.setFrom(classDirectories.files.map { fileTree(it) { exclude(generatedProtoClasses) } })
+}
+
+tasks.jacocoTestCoverageVerification {
+    classDirectories.setFrom(classDirectories.files.map { fileTree(it) { exclude(generatedProtoClasses) } })
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                minimum = "0.80".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                minimum = "0.75".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
 tasks.bootJar {
