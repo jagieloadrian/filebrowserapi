@@ -25,6 +25,8 @@ jobs:
     needs: test
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    concurrency:
+      group: image-${{ github.ref }}
     permissions:
       contents: read
       packages: write
