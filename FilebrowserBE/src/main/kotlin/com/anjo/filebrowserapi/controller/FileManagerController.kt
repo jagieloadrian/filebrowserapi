@@ -1,6 +1,7 @@
 package com.anjo.filebrowserapi.controller
 
 import com.anjo.filebrowserapi.service.FileManager
+import com.anjo.filebrowserapi.validation.ValidName
 import org.springframework.context.annotation.Profile
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
@@ -12,6 +13,7 @@ import org.springframework.http.MediaTypeFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -58,6 +60,12 @@ class FileManagerController(
                     .toString(),
             ).body(FileSystemResource(file))
     }
+
+    @PatchMapping
+    fun renameFile(
+        @RequestParam("sourcePath") path: String,
+        @RequestParam("newFileName") @ValidName newFileName: String,
+    ): ResponseEntity<String> = ResponseEntity.ok(fileManager.renameFile(newFileName, path))
 
     @DeleteMapping("/{filename:.+}")
     fun deleteFile(

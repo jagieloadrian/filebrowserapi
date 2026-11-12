@@ -2,11 +2,13 @@ package com.anjo.filebrowserapi.controller
 
 import com.anjo.filebrowserapi.TestObjects.FIRST_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
+import com.anjo.filebrowserapi.TestObjects.SECOND_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.service.FileManager
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.assertSoftly
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -24,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
+import org.springframework.test.web.servlet.patch
 import java.nio.file.Path
 import kotlin.test.Test
 
@@ -89,6 +92,42 @@ class FileManagerControllerTest(
         // then
         response.status shouldBe 200
         verify(exactly = 1) { service.uploadFile(FIRST_FILE_NAME, any(), null, true) }
+    }
+
+    @Test
+    fun `should return new path when file is renamed`() {
+        // given
+        every { service.renameFile(SECOND_FILE_NAME, "$FIRST_NAME/$FIRST_FILE_NAME") } returns "/$FIRST_NAME/$SECOND_FILE_NAME"
+
+        // when
+        val response =
+            mockMvc
+                .patch(FILES) {
+                    param("sourcePath", "$FIRST_NAME/$FIRST_FILE_NAME")
+                    param("newFileName", SECOND_FILE_NAME)
+                }.andReturn()
+                .response
+
+        // then
+        response.status shouldBe 200
+        response.contentAsString shouldBe "/$FIRST_NAME/$SECOND_FILE_NAME"
+    }
+
+    @Test
+    fun `should return 400 with details when new file name contains slash`() {
+        // when
+        val response =
+            mockMvc
+                .patch(FILES) {
+                    param("sourcePath", FIRST_FILE_NAME)
+                    param("newFileName", "a/b")
+                }.andReturn()
+                .response
+
+        // then
+        response.status shouldBe 400
+        response.contentAsString shouldContain "\"details\":[\"newFileName: must not be blank or contain '/'\"]"
+        verify(exactly = 0) { service.renameFile(any(), any()) }
     }
 
     @ParameterizedTest
