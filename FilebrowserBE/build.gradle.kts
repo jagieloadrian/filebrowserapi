@@ -28,7 +28,8 @@ dependencies {
     implementation(libs.spring.boot.tracing.otel)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.kotlin.reflect)
-    implementation(libs.grpc.netty)
+    implementation(platform(libs.grpc.bom))
+    implementation(libs.spring.boot.starter.grpc.server)
     implementation(libs.grpc.protobuf)
     implementation(libs.grpc.kotlin.stub)
     implementation(libs.protobuf.kotlin)
@@ -37,6 +38,7 @@ dependencies {
 
     testImplementation(libs.spring.boot.starter.webmvc.test)
     testImplementation(libs.spring.boot.micrometer.metrics.test)
+    testImplementation(libs.spring.boot.starter.grpc.server.test)
     testImplementation(libs.springmockk)
     testImplementation(libs.kotest.assertions)
     testImplementation(libs.kotest.property)

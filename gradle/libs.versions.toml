@@ -26,8 +26,10 @@ kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 micrometer-tracing-otel = { module = "io.micrometer:micrometer-tracing-bridge-otel" }
 spring-boot-tracing-otel = { module = "org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry" }
-grpc-netty = { module = "io.grpc:grpc-netty", version.ref = "grpc" }
-grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc" }
+grpc-bom = { module = "io.grpc:grpc-bom", version.ref = "grpc" }
+spring-boot-starter-grpc-server = { module = "org.springframework.boot:spring-boot-starter-grpc-server" }
+spring-boot-starter-grpc-server-test = { module = "org.springframework.boot:spring-boot-starter-grpc-server-test" }
+grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
 protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref = "protobuf" }
 protobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }

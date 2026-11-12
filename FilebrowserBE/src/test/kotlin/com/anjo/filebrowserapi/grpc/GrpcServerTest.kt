@@ -1,4 +1,4 @@
-package com.anjo.filebrowserapi.configuration
+package com.anjo.filebrowserapi.grpc
 
 import com.anjo.filebrowser.Filebrowser
 import com.anjo.filebrowser.FilebrowserApiGrpc
@@ -7,65 +7,90 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
-import com.anjo.filebrowserapi.exception.GrpcGlobalControllerAdvice
 import com.anjo.filebrowserapi.exception.NotEmptyException
 import com.anjo.filebrowserapi.exception.NotFoundException
-import com.anjo.filebrowserapi.grpc.FilebrowserGrpc
-import com.anjo.filebrowserapi.logging.GrpcLoggingInterceptor
-import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.FileManager
 import com.google.protobuf.kotlin.toByteString
+import com.ninjasquad.springmockk.MockkBean
 import io.grpc.ManagedChannelBuilder
+import io.grpc.Metadata
 import io.grpc.Status
 import io.grpc.StatusException
 import io.grpc.StatusRuntimeException
-import io.kotest.assertions.throwables.shouldNotThrowAny
+import io.grpc.health.v1.HealthCheckRequest
+import io.grpc.health.v1.HealthCheckResponse
+import io.grpc.health.v1.HealthGrpc
+import io.grpc.stub.MetadataUtils
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
-import org.springframework.boot.DefaultApplicationArguments
+import org.springframework.boot.grpc.test.autoconfigure.LocalGrpcServerPort
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.system.CapturedOutput
+import org.springframework.boot.test.system.OutputCaptureExtension
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
 import java.io.InputStream
-import java.net.ServerSocket
+import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.Test
 
-class GrpcServerConfigTest {
-    private val fileManager = mockk<FileManager>()
-    private val port = ServerSocket(0).use { it.localPort }
-    private val config =
-        GrpcServerConfig(
-            GrpcServerProperties(port),
-            FilebrowserGrpc(mockk<DirectoryManager>(), fileManager, AppConfiguration()),
-            GrpcLoggingInterceptor(),
-            GrpcGlobalControllerAdvice(),
-        ).apply { run(DefaultApplicationArguments()) }
+private const val TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+@SpringBootTest(properties = ["spring.grpc.server.port=0"])
+@ActiveProfiles("server")
+@ExtendWith(OutputCaptureExtension::class)
+class GrpcServerTest(
+    @LocalGrpcServerPort private val port: Int,
+) {
+    @MockkBean
+    private lateinit var fileManager: FileManager
+
     private val channel = ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build()
-    private val stub = FilebrowserApiGrpc.newBlockingStub(channel)
+    private val stub = FilebrowserApiGrpc.newBlockingStub(channel).withDeadlineAfter(5, TimeUnit.SECONDS)
 
     @AfterTest
     fun stop() {
         channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)
-        config.shutdown()
     }
 
     @Test
     fun `should serve files tree when server is started`() {
         // given
-        val expected = listOf("/$FIRST_NAME")
-        every { fileManager.showFilesTree(FIRST_NAME) } returns expected
+        every { fileManager.showFilesTree(FIRST_NAME) } returns listOf("/$FIRST_NAME")
 
         // when
-        val result = stub.withDeadlineAfter(5, TimeUnit.SECONDS).showFilesTree(request())
+        val result = stub.showFilesTree(pathRequest())
 
         // then
-        result.directoriesList shouldBe expected
+        result.directoriesList shouldBe listOf("/$FIRST_NAME")
+    }
+
+    @ParameterizedTest
+    @MethodSource("errors")
+    fun `should map exception to status when service throws`(
+        exception: Exception,
+        expected: Status.Code,
+        expectedDescription: String,
+    ) {
+        // given
+        every { fileManager.showFilesTree(FIRST_NAME) } throws exception
+
+        // when
+        val result = shouldThrow<StatusRuntimeException> { stub.showFilesTree(pathRequest()) }
+
+        // then
+        result.status.code shouldBe expected
+        result.status.description shouldBe expectedDescription
     }
 
     @Test
@@ -80,10 +105,7 @@ class GrpcServerConfigTest {
                 .build()
 
         // when
-        val result =
-            shouldThrow<StatusRuntimeException> {
-                stub.withDeadlineAfter(5, TimeUnit.SECONDS).getFile(request).next()
-            }
+        val result = shouldThrow<StatusRuntimeException> { stub.getFile(request).next() }
 
         // then
         result.status.code shouldBe Status.Code.NOT_FOUND
@@ -117,42 +139,35 @@ class GrpcServerConfigTest {
         }
 
     @Test
-    fun `should skip shutdown when server was never started`() {
-        // given
-        val input =
-            GrpcServerConfig(
-                GrpcServerProperties(port),
-                FilebrowserGrpc(mockk<DirectoryManager>(), fileManager, AppConfiguration()),
-                GrpcLoggingInterceptor(),
-                GrpcGlobalControllerAdvice(),
-            )
-
-        // when & then
-        shouldNotThrowAny { input.shutdown() }
-    }
-
-    @ParameterizedTest
-    @MethodSource("errors")
-    fun `should map exception to status when service throws`(
-        exception: Exception,
-        expected: Status.Code,
-        expectedDescription: String,
-    ) {
-        // given
-        every { fileManager.showFilesTree(FIRST_NAME) } throws exception
-
+    fun `should report SERVING when health is checked`() {
         // when
         val result =
-            shouldThrow<StatusRuntimeException> {
-                stub.withDeadlineAfter(5, TimeUnit.SECONDS).showFilesTree(request())
-            }
+            HealthGrpc
+                .newBlockingStub(channel)
+                .withDeadlineAfter(5, TimeUnit.SECONDS)
+                .check(HealthCheckRequest.getDefaultInstance())
 
         // then
-        result.status.code shouldBe expected
-        result.status.description shouldBe expectedDescription
+        result.status shouldBe HealthCheckResponse.ServingStatus.SERVING
     }
 
-    private fun request() =
+    @Test
+    fun `should log trace id from traceparent when call is received`(output: CapturedOutput) {
+        // given
+        every { fileManager.showFilesTree(FIRST_NAME) } returns emptyList()
+        val headers =
+            Metadata().apply {
+                put(Metadata.Key.of("traceparent", Metadata.ASCII_STRING_MARSHALLER), "00-$TRACE_ID-00f067aa0ba902b7-01")
+            }
+
+        // when
+        stub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers)).showFilesTree(pathRequest())
+
+        // then
+        output.out shouldContain TRACE_ID
+    }
+
+    private fun pathRequest() =
         Filebrowser.PathRequest
             .newBuilder()
             .setPath(FIRST_NAME)
@@ -175,5 +190,12 @@ class GrpcServerConfigTest {
                     TEST_MESSAGE,
                 ),
             )
+
+        @JvmStatic
+        @DynamicPropertySource
+        fun properties(registry: DynamicPropertyRegistry) {
+            val workDir = Files.createTempDirectory("filebrowser-grpc")
+            registry.add("application.path") { workDir.toString() }
+        }
     }
 }
