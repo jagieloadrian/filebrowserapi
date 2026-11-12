@@ -52,6 +52,8 @@ Project aligned with the coding standards from the `standards` MCP server:
   writes; 401/403 with the shared error body, `UNAUTHENTICATED`/`PERMISSION_DENIED` in gRPC.
 - Tests run the production decoder path against a local OIDC discovery + JWKS server; 226 tests, gate green; jar
   smoke-tested (no audience: startup fails; health public, API 401).
+- OpenAPI documents the bearer JWT scheme (Swagger "Authorize").
+- Per-user directories: every path resolves inside `filebrowser/<sub>`; 237 tests, gate green.
 
 ## Decisions
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
@@ -80,9 +82,11 @@ Project aligned with the coding standards from the `standards` MCP server:
 - Our `GrpcExceptionHandler` returns null for Spring Security exceptions so Spring gRPC maps them to
   `UNAUTHENTICATED`/`PERMISSION_DENIED`.
 - Boot 4 cannot combine `public-key-location` with `issuer-uri`, hence the local JWKS server in tests.
+- Allowed `sub`: `[A-Za-z0-9][A-Za-z0-9._@-]*`, otherwise 400; directory created on first use. No migration code:
+  existing files are moved by hand (README).
 
 ## Next steps and risks
 - Push `feature-9/oidc-auth` and open a PR. Deployments must set the issuer and audience env vars, or the app stops.
 - Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.
-- Swagger "Try it out" has no bearer scheme yet; per-user directories by `sub` (optional) not done.
+- Existing deployments: move files from `filebrowser/` to `filebrowser/<sub>/` before upgrading.
 - Roadmap phase 4 (deployment) is blocked on the infra repo's `charts/app` values.

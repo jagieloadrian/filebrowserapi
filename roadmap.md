@@ -58,7 +58,7 @@ Open problems: none known; next work is deployment (phase 4).
 4. Done: tests sign real JWTs against a local OIDC discovery and JWKS endpoint; every REST route and every RPC (taken
    from the service descriptor) answers 401/`UNAUTHENTICATED` without or with a bad token (wrong `aud`, `iss`,
    expired, foreign key) and 403/`PERMISSION_DENIED` without the role; tokens never reach the logs.
-5. Not done (optional): per-user directories keyed by `sub`.
+5. Done: each user sees only `filebrowser/<sub>`; a `sub` that cannot name a directory gets 400.
 
 ## Phase 4: Deployment
 1. Blocked until the infra repo provides the `charts/app` values: `.devops/helm/release.yaml` HelmRelease, CI bumps

@@ -51,6 +51,11 @@ Swagger, gRPC `grpc.health.v1.Health`.
 The OIDC client (Authelia) must issue JWT access tokens (`access_token_signed_response_alg: RS256`; Authelia issues
 opaque ones by default) whose `aud` contains the client ID and which carry the `groups` claim.
 
+Each user works in `filebrowser/<sub>` (the token's `sub` claim) and cannot reach other users' files. After upgrading
+from a version without authentication, move existing files from `filebrowser/` into `filebrowser/<sub>/`.
+
+In Swagger, click "Authorize" and paste an access token to try the API.
+
 ### API rules
 * `application.max-upload-size` (default `1GB`, env `APPLICATION_MAX_UPLOAD_SIZE`) limits one upload: REST answers 413,
   gRPC `RESOURCE_EXHAUSTED`.
