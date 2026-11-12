@@ -18,19 +18,17 @@
 
 ### Future Features
 * add database to easier managing of paths, serializing files
-* add configuration for kubernetes 
 
 ## Prerequisites
 Java 21 or above
 
 ## Getting Started
-How to run app locally
-* In `application.yaml`, set your workingPath, using Intellij/other IDE and build by gradle plugin and start by default compiler</br>
+Run the REST API locally without OIDC:
 
-   *OR* 
-* Use gradle, build project, in working directory go to `build/libs` and in here set in command line
-   `java -Dapplication.path="yourWorkingPath" -jar filebrowserapi.jar`, where `yourWorkingPath` is a path direct to your folder,
-   where app will be working.
+    ./gradlew :FilebrowserBE:runLocal
+
+It loads `.devops/application-local.yaml` (profiles `web,local`): every request is allowed as user `local`, files go to
+`FilebrowserBE/build/local-data/filebrowser/local`. Never activate `local` in a deployment: it turns authentication off.
 
  Path to swagger: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)
 
@@ -89,6 +87,25 @@ Run the gRPC server (port 9090, profile `server`):
 
 The container logs JSON with `timestamp`, `level`, `message`, `logger` and `traceId` (from `traceparent`).
 The REST profile serves `/health/live`, `/health/ready` and Prometheus metrics at `/metrics`.
+
+## Deployment
+`.devops/helm/release.yaml` holds two HelmReleases of the shared chart `homelab-infra/charts/app`, on node
+`homelab/node: rpi`:
+* `filebrowser`: REST (`web`), `filebrowser.home.arpa`, HTTP probes on `/health/live` and `/health/ready`.
+* `filebrowser-grpc`: gRPC (`server`), `filebrowser-grpc.home.arpa`, native Kubernetes `grpc` probes on 9090.
+
+Both mount the PVC `filebrowser-data` (`.devops/helm/pvc.yaml`, `local-path`, kept when the release is removed) at
+`/data`. The chart has no volumes or gRPC probes, so Flux `postRenderers` patch them in. `/tmp` is 2Gi because uploads
+spool there before they are moved.
+
+Before the first rollout:
+* Set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` in both releases. It is the placeholder
+  `https://issuer.invalid` until Authelia runs; health is green, but every API call fails.
+* Register the app in homelab-infra: `scripts/new-app.sh own filebrowser`.
+* Add the deploy GitHub App (on the `main` ruleset bypass list): variable `DEPLOY_APP_CLIENT_ID`, secret
+  `DEPLOY_APP_PRIVATE_KEY`. CI then writes each new `main` image tag into `release.yaml`; without them no tag is bumped.
+
+`devops.yml` renders both releases with the chart and the patches and validates them with kubeconform.
 
 ## Quality gate
     ./gradlew check build

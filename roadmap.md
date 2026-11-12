@@ -61,11 +61,12 @@ Open problems: none known; next work is deployment (phase 4).
 5. Done: each user sees only `filebrowser/<sub>`; a `sub` that cannot name a directory gets 400.
 
 ## Phase 4: Deployment
-1. Blocked until the infra repo provides the `charts/app` values: `.devops/helm/release.yaml` HelmRelease, CI bumps
-   the image tag, `devops.yml` validates with `helm template` and kubeconform.
-2. Local start with one command (`runLocal`).
-3. A read-only root filesystem needs a writable `/tmp` volume: multipart and gRPC uploads spool there.
-4. Probes: HTTP `/health/live` and `/health/ready` for `web`, the native Kubernetes `grpc` probe on 9090 for `server`.
+1. Done: `.devops/helm/release.yaml` with HelmReleases for REST and gRPC, a shared PVC, CI bumps the image tag,
+   `devops.yml` validates with `helm template` and kubeconform. Open: OIDC issuer (placeholder until Authelia runs) and
+   the registration in homelab-infra.
+2. Done: `runLocal` starts the REST API without OIDC.
+3. Done: `/tmp` is a 2Gi `emptyDir`, enough for one 1GB upload.
+4. Done: HTTP probes for `web`, native `grpc` probes on 9090 for `server`.
 
 Done when: a push to `main` rolls the new image out to the cluster.
 

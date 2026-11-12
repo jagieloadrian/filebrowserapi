@@ -1,6 +1,6 @@
 # Project Status
 
-Last update: 2026-11-12, branch `feature-9/oidc-auth`.
+Last update: 2026-11-12, branch `feature-10/deployment`.
 
 ## Completed
 
@@ -55,6 +55,12 @@ Project aligned with the coding standards from the `standards` MCP server:
 - OpenAPI documents the bearer JWT scheme (Swagger "Authorize").
 - Per-user directories: every path resolves inside `filebrowser/<sub>`; 237 tests, gate green.
 
+### 2026-11-12, `feature-10/deployment` (from `main`): roadmap phase 4 mostly done
+- `runLocal`: REST without OIDC (profile `local`, user `local`), `.devops/application-local.yaml`.
+- HelmReleases `filebrowser` (REST) and `filebrowser-grpc` on the shared chart, PVC `filebrowser-data`, 2Gi `/tmp`,
+  memory 512Mi / 384Mi (measured RSS 313 / 273 MiB). `devops.yml` validates; CI bumps the tag via the deploy App.
+- 238 tests, gate green; chart output with patches rendered locally (helm + kubectl kustomize).
+
 ## Decisions
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
@@ -85,8 +91,14 @@ Project aligned with the coding standards from the `standards` MCP server:
 - Allowed `sub`: `[A-Za-z0-9][A-Za-z0-9._@-]*`, otherwise 400; directory created on first use. No migration code:
   existing files are moved by hand (README).
 
+- 2026-11-12: storage and gRPC probes are patched in by Flux `postRenderers` in this repo; the shared chart stays
+  unchanged (owner's choice). Both releases share one RWO `local-path` PVC on the `rpi` node.
+- The issuer is the placeholder `https://issuer.invalid`; API calls answer 500 until it points at Authelia.
+- The `local` profile turns authentication off; it is only used by `runLocal`.
+
 ## Next steps and risks
-- Push `feature-9/oidc-auth` and open a PR. Deployments must set the issuer and audience env vars, or the app stops.
 - Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.
 - Existing deployments: move files from `filebrowser/` to `filebrowser/<sub>/` before upgrading.
-- Roadmap phase 4 (deployment) is blocked on the infra repo's `charts/app` values.
+- Phase 4 rollout: set the issuer once Authelia runs, `scripts/new-app.sh own filebrowser` in homelab-infra, deploy
+  GitHub App variables. The first `main` build then replaces the `main-placeholder` image tag.
+- kubeconform was not run locally (not installed); `devops.yml` runs it on the PR.
