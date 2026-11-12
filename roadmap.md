@@ -65,12 +65,14 @@ and every expected failure has its own status in REST and gRPC, each covered by 
 Done when: REST and gRPC expose the same operations and both profiles report health.
 
 ## Phase 3: Authentication
-1. Spring Security + OAuth2 Resource Server (JWT), Keycloak as identity provider.
-2. The same JWT check in gRPC through a `ServerInterceptor`.
-3. Every protected route gets a test that expects 401 without credentials.
-4. Roles come from the OIDC provider: Keycloak realm or client roles in the JWT, mapped to Spring authorities and
-   checked the same way in the gRPC interceptor. No user store in the app.
-5. Optional: per-user directories (`/data/filebrowser/<user>`).
+1. The OIDC provider (Authelia in the homelab) owns users and roles; the app keeps no user store. Its OIDC client
+   must issue JWT access tokens, because Authelia issues opaque ones by default.
+2. Spring Security OAuth2 Resource Server with `issuer-uri` and `audiences`; the same JWT check in gRPC through a
+   `ServerInterceptor`.
+3. Roles from the `groups` claim with the app prefix (`filebrowser-reader`, `filebrowser-writer`), mapped to
+   authorities in one place, deny by default.
+4. Tests: every protected route and RPC answers 401 without a token and 403 with a token that lacks the role.
+5. Optional: per-user directories keyed by `sub` (`/data/filebrowser/<sub>`), never by e-mail.
 
 Done when: every REST route and RPC rejects unauthenticated calls and no token appears in logs.
 
