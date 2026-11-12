@@ -5,8 +5,10 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.THIRD_NAME
 import com.anjo.filebrowserapi.configuration.AppConfiguration
+import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
-import com.anjo.filebrowserapi.exception.CannotRealizeException
+import com.anjo.filebrowserapi.exception.NotEmptyException
+import com.anjo.filebrowserapi.exception.NotFoundException
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactly
@@ -86,28 +88,28 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `should throw CannotRealizeException when creating directory in missing path`() {
+    fun `should throw NotFoundException when creating directory in missing path`() {
         // given
         val name = FIRST_NAME
         val wrongPath = "/$SECOND_NAME"
         val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
 
         // when
-        val exception = shouldThrow<CannotRealizeException> { service.addDirectory(name, wrongPath) }
+        val exception = shouldThrow<NotFoundException> { service.addDirectory(name, wrongPath) }
 
         // then
         exception.message shouldBe expectedMessage
     }
 
     @Test
-    fun `should throw CannotRealizeException when directory already exists`() {
+    fun `should throw AlreadyExistsException when directory already exists`() {
         // given
         val name = FIRST_NAME
         createFolder(name)
         val expectedMessage = "Directory with name: $name in path:"
 
         // when
-        val exception = shouldThrow<CannotRealizeException> { service.addDirectory(name, null) }
+        val exception = shouldThrow<AlreadyExistsException> { service.addDirectory(name, null) }
 
         // then
         exception.message shouldStartWith expectedMessage
@@ -163,14 +165,14 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `should throw CannotRealizeException when renaming missing directory`() {
+    fun `should throw NotFoundException when renaming missing directory`() {
         // given
         val name = "/$THIRD_NAME"
         val givenPath = FIRST_NAME
         val expectedMessage = "Cannot rename not existing directory"
 
         // when
-        val exception = shouldThrow<CannotRealizeException> { service.renameDirectory(name, givenPath) }
+        val exception = shouldThrow<NotFoundException> { service.renameDirectory(name, givenPath) }
 
         // then
         exception.message shouldBe expectedMessage
@@ -193,7 +195,7 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `should throw CannotRealizeException when deleting non-empty folder`() {
+    fun `should throw NotEmptyException when deleting non-empty folder`() {
         // given
         val givenPath = FIRST_NAME
         val tempFolder = createFolder(givenPath)
@@ -203,7 +205,7 @@ class DirectoryManagerTest {
         val expectedMessage = "Cannot remove not empty directory"
 
         // when
-        val exception = shouldThrow<CannotRealizeException> { service.deleteDirectory(givenPath) }
+        val exception = shouldThrow<NotEmptyException> { service.deleteDirectory(givenPath) }
 
         // then
         exception.message shouldBe expectedMessage

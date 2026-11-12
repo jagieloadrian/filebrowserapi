@@ -5,7 +5,7 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
-import com.anjo.filebrowserapi.exception.CannotRealizeException
+import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
@@ -89,9 +89,9 @@ class PathModifierUtilsTest {
     }
 
     @Test
-    fun `should throw CannotRealizeException when path does not exist`() {
+    fun `should throw NotFoundException when path does not exist`() {
         // when
-        val result = shouldThrow<CannotRealizeException> { utils.validPath(FIRST_NAME, OperationType.DELETE) }
+        val result = shouldThrow<NotFoundException> { utils.validPath(FIRST_NAME, OperationType.DELETE) }
 
         // then
         result.message shouldBe "Path: $FIRST_NAME to delete file or directory is not exist"

@@ -1,9 +1,21 @@
 package com.anjo.filebrowserapi.exception
 
-class CannotRealizeException(
-    msg: String,
-) : Exception(msg)
+sealed class FileBrowserException(
+    message: String,
+) : Exception(message)
 
 class BadInputException(
-    msg: String,
-) : Exception(msg)
+    message: String,
+) : FileBrowserException(message)
+
+class NotFoundException(
+    message: String,
+) : FileBrowserException(message)
+
+class AlreadyExistsException(
+    message: String,
+) : FileBrowserException(message)
+
+class NotEmptyException(
+    message: String,
+) : FileBrowserException(message)

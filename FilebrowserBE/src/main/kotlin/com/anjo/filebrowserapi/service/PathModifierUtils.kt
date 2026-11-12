@@ -2,7 +2,7 @@ package com.anjo.filebrowserapi.service
 
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
-import com.anjo.filebrowserapi.exception.CannotRealizeException
+import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
 import org.springframework.stereotype.Service
 import java.io.File
@@ -55,7 +55,7 @@ class PathModifierUtils(
     ) {
         val extractFile = resolve(path)
         if (!extractFile.exists()) {
-            throw CannotRealizeException("Path: $path to ${operationType.description} file or directory is not exist")
+            throw NotFoundException("Path: $path to ${operationType.description} file or directory is not exist")
         }
     }
 

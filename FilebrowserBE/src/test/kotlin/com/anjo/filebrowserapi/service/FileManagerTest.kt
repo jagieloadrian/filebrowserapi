@@ -7,7 +7,7 @@ import com.anjo.filebrowserapi.TestObjects.SECOND_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
-import com.anjo.filebrowserapi.exception.CannotRealizeException
+import com.anjo.filebrowserapi.exception.NotFoundException
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactly
@@ -92,7 +92,7 @@ class FileManagerTest {
     }
 
     @Test
-    fun `should throw CannotRealizeException when uploading file to missing path`() {
+    fun `should throw NotFoundException when uploading file to missing path`() {
         // given
         val wrongPath = "/${SECOND_NAME}"
         val file = createFile(FIRST_FILE_NAME)
@@ -100,7 +100,7 @@ class FileManagerTest {
         val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
 
         // when
-        val exception = shouldThrow<CannotRealizeException> { service.uploadFile(multipartFile, wrongPath) }
+        val exception = shouldThrow<NotFoundException> { service.uploadFile(multipartFile, wrongPath) }
 
         // then
         exception.message shouldBe expectedMessage
@@ -122,38 +122,53 @@ class FileManagerTest {
     }
 
     @Test
-    fun `should throw CannotRealizeException when reading file from missing path`() {
+    fun `should throw NotFoundException when reading file from missing path`() {
         // given
         val wrongPath = FIRST_NAME
         val expectedMessage = "Path: $FIRST_NAME to read file or directory is not exist"
 
         // when
-        val exception = shouldThrow<CannotRealizeException> { service.getFile(FIRST_FILE_NAME, wrongPath) }
+        val exception = shouldThrow<NotFoundException> { service.getFile(FIRST_FILE_NAME, wrongPath) }
 
         // then
         exception.message shouldBe expectedMessage
     }
 
     @Test
-    fun `should throw BadInputException when deleting missing file without path`() {
+    fun `should throw NotFoundException when reading missing file`() {
+        // when & then
+        shouldThrow<NotFoundException> { service.getFile(FIRST_FILE_NAME, null) }
+    }
+
+    @Test
+    fun `should throw BadInputException when reading a directory`() {
+        // given
+        createFolder(FIRST_NAME)
+
+        // when & then
+        shouldThrow<BadInputException> { service.getFile(FIRST_NAME, null) }
+    }
+
+    @Test
+    fun `should throw NotFoundException when deleting missing file without path`() {
         // given
         val expectedMessage = "Cannot remove non existing file"
 
         // when
-        val exception = shouldThrow<BadInputException> { service.deleteFile(FIRST_FILE_NAME, null) }
+        val exception = shouldThrow<NotFoundException> { service.deleteFile(FIRST_FILE_NAME, null) }
 
         // then
         exception.message shouldBe expectedMessage
     }
 
     @Test
-    fun `should throw CannotRealizeException when deleting file from missing path`() {
+    fun `should throw NotFoundException when deleting file from missing path`() {
         // given
         val wrongPath = FIRST_NAME
         val expectedMessage = "Path: $FIRST_NAME to delete file or directory is not exist"
 
         // when
-        val exception = shouldThrow<CannotRealizeException> { service.deleteFile(FIRST_FILE_NAME, wrongPath) }
+        val exception = shouldThrow<NotFoundException> { service.deleteFile(FIRST_FILE_NAME, wrongPath) }
 
         // then
         exception.message shouldBe expectedMessage
@@ -173,18 +188,18 @@ class FileManagerTest {
     }
 
     @Test
-    fun `should throw CannotRealizeException when renaming missing file`() {
+    fun `should throw NotFoundException when renaming missing file`() {
         // when & then
-        shouldThrow<CannotRealizeException> { service.renameFile(SECOND_FILE_NAME, FIRST_FILE_NAME) }
+        shouldThrow<NotFoundException> { service.renameFile(SECOND_FILE_NAME, FIRST_FILE_NAME) }
     }
 
     @Test
-    fun `should throw CannotRealizeException when renamed path is a directory`() {
+    fun `should throw BadInputException when renamed path is a directory`() {
         // given
         createFolder(FIRST_NAME)
 
         // when & then
-        shouldThrow<CannotRealizeException> { service.renameFile(SECOND_NAME, FIRST_NAME) }
+        shouldThrow<BadInputException> { service.renameFile(SECOND_NAME, FIRST_NAME) }
     }
 
     @Test

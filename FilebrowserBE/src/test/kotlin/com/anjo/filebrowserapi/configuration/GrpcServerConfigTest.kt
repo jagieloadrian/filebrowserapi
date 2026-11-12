@@ -4,9 +4,11 @@ import com.anjo.filebrowser.Filebrowser
 import com.anjo.filebrowser.FilebrowserApiGrpc
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
+import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
-import com.anjo.filebrowserapi.exception.CannotRealizeException
 import com.anjo.filebrowserapi.exception.GrpcGlobalControllerAdvice
+import com.anjo.filebrowserapi.exception.NotEmptyException
+import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.grpc.FilebrowserGrpc
 import com.anjo.filebrowserapi.logging.GrpcLoggingInterceptor
 import com.anjo.filebrowserapi.service.DirectoryManager
@@ -106,7 +108,9 @@ class GrpcServerConfigTest {
         @JvmStatic
         fun errors() =
             listOf(
-                Arguments.of(CannotRealizeException(TEST_MESSAGE), Status.Code.DATA_LOSS, TEST_MESSAGE),
+                Arguments.of(NotFoundException(TEST_MESSAGE), Status.Code.NOT_FOUND, TEST_MESSAGE),
+                Arguments.of(AlreadyExistsException(TEST_MESSAGE), Status.Code.ALREADY_EXISTS, TEST_MESSAGE),
+                Arguments.of(NotEmptyException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),
                 Arguments.of(BadInputException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
                 Arguments.of(IllegalArgumentException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
                 Arguments.of(IllegalStateException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),

@@ -15,13 +15,17 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 class RestGlobalControllerAdvice {
     private val logger = KotlinLogging.logger {}
 
-    @ExceptionHandler(CannotRealizeException::class)
-    fun handleCannotRealizeException(exception: CannotRealizeException) =
-        apiError(HttpStatus.UNPROCESSABLE_ENTITY, exception.javaClass.simpleName, exception.message)
-
-    @ExceptionHandler(BadInputException::class)
-    fun handleBadInputException(exception: BadInputException) =
-        apiError(HttpStatus.BAD_REQUEST, exception.javaClass.simpleName, exception.message)
+    @ExceptionHandler(FileBrowserException::class)
+    fun handleFileBrowserException(exception: FileBrowserException) =
+        apiError(
+            when (exception) {
+                is BadInputException -> HttpStatus.BAD_REQUEST
+                is NotFoundException -> HttpStatus.NOT_FOUND
+                is AlreadyExistsException, is NotEmptyException -> HttpStatus.CONFLICT
+            },
+            exception.javaClass.simpleName,
+            exception.message,
+        )
 
     @ExceptionHandler(Exception::class)
     fun handleException(exception: Exception): ResponseEntity<ApiError> =

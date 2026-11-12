@@ -1,7 +1,8 @@
 package com.anjo.filebrowserapi.service
 
+import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
-import com.anjo.filebrowserapi.exception.CannotRealizeException
+import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType.CREATE
 import com.anjo.filebrowserapi.model.OperationType.DELETE
 import com.anjo.filebrowserapi.model.OperationType.READ
@@ -52,7 +53,9 @@ class FileManager(
         path: String?,
     ): ByteArray {
         modifierUtils.validPath(path, READ)
-        return modifierUtils.resolveEntry(path, fileName).readBytes()
+        val file = modifierUtils.resolveEntry(path, fileName)
+        requireFile(file, "File $fileName does not exist")
+        return file.readBytes()
     }
 
     fun renameFile(
@@ -63,19 +66,20 @@ class FileManager(
         val extractMidPath = modifierUtils.extractMidPath(validPath)
 
         val sourceFile = modifierUtils.resolveEntry(path)
-        val targetPath = modifierUtils.generatePathToRename(extractMidPath, newName)
-        val targetDir = File(targetPath)
+        val targetFile = File(modifierUtils.generatePathToRename(extractMidPath, newName))
+        requireFile(sourceFile, "Cannot rename not existing file")
+        if (targetFile.exists()) throw AlreadyExistsException("File $newName already exists")
 
-        if (sourceFile.renameTo(targetDir)) {
-            checkIfSuccess(targetDir)
-            return formatResponsePath(targetDir.path, defaultPath)
-        } else {
-            throw CannotRealizeException("Cannot rename not existing directory")
-        }
+        Files.move(sourceFile.toPath(), targetFile.toPath())
+        return formatResponsePath(targetFile.path, defaultPath)
     }
 
-    private fun checkIfSuccess(targetDir: File) {
-        if (!targetDir.isFile) throw CannotRealizeException("Exception during operation")
+    private fun requireFile(
+        file: File,
+        missingMessage: String,
+    ) {
+        if (!file.exists()) throw NotFoundException(missingMessage)
+        if (!file.isFile) throw BadInputException("Path ${formatResponsePath(file.path, defaultPath)} is not a file")
     }
 
     fun deleteFile(
@@ -84,9 +88,8 @@ class FileManager(
     ) {
         modifierUtils.validPath(path, DELETE)
         val file = modifierUtils.resolveEntry(path, fileName)
-        if (!file.delete()) {
-            throw BadInputException("Cannot remove non existing file")
-        }
+        requireFile(file, "Cannot remove non existing file")
+        Files.delete(file.toPath())
     }
 
     private fun validFileName(filename: String?): String =

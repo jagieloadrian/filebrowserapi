@@ -7,6 +7,9 @@ import com.anjo.filebrowserapi.service.DirectoryManager
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.test.context.ActiveProfiles
@@ -23,30 +26,22 @@ class RestGlobalControllerAdviceTest(
     @MockkBean
     private lateinit var service: DirectoryManager
 
-    @Test
-    fun `should return 422 with error body when CannotRealizeException is thrown`() {
+    @ParameterizedTest
+    @MethodSource("domainErrors")
+    fun `should map domain exception to status with error body when service throws`(
+        exception: FileBrowserException,
+        expected: Int,
+    ) {
         // given
-        every { service.deleteDirectory(FIRST_NAME) } throws CannotRealizeException(TEST_MESSAGE)
+        every { service.deleteDirectory(FIRST_NAME) } throws exception
 
         // when
         val response = deleteDirectory()
 
         // then
-        response.status shouldBe 422
-        response.contentAsString shouldBe """{"error":"CannotRealizeException","message":"$TEST_MESSAGE","details":[]}"""
-    }
-
-    @Test
-    fun `should return 400 with error body when BadInputException is thrown`() {
-        // given
-        every { service.deleteDirectory(FIRST_NAME) } throws BadInputException(TEST_MESSAGE)
-
-        // when
-        val response = deleteDirectory()
-
-        // then
-        response.status shouldBe 400
-        response.contentAsString shouldBe """{"error":"BadInputException","message":"$TEST_MESSAGE","details":[]}"""
+        response.status shouldBe expected
+        response.contentAsString shouldBe
+            """{"error":"${exception.javaClass.simpleName}","message":"$TEST_MESSAGE","details":[]}"""
     }
 
     @Test
@@ -90,4 +85,15 @@ class RestGlobalControllerAdviceTest(
             .delete("/api/v1/directories") { param("path", FIRST_NAME) }
             .andReturn()
             .response
+
+    companion object {
+        @JvmStatic
+        fun domainErrors() =
+            listOf(
+                Arguments.of(BadInputException(TEST_MESSAGE), 400),
+                Arguments.of(NotFoundException(TEST_MESSAGE), 404),
+                Arguments.of(AlreadyExistsException(TEST_MESSAGE), 409),
+                Arguments.of(NotEmptyException(TEST_MESSAGE), 409),
+            )
+    }
 }
