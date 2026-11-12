@@ -27,7 +27,7 @@ Project aligned with the coding standards from the `standards` MCP server:
   `./gradlew check build`, pushes `main-<yyyyMMddHHmmss>-<sha7>` or semver tags to GHCR. Dependabot added.
 - Docs in English (`roadmap.md`), `.claude/settings.json` turns AI attribution off.
 
-### 2026-11-12, `feature-7/path-safety` (from `feature-6/standards-compliance`): roadmap phase 1 done
+### 2026-11-12, `feature-7/path-safety` (on `main`): roadmap phase 1 done
 - One path resolver for every user-supplied segment: traversal and the base directory itself give 400.
 - gRPC no longer logs headers.
 - Typed errors: `BadInput` 400, `NotFound` 404, `AlreadyExists`/`NotEmpty` 409, with matching gRPC codes. Renames use
@@ -57,6 +57,6 @@ Project aligned with the coding standards from the `standards` MCP server:
 - gRPC uploads spool to `java.io.tmpdir` before the copy, like Tomcat multipart: no partial files.
 
 ## Next steps and risks
-- Push `feature-6/standards-compliance` and `feature-7/path-safety` (stacked), check the first CI run and GHCR push.
+- Push `feature-7/path-safety` (on top of `main`, which has feature-6 as PR #2) and open a PR; check CI.
 - gRPC clients must move to the streaming `uploadFile`/`getFile`.
 - Roadmap phase 2 (REST file rename, generator versions, gRPC health/tracing), then phase 3 (OIDC).
