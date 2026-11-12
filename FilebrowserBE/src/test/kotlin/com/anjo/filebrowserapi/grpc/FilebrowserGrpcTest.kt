@@ -51,8 +51,9 @@ class FilebrowserGrpcTest {
                     .setName(FIRST_FILE_NAME)
                     .setContentType("text/plain")
                     .setPath(FIRST_NAME)
+                    .setOverwrite(true)
                     .build()
-            every { fileManager.uploadFile(any(), FIRST_NAME) } returns expected
+            every { fileManager.uploadFile(any(), FIRST_NAME, true) } returns expected
 
             // when
             val result = service.uploadFile(request)
@@ -63,6 +64,7 @@ class FilebrowserGrpcTest {
                 fileManager.uploadFile(
                     match { it.originalFilename == FIRST_FILE_NAME && it.bytes.contentEquals(content) },
                     FIRST_NAME,
+                    true,
                 )
             }
         }

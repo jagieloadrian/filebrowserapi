@@ -31,7 +31,7 @@ class FilebrowserGrpc(
     override suspend fun uploadFile(request: Filebrowser.UploadFile): StringResponse {
         val uploadFileLocation =
             with(getMultipartFile(request)) {
-                fileManager.uploadFile(this, request.path)
+                fileManager.uploadFile(this, request.path, request.overwrite)
             }
         return StringResponse
             .newBuilder()

@@ -5,7 +5,9 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
+import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.configuration.AppConfiguration
+import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import io.kotest.assertions.assertSoftly
@@ -77,9 +79,7 @@ class FileManagerTest {
     @Test
     fun `should return file path when uploading file without path`() {
         // given
-        val file = createFile(FIRST_FILE_NAME)
-
-        val multipartFile: MultipartFile = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", file.inputStream())
+        val multipartFile: MultipartFile = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", ByteArray(1))
         val expected = "/${FIRST_FILE_NAME}"
 
         // when
@@ -104,6 +104,45 @@ class FileManagerTest {
 
         // then
         exception.message shouldBe expectedMessage
+    }
+
+    @Test
+    fun `should throw AlreadyExistsException when uploaded file exists and overwrite is false`() {
+        // given
+        createFile(FIRST_FILE_NAME).writeText(TEST_MESSAGE)
+        val input = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", "new".toByteArray())
+
+        // when
+        val exception = shouldThrow<AlreadyExistsException> { service.uploadFile(input, null) }
+
+        // then
+        exception.message shouldBe "File $FIRST_FILE_NAME already exists"
+        File("$baseFolder/$FIRST_FILE_NAME").readText() shouldBe TEST_MESSAGE
+    }
+
+    @Test
+    fun `should replace file content when uploaded file exists and overwrite is true`() {
+        // given
+        createFile(FIRST_FILE_NAME).writeText(TEST_MESSAGE)
+        val input = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", "new".toByteArray())
+
+        // when
+        val result = service.uploadFile(input, null, overwrite = true)
+
+        // then
+        result shouldBe "/$FIRST_FILE_NAME"
+        File("$baseFolder/$FIRST_FILE_NAME").readText() shouldBe "new"
+    }
+
+    @Test
+    fun `should throw AlreadyExistsException when uploaded file name is a directory and overwrite is true`() {
+        // given
+        createFolder(FIRST_NAME)
+        val input = MockMultipartFile("file", FIRST_NAME, "text/plain", "new".toByteArray())
+
+        // when & then
+        shouldThrow<AlreadyExistsException> { service.uploadFile(input, null, overwrite = true) }
+        File("$baseFolder/$FIRST_NAME").isDirectory shouldBe true
     }
 
     @Test

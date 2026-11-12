@@ -10,6 +10,7 @@ import com.anjo.filebrowserapi.utils.formatResponsePath
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import java.io.File
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.time.LocalDateTime
@@ -38,12 +39,19 @@ class FileManager(
     fun uploadFile(
         uploadFile: MultipartFile,
         path: String?,
+        overwrite: Boolean = false,
     ): String {
         modifierUtils.validPath(path, CREATE)
         val fileName = validFileName(uploadFile.originalFilename)
         val target = modifierUtils.resolveEntry(path, fileName)
+        if (target.isDirectory) throw AlreadyExistsException("Directory $fileName already exists")
 
-        Files.copy(uploadFile.inputStream, target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        val options = if (overwrite) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
+        try {
+            Files.copy(uploadFile.inputStream, target.toPath(), *options)
+        } catch (_: FileAlreadyExistsException) {
+            throw AlreadyExistsException("File $fileName already exists")
+        }
 
         return formatResponsePath(target.path, defaultPath)
     }

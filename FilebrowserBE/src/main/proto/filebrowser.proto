@@ -39,6 +39,7 @@ message UploadFile {
   string name = 2;
   string contentType = 3;
   optional string path = 4;
+  bool overwrite = 5;
 }
 
 message FileResponse {

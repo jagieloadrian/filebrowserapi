@@ -62,6 +62,26 @@ class FileManagerControllerTest(
     }
 
     @Test
+    fun `should pass overwrite flag to service when upload sets overwrite`() {
+        // given
+        val input = MockMultipartFile("uploadFile", FIRST_FILE_NAME, "text/plain", TEST_MESSAGE.toByteArray())
+        every { service.uploadFile(any(), null, true) } returns "/$FIRST_FILE_NAME"
+
+        // when
+        val response =
+            mockMvc
+                .multipart(FILES) {
+                    file(input)
+                    param("overwrite", "true")
+                }.andReturn()
+                .response
+
+        // then
+        response.status shouldBe 200
+        verify(exactly = 1) { service.uploadFile(any(), null, true) }
+    }
+
+    @Test
     fun `should return file bytes when file is requested`() {
         // given
         every { service.getFile(FIRST_FILE_NAME, null) } returns TEST_MESSAGE.toByteArray()
