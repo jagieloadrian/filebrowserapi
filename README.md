@@ -35,20 +35,31 @@ How to run app locally
 
  Path to swagger: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)
 
-   Remember in your path you need create directory with name "filebrowser", but do not provide this name in configuration
+   The app creates the `filebrowser` directory inside that path on startup.
 
 
-## Docker
-Build image from repository root:
+## Container image
+The image is built with Jib (`eclipse-temurin:21-jre`, `linux/amd64` and `linux/arm64`, UID 10001).
+Build it into the local Docker daemon:
 
-    docker build -f devops/Dockerfile -t filebrowserapi .
+    ./gradlew :FilebrowserBE:jibDockerBuild
 
-Run REST API (port 8080, profile `web`, files stored in volume `/data`):
+Run the REST API (port 8080, profile `web`, files in volume `/data`):
 
-    docker run -p 8080:8080 -v filebrowser-data:/data filebrowserapi
+    docker run -p 8080:8080 -v filebrowser-data:/data ghcr.io/jagieloadrian/filebrowserapi:local
 
-Run gRPC server (port 9090, profile `server`):
+Run the gRPC server (port 9090, profile `server`):
 
-    docker run -p 9090:9090 -e SPRING_PROFILES_ACTIVE=server -v filebrowser-data:/data filebrowserapi
+    docker run -p 9090:9090 -e SPRING_PROFILES_ACTIVE=server -v filebrowser-data:/data ghcr.io/jagieloadrian/filebrowserapi:local
 
-CI (GitHub Actions) builds and tests every PR and pushes image to `ghcr.io/jagieloadrian/filebrowserapi` on `main` and `v*` tags.
+The container logs JSON with `timestamp`, `level`, `message`, `logger` and `traceId` (from `traceparent`).
+The REST profile serves `/health/live`, `/health/ready` and Prometheus metrics at `/metrics`.
+
+## Quality gate
+    ./gradlew check build
+
+Runs ktlint, tests and JaCoCo (line coverage over 80 %, branch coverage over 75 %).
+
+## CI
+GitHub Actions runs the gate on every PR. Pushes to `main` publish `ghcr.io/jagieloadrian/filebrowserapi:main-<yyyyMMddHHmmss>-<sha7>`,
+`v*` tags publish the semver tag. Dependabot keeps Gradle and Actions versions current.
