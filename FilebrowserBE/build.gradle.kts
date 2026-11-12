@@ -19,12 +19,13 @@ repositories {
 
 dependencies {
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
-    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.coroutines.core)
     implementation(libs.micrometer.prometheus)
     implementation(libs.micrometer.tracing.otel)
+    implementation(libs.spring.boot.tracing.otel)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.kotlin.reflect)
     implementation(libs.grpc.netty)
@@ -34,7 +35,8 @@ dependencies {
     implementation(libs.kotlin.logging)
     implementation(libs.springdoc.openapi)
 
-    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.spring.boot.micrometer.metrics.test)
     testImplementation(libs.springmockk)
     testImplementation(libs.kotest.assertions)
     testImplementation(libs.kotest.property)
@@ -50,24 +52,24 @@ protobuf {
                 .toString()
     }
     plugins {
-        create("grpc") {
+        maybeCreate("grpc").apply {
             artifact =
                 libs.grpc.protoc.gen.java
                     .get()
                     .toString()
         }
-        create("grpckt") {
+        maybeCreate("grpckt").apply {
             artifact = "${libs.grpc.protoc.gen.kotlin.get()}:jdk8@jar"
         }
     }
     generateProtoTasks {
         all().forEach {
             it.plugins {
-                create("grpc")
-                create("grpckt")
+                maybeCreate("grpc")
+                maybeCreate("grpckt")
             }
             it.builtins {
-                create("kotlin")
+                maybeCreate("kotlin")
             }
         }
     }

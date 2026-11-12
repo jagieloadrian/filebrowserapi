@@ -4,10 +4,10 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.spi.LoggingEvent
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import io.kotest.matchers.maps.shouldContainExactly
 import io.kotest.matchers.shouldBe
+import tools.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.readValue
 import java.time.Instant
 import kotlin.test.Test
 

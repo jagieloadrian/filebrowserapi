@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
+import org.springframework.boot.DefaultApplicationArguments
 import java.io.InputStream
 import java.net.ServerSocket
 import java.util.concurrent.TimeUnit
@@ -44,7 +45,7 @@ class GrpcServerConfigTest {
             FilebrowserGrpc(mockk<DirectoryManager>(), fileManager, AppConfiguration()),
             GrpcLoggingInterceptor(),
             GrpcGlobalControllerAdvice(),
-        ).apply { run(null) }
+        ).apply { run(DefaultApplicationArguments()) }
     private val channel = ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build()
     private val stub = FilebrowserApiGrpc.newBlockingStub(channel)
 

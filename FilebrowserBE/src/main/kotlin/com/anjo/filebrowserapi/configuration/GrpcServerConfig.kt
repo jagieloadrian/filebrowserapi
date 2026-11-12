@@ -26,7 +26,7 @@ class GrpcServerConfig(
     private val logger = KotlinLogging.logger {}
     private lateinit var server: Server
 
-    override fun run(args: ApplicationArguments?) {
+    override fun run(args: ApplicationArguments) {
         server =
             ServerBuilder
                 .forPort(properties.port)

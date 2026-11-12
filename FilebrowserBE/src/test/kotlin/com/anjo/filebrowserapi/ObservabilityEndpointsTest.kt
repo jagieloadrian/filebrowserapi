@@ -3,9 +3,9 @@ package com.anjo.filebrowserapi
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.micrometer.metrics.test.autoconfigure.AutoConfigureMetrics
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -16,7 +16,7 @@ import kotlin.test.Test
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@AutoConfigureObservability
+@AutoConfigureMetrics
 @ActiveProfiles("web")
 class ObservabilityEndpointsTest(
     @Autowired private val mockMvc: MockMvc,
