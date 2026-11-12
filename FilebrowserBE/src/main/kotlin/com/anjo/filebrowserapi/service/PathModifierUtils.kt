@@ -3,19 +3,17 @@ package com.anjo.filebrowserapi.service
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.CannotRealizeException
 import com.anjo.filebrowserapi.model.OperationType
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
-@EnableConfigurationProperties(AppConfiguration::class)
 class PathModifierUtils(
     private val properties: AppConfiguration,
 ) {
     private val baseDirectory = "/filebrowser"
 
     init {
-        val baseFolder = File("${properties.getPath()}$baseDirectory")
+        val baseFolder = File("${properties.path}$baseDirectory")
         if (!baseFolder.exists()) {
             baseFolder.mkdir()
         }
@@ -68,7 +66,7 @@ class PathModifierUtils(
             "${generateDefaultPath()}/$newName"
         }
 
-    fun generateDefaultPath(): String = properties.getPath() + baseDirectory
+    fun generateDefaultPath(): String = properties.path + baseDirectory
 
     fun formatPath(path: String): String = if (path.first() == '/') path.drop(1) else path
 }

@@ -3,6 +3,8 @@ spring:
     name: filebrowser-be
   main:
     web-application-type: servlet
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
 
 server:
   port: 8080
@@ -15,6 +17,3 @@ springdoc:
   api-docs:
     enabled: true
   show-actuator: true
-
-application:
-  path:

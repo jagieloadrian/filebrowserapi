@@ -3,9 +3,7 @@ spring:
     name: filebrowser-be
   main:
     web-application-type: none
-
-application:
-  path:
+    keep-alive: true
 
 grpc:
   server:

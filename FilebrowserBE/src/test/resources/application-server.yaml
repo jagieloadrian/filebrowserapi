@@ -4,9 +4,6 @@ spring:
   main:
     web-application-type: none
 
-application:
-  path:
-
 grpc:
   server:
     port: 9090
