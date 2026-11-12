@@ -17,6 +17,8 @@ repositories {
 dependencies {
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.micrometer.prometheus)
+    implementation(libs.micrometer.tracing.otel)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.kotlin.reflect)
     implementation(libs.grpc.netty)

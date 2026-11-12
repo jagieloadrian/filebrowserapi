@@ -23,6 +23,8 @@ spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+micrometer-tracing-otel = { module = "io.micrometer:micrometer-tracing-bridge-otel" }
 grpc-netty = { module = "io.grpc:grpc-netty", version.ref = "grpc" }
 grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc" }
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
