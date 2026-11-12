@@ -16,12 +16,17 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 import kotlin.test.Test
 
 class FilebrowserGrpcTest {
     private val directoryManager = mockk<DirectoryManager>()
     private val fileManager = mockk<FileManager>()
     private val service = FilebrowserGrpc(directoryManager, fileManager)
+
+    @TempDir
+    private lateinit var workDir: Path
 
     @Test
     fun `should return files tree when showFilesTree is called`() =
@@ -74,7 +79,8 @@ class FilebrowserGrpcTest {
         runTest {
             // given
             val expected = TEST_MESSAGE.toByteArray()
-            every { fileManager.getFile(FIRST_FILE_NAME, FIRST_NAME) } returns expected
+            every { fileManager.getFile(FIRST_FILE_NAME, FIRST_NAME) } returns
+                workDir.resolve(FIRST_FILE_NAME).toFile().apply { writeBytes(expected) }
 
             // when
             val result = service.getFile(fileOperation(FIRST_FILE_NAME, FIRST_NAME))

@@ -59,11 +59,11 @@ class FileManager(
     fun getFile(
         fileName: String,
         path: String?,
-    ): ByteArray {
+    ): File {
         modifierUtils.validPath(path, READ)
         val file = modifierUtils.resolveName(path, fileName)
         requireFile(file, "File $fileName does not exist")
-        return file.readBytes()
+        return file
     }
 
     fun renameFile(

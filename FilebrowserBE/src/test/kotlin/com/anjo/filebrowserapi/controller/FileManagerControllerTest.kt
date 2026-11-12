@@ -5,19 +5,26 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.service.FileManager
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.assertions.assertSoftly
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.verify
+import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.http.ContentDisposition
+import org.springframework.http.HttpHeaders
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
+import java.nio.file.Path
 import kotlin.test.Test
 
 @WebMvcTest(FileManagerController::class)
@@ -27,6 +34,9 @@ class FileManagerControllerTest(
 ) {
     @MockkBean
     private lateinit var service: FileManager
+
+    @TempDir
+    private lateinit var workDir: Path
 
     @Test
     fun `should return files tree when GET is called`() {
@@ -81,17 +91,28 @@ class FileManagerControllerTest(
         verify(exactly = 1) { service.uploadFile(any(), null, true) }
     }
 
-    @Test
-    fun `should return file bytes when file is requested`() {
+    @ParameterizedTest
+    @CsvSource("$FIRST_FILE_NAME, text/plain", "zażółć.pdf, application/pdf", "archive, application/octet-stream")
+    fun `should stream file with its content type and attachment name when file is requested`(
+        fileName: String,
+        expectedType: String,
+    ) {
         // given
-        every { service.getFile(FIRST_FILE_NAME, null) } returns TEST_MESSAGE.toByteArray()
+        val file = workDir.resolve(fileName).toFile().apply { writeText(TEST_MESSAGE) }
+        every { service.getFile(fileName, null) } returns file
 
         // when
-        val response = mockMvc.get("$FILES/$FIRST_FILE_NAME").andReturn().response
+        val response = mockMvc.get("$FILES/$fileName").andReturn().response
 
         // then
-        response.status shouldBe 200
-        response.contentAsByteArray shouldBe TEST_MESSAGE.toByteArray()
+        val disposition = ContentDisposition.parse(response.getHeader(HttpHeaders.CONTENT_DISPOSITION)!!)
+        assertSoftly {
+            response.status shouldBe 200
+            response.contentType shouldBe expectedType
+            response.contentAsString shouldBe TEST_MESSAGE
+            disposition.isAttachment shouldBe true
+            disposition.filename shouldBe fileName
+        }
     }
 
     @Test

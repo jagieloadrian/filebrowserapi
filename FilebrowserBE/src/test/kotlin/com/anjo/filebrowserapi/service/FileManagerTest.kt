@@ -148,16 +148,13 @@ class FileManagerTest {
     @Test
     fun `should return file content when file exists`() {
         // given
-        val expect = createFile(FIRST_FILE_NAME)
+        createFile(FIRST_FILE_NAME).writeText(TEST_MESSAGE)
 
         // when
         val result = service.getFile(FIRST_FILE_NAME, null)
 
         // then
-        assertSoftly {
-            result.count() shouldBe expect.readBytes().count()
-            result shouldBe expect.readBytes()
-        }
+        result.readText() shouldBe TEST_MESSAGE
     }
 
     @Test

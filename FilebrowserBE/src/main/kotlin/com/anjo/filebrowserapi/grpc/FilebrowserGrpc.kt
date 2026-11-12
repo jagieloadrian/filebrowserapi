@@ -40,7 +40,7 @@ class FilebrowserGrpc(
     }
 
     override suspend fun getFile(request: Filebrowser.FileOperation): FileResponse {
-        val file = fileManager.getFile(request.name, request.path)
+        val file = fileManager.getFile(request.name, request.path).readBytes()
         return FileResponse
             .newBuilder()
             .setData(file.toByteString())
