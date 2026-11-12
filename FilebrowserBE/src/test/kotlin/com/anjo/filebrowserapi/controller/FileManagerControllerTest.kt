@@ -25,9 +25,8 @@ import kotlin.test.Test
 @ExtendWith(MockKExtension::class)
 class FileManagerControllerTest(
     @MockK
-    private val service: FileManager
+    private val service: FileManager,
 ) {
-
     @InjectMockKs
     private lateinit var controller: FileManagerController
 
@@ -43,20 +42,19 @@ class FileManagerControllerTest(
             val baseDirectory = File(PATH_TO_BASE_FOLDER)
             baseDirectory.mkdir()
         }
-
     }
 
     @Test
     fun `given request when getFilesTree then return list of string`() {
-        //given
+        // given
         val expected = listOf("/${FIRST_FILE_NAME}", "/${SECOND_FILE_NAME}")
         val expectedCode = 200
 
         every { service.showFilesTree(any()) } returns expected
-        //when
+        // when
         val response = controller.getFilesTree(null)
 
-        //then
+        // then
         assertSoftly {
             response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
             response.body shouldContainExactly expected
@@ -65,7 +63,7 @@ class FileManagerControllerTest(
 
     @Test
     fun `given request when uploadFile then return list of string`() {
-        //given
+        // given
         val expected = "/$FIRST_FILE_NAME"
         val expectedCode = 200
         val tempFile = createFile()
@@ -73,20 +71,19 @@ class FileManagerControllerTest(
         val mockFile = MockMultipartFile(FIRST_FILE_NAME, tempFile.inputStream())
 
         every { service.uploadFile(any(), any()) } returns expected
-        //when
+        // when
         val response = controller.uploadFile(mockFile, null)
 
-        //then
+        // then
         assertSoftly {
             response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
             response.body shouldBe expected
         }
     }
 
-
     @Test
     fun `given request when getFile then return file`() {
-        //given
+        // given
         val fileName = FIRST_FILE_NAME
         val expectedCode = 200
         val tempFile = createFile()
@@ -94,10 +91,10 @@ class FileManagerControllerTest(
         val expectedFile = MockMultipartFile(fileName, tempFile.inputStream()).bytes
 
         every { service.getFile(any(), any()) } returns expectedFile
-        //when
+        // when
         val response = controller.getFile(fileName, null)
 
-        //then
+        // then
         assertSoftly {
             response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
             response.body shouldBe expectedFile
@@ -106,14 +103,14 @@ class FileManagerControllerTest(
 
     @Test
     fun `given path when deleteFile then return only statusCode`() {
-        //given
+        // given
         val expectedCode = 204
 
         every { service.deleteFile(any(), any()) } returns Unit
-        //when
+        // when
         val response = controller.deleteFile(FIRST_FILE_NAME, null)
 
-        //then
+        // then
         assertSoftly {
             response.statusCode shouldBe HttpStatusCode.valueOf(expectedCode)
         }
@@ -129,11 +126,11 @@ class FileManagerControllerTest(
     @AfterTest
     fun cleanUp() {
         val files =
-            File("${System.getProperty("user.dir")}${TestObjects.PATH_TO_RESOURCES}/${TestObjects.BASE_FOLDER}").walk()
+            File("${System.getProperty("user.dir")}${TestObjects.PATH_TO_RESOURCES}/${TestObjects.BASE_FOLDER}")
+                .walk()
                 .map { file ->
                     file.path
-                }
-                .drop(1)
+                }.drop(1)
                 .sortedDescending()
                 .toList()
 

@@ -5,17 +5,25 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.web.servlet.HandlerInterceptor
 
-class RestLoggerInterceptor: HandlerInterceptor {
+class RestLoggerInterceptor : HandlerInterceptor {
     private val logger = KotlinLogging.logger {}
 
-    override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
-        logger.info {"Incoming request: Method = ${request.method}; URL: ${request.requestURL}"}
+    override fun preHandle(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        handler: Any,
+    ): Boolean {
+        logger.info { "Incoming request: Method = ${request.method}; URL: ${request.requestURL}" }
         request.setAttribute("startTime", System.currentTimeMillis())
         return super.preHandle(request, response, handler)
     }
 
-    override fun afterCompletion(request: HttpServletRequest, response: HttpServletResponse, handler: Any,
-                                 ex: Exception?) {
+    override fun afterCompletion(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        handler: Any,
+        ex: Exception?,
+    ) {
         val startTime = request.getAttribute("startTime") as Long
         val endTime = System.currentTimeMillis()
         val timeTaken = endTime - startTime

@@ -1,7 +1,6 @@
 package com.anjo.filebrowserapi
 
 object TestObjects {
-
     const val PATH_TO_RESOURCES = "/src/test/resources"
     const val BASE_FOLDER = "filebrowser"
 

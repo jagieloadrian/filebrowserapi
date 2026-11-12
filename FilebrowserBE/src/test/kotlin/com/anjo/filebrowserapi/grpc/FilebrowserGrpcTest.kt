@@ -14,7 +14,6 @@ import kotlin.test.Test
 @SpringBootTest
 @TestPropertySource(properties = ["spring.profiles.active=server"])
 class FilebrowserGrpcTest {
-
     companion object {
         private val workDir = Files.createTempDirectory("filebrowser-grpc-test")
 
@@ -29,16 +28,19 @@ class FilebrowserGrpcTest {
     private lateinit var service: FilebrowserGrpc
 
     @Test
-    fun `given request when showFilesTree then return empty list`() = runTest {
-        //given
-        val request = Filebrowser.PathRequest.newBuilder()
-                .setPath("")
-                .build()
+    fun `given request when showFilesTree then return empty list`() =
+        runTest {
+            // given
+            val request =
+                Filebrowser.PathRequest
+                    .newBuilder()
+                    .setPath("")
+                    .build()
 
-        //when
-        val actual = service.showFilesTree(request)
+            // when
+            val actual = service.showFilesTree(request)
 
-        //then
-        actual.directoriesCount shouldBe 0
-    }
+            // then
+            actual.directoriesCount shouldBe 0
+        }
 }

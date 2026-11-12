@@ -18,16 +18,15 @@ import io.kotest.matchers.shouldBe
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterAll
-import kotlin.test.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.web.multipart.MultipartFile
 import java.io.File
 import kotlin.test.AfterTest
+import kotlin.test.Test
 
 @ExtendWith(MockKExtension::class)
 class FileManagerTest {
-
     private val appConfiguration = AppConfiguration(path = "${System.getProperty("user.dir")}$PATH_TO_RESOURCES")
 
     private val modifierUtils = PathModifierUtils(appConfiguration)
@@ -36,7 +35,6 @@ class FileManagerTest {
     private lateinit var service: FileManager
 
     companion object {
-
         @JvmStatic
         @AfterAll
         fun clearAfterTests() {
@@ -48,13 +46,13 @@ class FileManagerTest {
     @AfterTest
     fun cleanUp() {
         val files =
-            File("${System.getProperty("user.dir")}${PATH_TO_RESOURCES}/${BASE_FOLDER}").walk()
-                    .map { file ->
-                        file.path
-                    }
-                    .drop(1)
-                    .sortedDescending()
-                    .toList()
+            File("${System.getProperty("user.dir")}${PATH_TO_RESOURCES}/${BASE_FOLDER}")
+                .walk()
+                .map { file ->
+                    file.path
+                }.drop(1)
+                .sortedDescending()
+                .toList()
 
         files.forEach { s ->
             val temp = File(s)
@@ -69,19 +67,19 @@ class FileManagerTest {
 
         val expected = listOf("/${FIRST_FILE_NAME}", "/${SECOND_FILE_NAME}")
 
-        //when
+        // when
         val result = service.showFilesTree(null)
 
-        //then
+        // then
         result shouldContainExactly expected
     }
 
     @Test
     fun `given empty base directory and null path when show files tree then return empty list`() {
-        //when
+        // when
         val result = service.showFilesTree(null)
 
-        //then
+        // then
         result shouldHaveSize 0
     }
 
@@ -94,25 +92,25 @@ class FileManagerTest {
         val expected =
             listOf("/${FIRST_NAME}/${FIRST_FILE_NAME}", "/${FIRST_NAME}/${SECOND_FILE_NAME}")
 
-        //when
+        // when
         val result = service.showFilesTree(FIRST_NAME)
 
-        //then
+        // then
         result shouldContainExactly expected
     }
 
     @Test
     fun `given file and path null when create file then return path`() {
-        //given
+        // given
         val file = createFile(FIRST_FILE_NAME)
 
         val multipartFile: MultipartFile = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", file.inputStream())
         val expected = "/${FIRST_FILE_NAME}"
 
-        //when
+        // when
         val result = service.uploadFile(multipartFile, null)
 
-        //then
+        // then
         assertSoftly {
             result shouldBe expected
         }
@@ -120,28 +118,28 @@ class FileManagerTest {
 
     @Test
     fun `given file name and wrong path when create file then return CannotRealizeException`() {
-        //given
+        // given
         val wrongPath = "/${SECOND_NAME}"
         val file = createFile(FIRST_FILE_NAME)
         val multipartFile: MultipartFile = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", file.inputStream())
         val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
 
-        //when
+        // when
         val exception = shouldThrow<CannotRealizeException> { service.uploadFile(multipartFile, wrongPath) }
 
-        //then
+        // then
         exception.message shouldBe expectedMessage
     }
 
     @Test
     fun `given file name when getFile then return file`() {
-        //given
+        // given
         val expect = createFile(FIRST_FILE_NAME)
 
-        //when
+        // when
         val result = service.getFile(FIRST_FILE_NAME, null)
 
-        //then
+        // then
         assertSoftly {
             result.count() shouldBe expect.readBytes().count()
             result shouldBe expect.readBytes()
@@ -150,40 +148,39 @@ class FileManagerTest {
 
     @Test
     fun `given file name and wrong path when getFile then throw CannotRealizeException`() {
-        //given
+        // given
         val wrongPath = FIRST_NAME
         val expectedMessage = "Path: $FIRST_NAME to read file or directory is not exist"
 
-        //when
+        // when
         val exception = shouldThrow<CannotRealizeException> { service.getFile(FIRST_FILE_NAME, wrongPath) }
 
-        //then
+        // then
         exception.message shouldBe expectedMessage
     }
 
     @Test
     fun `given non existing file name without path when delete file then throw CannotRealizeException`() {
-        //given
+        // given
         val expectedMessage = "Cannot remove non existing file"
 
-        //when
+        // when
         val exception = shouldThrow<BadInputException> { service.deleteFile(FIRST_FILE_NAME, null) }
 
-        //then
+        // then
         exception.message shouldBe expectedMessage
     }
 
-
     @Test
     fun `given non existing file name with path when delete file then throw CannotRealizeException`() {
-        //given
+        // given
         val wrongPath = FIRST_NAME
         val expectedMessage = "Path: $FIRST_NAME to delete file or directory is not exist"
 
-        //when
+        // when
         val exception = shouldThrow<CannotRealizeException> { service.deleteFile(FIRST_FILE_NAME, wrongPath) }
 
-        //then
+        // then
         exception.message shouldBe expectedMessage
     }
 

@@ -1,6 +1,6 @@
 plugins {
-    val kotlinVersion = "2.0.21"
-    kotlin("jvm") version kotlinVersion
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ktlint)
 }
 
 group = "com.anjo"
@@ -14,9 +14,13 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
+kotlin {
+    jvmToolchain(21)
+    compilerOptions {
+        allWarningsAsErrors = true
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
-}
-kotlin {
-    jvmToolchain(17)
 }

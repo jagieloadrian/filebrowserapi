@@ -19,28 +19,34 @@ import org.springframework.web.multipart.MultipartFile
 @Profile("web")
 @RequestMapping("/api/v1/files")
 class FileManagerController(
-    private val fileManager: FileManager
+    private val fileManager: FileManager,
 ) {
-
     @GetMapping
-    fun getFilesTree(@RequestParam("path", required = false)path: String?):ResponseEntity<List<String>> {
-        return ResponseEntity.ok(fileManager.showFilesTree(path))
-    }
+    fun getFilesTree(
+        @RequestParam("path", required = false)path: String?,
+    ): ResponseEntity<List<String>> = ResponseEntity.ok(fileManager.showFilesTree(path))
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun uploadFile(@RequestBody uploadFile: MultipartFile, @RequestParam path: String?) : ResponseEntity<String> {
-        return ResponseEntity.ok(fileManager.uploadFile(uploadFile, path))
-    }
+    fun uploadFile(
+        @RequestBody uploadFile: MultipartFile,
+        @RequestParam path: String?,
+    ): ResponseEntity<String> = ResponseEntity.ok(fileManager.uploadFile(uploadFile, path))
 
-    @GetMapping("/{filename:.+}",
-        produces = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun getFile(@PathVariable filename:String, @RequestParam ("path", required = false) path: String? ):ResponseEntity<ByteArray>{
-        //TODO add resolving producing type :)
+    @GetMapping(
+        "/{filename:.+}",
+        produces = [MediaType.MULTIPART_FORM_DATA_VALUE],
+    )
+    fun getFile(
+        @PathVariable filename: String,
+        @RequestParam("path", required = false) path: String?,
+    ): ResponseEntity<ByteArray> {
+        // TODO add resolving producing type :)
         return ResponseEntity.ok(fileManager.getFile(filename, path))
     }
 
     @DeleteMapping("/{filename:.+}")
-    fun deleteFile(@PathVariable filename:String, @RequestParam ("path", required = false) path: String? ):ResponseEntity<Unit>{
-        return ResponseEntity(fileManager.deleteFile(filename, path), HttpStatus.NO_CONTENT)
-    }
+    fun deleteFile(
+        @PathVariable filename: String,
+        @RequestParam("path", required = false) path: String?,
+    ): ResponseEntity<Unit> = ResponseEntity(fileManager.deleteFile(filename, path), HttpStatus.NO_CONTENT)
 }

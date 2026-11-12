@@ -22,10 +22,8 @@ import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.Test
 
-
 @ExtendWith(MockKExtension::class)
 class DirectoryManagerTest {
-
     private val appConfiguration =
         AppConfiguration(path = "${System.getProperty("user.dir")}$PATH_TO_RESOURCES")
 
@@ -36,15 +34,16 @@ class DirectoryManagerTest {
 
     @AfterTest
     fun cleanUp() {
-        val files = File("${System.getProperty("user.dir")}$PATH_TO_RESOURCES/$BASE_FOLDER").walk().filter { file ->
-            file.isDirectory
-        }
-            .map { file ->
-                file.path
-            }
-            .drop(1)
-            .sortedDescending()
-            .toList()
+        val files =
+            File("${System.getProperty("user.dir")}$PATH_TO_RESOURCES/$BASE_FOLDER")
+                .walk()
+                .filter { file ->
+                    file.isDirectory
+                }.map { file ->
+                    file.path
+                }.drop(1)
+                .sortedDescending()
+                .toList()
 
         files.forEach { s ->
             val temp = File(s)
@@ -54,10 +53,10 @@ class DirectoryManagerTest {
 
     @Test
     fun `given empty base directory and null path when show directories tree then return empty list`() {
-        //when
+        // when
         val result = service.showDirectoriesTree(null)
 
-        //then
+        // then
         result shouldHaveSize 0
     }
 
@@ -68,10 +67,10 @@ class DirectoryManagerTest {
 
         val expected = listOf("/$FIRST_NAME", "/$SECOND_NAME")
 
-        //when
+        // when
         val result = service.showDirectoriesTree(null)
 
-        //then
+        // then
         result shouldContainExactly expected
     }
 
@@ -83,23 +82,23 @@ class DirectoryManagerTest {
 
         val expected = listOf("/$FIRST_NAME/$SECOND_NAME", "/$FIRST_NAME/$THIRD_NAME")
 
-        //when
+        // when
         val result = service.showDirectoriesTree(FIRST_NAME)
 
-        //then
+        // then
         result shouldContainExactly expected
     }
 
     @Test
     fun `given directory name and path null when create directory then return path`() {
-        //given
+        // given
         val name = FIRST_NAME
         val expected = "/$FIRST_NAME"
 
-        //when
+        // when
         val result = service.addDirectory(name, null)
 
-        //then
+        // then
         assertSoftly {
             result shouldBe expected
         }
@@ -107,42 +106,42 @@ class DirectoryManagerTest {
 
     @Test
     fun `given directory name and wrong path when create directory then return CannotRealizeException`() {
-        //given
+        // given
         val name = FIRST_NAME
         val wrongPath = "/$SECOND_NAME"
         val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
 
-        //when
+        // when
         val exception = shouldThrow<CannotRealizeException> { service.addDirectory(name, wrongPath) }
 
-        //then
+        // then
         exception.message shouldBe expectedMessage
     }
 
     @Test
     fun `given exist directory name and null path when create directory then return CannotRealizeException`() {
-        //given
+        // given
         val name = FIRST_NAME
         createFolder(name)
         val expectedMessage = "Directory with name: $name in path:"
 
-        //when
+        // when
         val exception = shouldThrow<CannotRealizeException> { service.addDirectory(name, null) }
 
-        //then
+        // then
         exception.message shouldStartWith expectedMessage
     }
 
     @Test
     fun `given directories names when create directory recursively then return path to last directory`() {
-        //given
+        // given
         val names = "$FIRST_NAME/$SECOND_NAME/$THIRD_NAME"
         val expected = "/$FIRST_NAME/$SECOND_NAME/$THIRD_NAME"
 
-        //when
+        // when
         val result = service.addDirectoriesRecursively(names)
 
-        //then
+        // then
         assertSoftly {
             result shouldBe expected
         }
@@ -150,16 +149,16 @@ class DirectoryManagerTest {
 
     @Test
     fun `given name without slash when rename directory then return properly path`() {
-        //given
+        // given
         val name = SECOND_NAME
         val expected = "/$SECOND_NAME"
         val givenPath = FIRST_NAME
 
         createFolder(givenPath)
-        //when
+        // when
         val result = service.renameDirectory(name, givenPath)
 
-        //then
+        // then
         assertSoftly {
             result shouldBe expected
         }
@@ -167,16 +166,16 @@ class DirectoryManagerTest {
 
     @Test
     fun `given name with slash when rename directory then return properly path`() {
-        //given
+        // given
         val name = "/$THIRD_NAME"
         val expected = "/$THIRD_NAME"
         val givenPath = FIRST_NAME
 
         createFolder(givenPath)
-        //when
+        // when
         val result = service.renameDirectory(name, givenPath)
 
-        //then
+        // then
         assertSoftly {
             result shouldBe expected
         }
@@ -184,29 +183,29 @@ class DirectoryManagerTest {
 
     @Test
     fun `given name and non existing path when rename directory then return CannotRealizeException`() {
-        //given
+        // given
         val name = "/$THIRD_NAME"
         val givenPath = FIRST_NAME
         val expectedMessage = "Cannot rename not existing directory"
 
-        //when
+        // when
         val exception = shouldThrow<CannotRealizeException> { service.renameDirectory(name, givenPath) }
 
-        //then
+        // then
         exception.message shouldBe expectedMessage
     }
 
     @Test
     fun `given path when delete folder then result not throw error`() {
-        //given
+        // given
         val givenPath = FIRST_NAME
         val tempFolder = createFolder(givenPath)
         tempFolder.mkdir()
 
-        //when
+        // when
         service.deleteDirectory(givenPath)
 
-        //then
+        // then
         assertSoftly {
             tempFolder.exists() shouldBe false
         }
@@ -214,7 +213,7 @@ class DirectoryManagerTest {
 
     @Test
     fun `given path to not empty folder when delete folder then return CannotRealizeException`() {
-        //given
+        // given
         val givenPath = FIRST_NAME
         val tempFolder = createFolder(givenPath)
         tempFolder.mkdir()
@@ -222,10 +221,10 @@ class DirectoryManagerTest {
         file.createNewFile()
         val expectedMessage = "Cannot remove not empty directory"
 
-        //when
+        // when
         val exception = shouldThrow<CannotRealizeException> { service.deleteDirectory(givenPath) }
 
-        //then
+        // then
         exception.message shouldBe expectedMessage
     }
 

@@ -5,7 +5,9 @@ import jakarta.annotation.PostConstruct
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties("application")
-class AppConfiguration(private var path: String?) {
+class AppConfiguration(
+    private var path: String?,
+) {
     private val logger = KotlinLogging.logger {}
 
     fun getPath() = path
