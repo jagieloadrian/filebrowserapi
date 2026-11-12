@@ -5,23 +5,39 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
+import com.anjo.filebrowserapi.configuration.AppConfiguration
+import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.FileManager
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
+import io.grpc.Status
+import io.grpc.StatusException
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.io.TempDir
+import org.springframework.util.unit.DataSize
+import java.io.InputStream
+import java.nio.file.Path
+import kotlin.random.Random
 import kotlin.test.Test
 
 class FilebrowserGrpcTest {
     private val directoryManager = mockk<DirectoryManager>()
     private val fileManager = mockk<FileManager>()
-    private val service = FilebrowserGrpc(directoryManager, fileManager)
+    private val service = FilebrowserGrpc(directoryManager, fileManager, AppConfiguration(maxUploadSize = DataSize.ofBytes(16)))
+
+    @TempDir
+    private lateinit var workDir: Path
 
     @Test
     fun `should return files tree when showFilesTree is called`() =
@@ -39,46 +55,77 @@ class FilebrowserGrpcTest {
         }
 
     @Test
-    fun `should store file and return its path when uploadFile is called`() =
+    fun `should store streamed chunks and return path when uploadFile is called`() =
         runTest {
             // given
-            val content = TEST_MESSAGE.toByteArray()
             val expected = "/$FIRST_NAME/$FIRST_FILE_NAME"
-            val request =
+            val head =
                 Filebrowser.UploadFile
                     .newBuilder()
-                    .setData(content.toByteString())
                     .setName(FIRST_FILE_NAME)
-                    .setContentType("text/plain")
                     .setPath(FIRST_NAME)
+                    .setOverwrite(true)
+                    .setData("Test".toByteArray().toByteString())
                     .build()
-            every { fileManager.uploadFile(any(), FIRST_NAME) } returns expected
+            val tail =
+                Filebrowser.UploadFile
+                    .newBuilder()
+                    .setData("Message".toByteArray().toByteString())
+                    .build()
+            var received = ""
+            every { fileManager.uploadFile(FIRST_FILE_NAME, any(), FIRST_NAME, true) } answers {
+                received = secondArg<InputStream>().readBytes().decodeToString()
+                expected
+            }
 
             // when
-            val result = service.uploadFile(request)
+            val result = service.uploadFile(flowOf(head, tail))
 
             // then
             result.path shouldBe expected
-            verify(exactly = 1) {
-                fileManager.uploadFile(
-                    match { it.originalFilename == FIRST_FILE_NAME && it.bytes.contentEquals(content) },
-                    FIRST_NAME,
-                )
-            }
+            received shouldBe TEST_MESSAGE
         }
 
     @Test
-    fun `should return file bytes when getFile is called`() =
+    fun `should throw RESOURCE_EXHAUSTED when upload stream exceeds max upload size`() =
         runTest {
             // given
-            val expected = TEST_MESSAGE.toByteArray()
-            every { fileManager.getFile(FIRST_FILE_NAME, FIRST_NAME) } returns expected
+            val chunk =
+                Filebrowser.UploadFile
+                    .newBuilder()
+                    .setName(FIRST_FILE_NAME)
+                    .setData(ByteArray(10).toByteString())
+                    .build()
 
             // when
-            val result = service.getFile(fileOperation(FIRST_FILE_NAME, FIRST_NAME))
+            val result = shouldThrow<StatusException> { service.uploadFile(flowOf(chunk, chunk)) }
 
             // then
-            result.data.toByteArray() shouldBe expected
+            result.status.code shouldBe Status.Code.RESOURCE_EXHAUSTED
+            verify(exactly = 0) { fileManager.uploadFile(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun `should throw BadInputException when upload stream is empty`() =
+        runTest {
+            // when & then
+            shouldThrow<BadInputException> { service.uploadFile(emptyFlow()) }
+        }
+
+    @Test
+    fun `should stream file in chunks when getFile is called`() =
+        runTest {
+            // given
+            val expected = Random.nextBytes(CHUNK_SIZE * 2 + 1)
+            every { fileManager.getFile(FIRST_FILE_NAME, FIRST_NAME) } returns
+                workDir.resolve(FIRST_FILE_NAME).toFile().apply { writeBytes(expected) }
+
+            // when
+            val result = service.getFile(fileOperation(FIRST_FILE_NAME, FIRST_NAME)).toList()
+
+            // then
+            result.map { it.data.size() } shouldBe listOf(CHUNK_SIZE, CHUNK_SIZE, 1)
+            result.fold(ByteArray(0)) { acc, chunk -> acc + chunk.data.toByteArray() } shouldBe expected
         }
 
     @Test

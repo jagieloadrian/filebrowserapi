@@ -1,16 +1,17 @@
 package com.anjo.filebrowserapi.service
 
+import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
-import com.anjo.filebrowserapi.exception.CannotRealizeException
+import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType.CREATE
 import com.anjo.filebrowserapi.model.OperationType.DELETE
 import com.anjo.filebrowserapi.model.OperationType.READ
 import com.anjo.filebrowserapi.utils.formatResponsePath
 import org.springframework.stereotype.Service
-import org.springframework.web.multipart.MultipartFile
 import java.io.File
+import java.io.InputStream
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -36,27 +37,34 @@ class FileManager(
     }
 
     fun uploadFile(
-        uploadFile: MultipartFile,
+        originalName: String?,
+        content: InputStream,
         path: String?,
+        overwrite: Boolean = false,
     ): String {
         modifierUtils.validPath(path, CREATE)
-        val fileName = validFileName(uploadFile.originalFilename)
-        val mergedPath = "${modifierUtils.mergePath(path)}/$fileName"
-        val targetLocation = Path.of(mergedPath)
+        val fileName = validFileName(originalName)
+        val target = modifierUtils.resolveName(path, fileName)
+        if (target.isDirectory) throw AlreadyExistsException("Directory $fileName already exists")
 
-        Files.copy(uploadFile.inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING)
+        val options = if (overwrite) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
+        try {
+            Files.copy(content, target.toPath(), *options)
+        } catch (_: FileAlreadyExistsException) {
+            throw AlreadyExistsException("File $fileName already exists")
+        }
 
-        return formatResponsePath(mergedPath, defaultPath)
+        return formatResponsePath(target.path, defaultPath)
     }
 
     fun getFile(
         fileName: String,
         path: String?,
-    ): ByteArray {
+    ): File {
         modifierUtils.validPath(path, READ)
-        val mergedPath = "${modifierUtils.mergePath(path)}/$fileName"
-        val targetFile = File(mergedPath)
-        return targetFile.readBytes()
+        val file = modifierUtils.resolveName(path, fileName)
+        requireFile(file, "File $fileName does not exist")
+        return file
     }
 
     fun renameFile(
@@ -66,20 +74,21 @@ class FileManager(
         val validPath = path?.let { modifierUtils.formatPath(it) } ?: defaultPath
         val extractMidPath = modifierUtils.extractMidPath(validPath)
 
-        val sourceFile = File("$defaultPath/$path")
-        val targetPath = modifierUtils.generatePathToRename(extractMidPath, newName)
-        val targetDir = File(targetPath)
+        val sourceFile = modifierUtils.resolveEntry(path)
+        val targetFile = File(modifierUtils.generatePathToRename(extractMidPath, newName))
+        requireFile(sourceFile, "Cannot rename not existing file")
+        if (targetFile.exists()) throw AlreadyExistsException("File $newName already exists")
 
-        if (sourceFile.renameTo(targetDir)) {
-            checkIfSuccess(targetDir)
-            return formatResponsePath(targetDir.path, defaultPath)
-        } else {
-            throw CannotRealizeException("Cannot rename not existing directory")
-        }
+        Files.move(sourceFile.toPath(), targetFile.toPath())
+        return formatResponsePath(targetFile.path, defaultPath)
     }
 
-    private fun checkIfSuccess(targetDir: File) {
-        if (!targetDir.isFile) throw CannotRealizeException("Exception during operation")
+    private fun requireFile(
+        file: File,
+        missingMessage: String,
+    ) {
+        if (!file.exists()) throw NotFoundException(missingMessage)
+        if (!file.isFile) throw BadInputException("Path ${formatResponsePath(file.path, defaultPath)} is not a file")
     }
 
     fun deleteFile(
@@ -87,12 +96,9 @@ class FileManager(
         path: String?,
     ) {
         modifierUtils.validPath(path, DELETE)
-        val mergedPath = "${modifierUtils.mergePath(path)}/$fileName"
-
-        val file = File(mergedPath)
-        if (!file.delete()) {
-            throw BadInputException("Cannot remove non existing file")
-        }
+        val file = modifierUtils.resolveName(path, fileName)
+        requireFile(file, "Cannot remove non existing file")
+        Files.delete(file.toPath())
     }
 
     private fun validFileName(filename: String?): String =

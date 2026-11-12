@@ -1,37 +1,48 @@
 package com.anjo.filebrowserapi.service
 
 import com.anjo.filebrowserapi.configuration.AppConfiguration
-import com.anjo.filebrowserapi.exception.CannotRealizeException
+import com.anjo.filebrowserapi.exception.BadInputException
+import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
+import com.anjo.filebrowserapi.validation.NAME_RULE
+import com.anjo.filebrowserapi.validation.isValidName
 import org.springframework.stereotype.Service
 import java.io.File
+import java.nio.file.Path
+
+private const val BASE_FOLDER = "filebrowser"
 
 @Service
 class PathModifierUtils(
     private val properties: AppConfiguration,
 ) {
-    private val baseDirectory = "/filebrowser"
+    private val baseDirectory: Path = Path.of(properties.path, BASE_FOLDER).toAbsolutePath().normalize()
 
     init {
-        val baseFolder = File("${properties.path}$baseDirectory")
+        val baseFolder = baseDirectory.toFile()
         if (!baseFolder.exists()) {
             baseFolder.mkdir()
         }
     }
 
-    fun mergePath(path: String?): String {
-        val calculatePath =
-            path?.let {
-                if (it.isNotBlank()) {
-                    "${generateDefaultPath()}/${formatPath(path)}"
-                } else {
-                    generateDefaultPath()
-                }
-            } ?: run {
-                generateDefaultPath()
-            }
-        return calculatePath
+    fun resolve(vararg segments: String?): File {
+        val target =
+            segments
+                .filterNotNull()
+                .filter { it.isNotBlank() }
+                .fold(baseDirectory) { parent, segment -> parent.resolve(segment.trimStart('/')) }
+                .normalize()
+        if (!target.startsWith(baseDirectory)) throw BadInputException("Path is outside the base directory")
+        return target.toFile()
     }
+
+    fun resolveEntry(vararg segments: String?): File {
+        val target = resolve(*segments)
+        if (target.toPath() == baseDirectory) throw BadInputException("The base directory cannot be changed")
+        return target
+    }
+
+    fun mergePath(path: String?): String = resolve(path).path
 
     fun validPath(
         path: String?,
@@ -44,9 +55,9 @@ class PathModifierUtils(
         path: String,
         operationType: OperationType,
     ) {
-        val extractFile = File("${generateDefaultPath()}/$path")
+        val extractFile = resolve(path)
         if (!extractFile.exists()) {
-            throw CannotRealizeException("Path: $path to ${operationType.description} file or directory is not exist")
+            throw NotFoundException("Path: $path to ${operationType.description} file or directory is not exist")
         }
     }
 
@@ -55,15 +66,17 @@ class PathModifierUtils(
     fun generatePathToRename(
         extractMidPath: List<String>,
         newName: String,
-    ): String =
-        if (extractMidPath.isNotEmpty()) {
-            val joinMidPath = extractMidPath.joinToString(separator = "/")
-            "${generateDefaultPath()}/$joinMidPath/$newName"
-        } else {
-            "${generateDefaultPath()}/$newName"
-        }
+    ): String = resolveEntry(*extractMidPath.toTypedArray(), requireName(newName)).path
 
-    fun generateDefaultPath(): String = properties.path + baseDirectory
+    fun resolveName(
+        parent: String?,
+        name: String,
+    ): File = resolveEntry(parent, requireName(name))
+
+    private fun requireName(name: String): String =
+        name.also { if (!isValidName(it)) throw BadInputException("Invalid name '$it': $NAME_RULE") }
+
+    fun generateDefaultPath(): String = baseDirectory.toString()
 
     fun formatPath(path: String): String = if (path.first() == '/') path.drop(1) else path
 }

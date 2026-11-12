@@ -30,12 +30,21 @@ How to run app locally
 
    *OR* 
 * Use gradle, build project, in working directory go to `build/libs` and in here set in command line
-   `java -Dapplication.path="yourWorkingPath" -jar filebrowserapi-0.0.1-SNAPSHOT.jar`, where `yourWorkingPath` is a path direct to your folder,
+   `java -Dapplication.path="yourWorkingPath" -jar filebrowserapi.jar`, where `yourWorkingPath` is a path direct to your folder,
    where app will be working.
 
  Path to swagger: [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)
 
    The app creates the `filebrowser` directory inside that path on startup.
+
+### API rules
+* `application.max-upload-size` (default `1GB`, env `APPLICATION_MAX_UPLOAD_SIZE`) limits one upload: REST answers 413,
+  gRPC `RESOURCE_EXHAUSTED`.
+* An upload never replaces an existing file unless it sets `overwrite` (REST `?overwrite=true`, gRPC field `overwrite`);
+  otherwise 409 / `ALREADY_EXISTS`.
+* Names must not be blank or contain `/` (400 / `INVALID_ARGUMENT`); no path may leave the base directory.
+* gRPC `uploadFile` is client-streaming (name, path and `overwrite` in the first message); `getFile` streams 64 KiB
+  chunks. REST downloads carry the file's `Content-Type` and an attachment `Content-Disposition`.
 
 
 ## Container image

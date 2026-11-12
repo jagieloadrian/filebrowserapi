@@ -5,20 +5,31 @@ import com.anjo.filebrowser.Filebrowser.FileResponse
 import com.anjo.filebrowser.Filebrowser.StringResponse
 import com.anjo.filebrowser.Filebrowser.StringsResponse
 import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
+import com.anjo.filebrowserapi.configuration.AppConfiguration
+import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.FileManager
-import com.anjo.filebrowserapi.utils.ByteArrayToMultiPartFile
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
+import io.grpc.Status
+import io.grpc.StatusException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
-import org.springframework.web.multipart.MultipartFile
+import java.nio.file.Files
+
+internal const val CHUNK_SIZE = 64 * 1024
 
 @Profile("server")
 @Service
 class FilebrowserGrpc(
     private val directoryManager: DirectoryManager,
     private val fileManager: FileManager,
+    private val properties: AppConfiguration,
 ) : FilebrowserApiCoroutineImplBase() {
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
         val fileTree = fileManager.showFilesTree(request.path)
@@ -28,24 +39,49 @@ class FilebrowserGrpc(
             .build()
     }
 
-    override suspend fun uploadFile(request: Filebrowser.UploadFile): StringResponse {
-        val uploadFileLocation =
-            with(getMultipartFile(request)) {
-                fileManager.uploadFile(this, request.path)
+    override suspend fun uploadFile(requests: Flow<Filebrowser.UploadFile>): StringResponse =
+        withContext(Dispatchers.IO) {
+            val spool = Files.createTempFile("upload-", null)
+            try {
+                var head: Filebrowser.UploadFile? = null
+                var size = 0L
+                Files.newOutputStream(spool).use { out ->
+                    requests.collect { chunk ->
+                        size += chunk.data.size()
+                        if (size > properties.maxUploadSize.toBytes()) {
+                            throw StatusException(Status.RESOURCE_EXHAUSTED.withDescription("Upload exceeds the maximum upload size"))
+                        }
+                        head = head ?: chunk
+                        chunk.data.writeTo(out)
+                    }
+                }
+                val metadata = head ?: throw BadInputException("Upload stream is empty")
+                val path =
+                    Files.newInputStream(spool).use {
+                        fileManager.uploadFile(metadata.name, it, metadata.path, metadata.overwrite)
+                    }
+                StringResponse
+                    .newBuilder()
+                    .setPath(path)
+                    .build()
+            } finally {
+                Files.deleteIfExists(spool)
             }
-        return StringResponse
-            .newBuilder()
-            .setPath(uploadFileLocation)
-            .build()
-    }
+        }
 
-    override suspend fun getFile(request: Filebrowser.FileOperation): FileResponse {
-        val file = fileManager.getFile(request.name, request.path)
-        return FileResponse
-            .newBuilder()
-            .setData(file.toByteString())
-            .build()
-    }
+    override fun getFile(request: Filebrowser.FileOperation): Flow<FileResponse> =
+        flow {
+            fileManager.getFile(request.name, request.path).inputStream().use { input ->
+                generateSequence { input.readNBytes(CHUNK_SIZE).takeIf { it.isNotEmpty() } }.forEach { chunk ->
+                    emit(
+                        FileResponse
+                            .newBuilder()
+                            .setData(chunk.toByteString())
+                            .build(),
+                    )
+                }
+            }
+        }.flowOn(Dispatchers.IO)
 
     override suspend fun renameFile(request: Filebrowser.FileOperation): StringResponse {
         val filePath = fileManager.renameFile(request.name, request.path)
@@ -100,7 +136,4 @@ class FilebrowserGrpc(
             .newBuilder()
             .build()
     }
-
-    private fun getMultipartFile(request: Filebrowser.UploadFile): MultipartFile =
-        ByteArrayToMultiPartFile(request.data.toByteArray(), request.name, request.contentType)
 }

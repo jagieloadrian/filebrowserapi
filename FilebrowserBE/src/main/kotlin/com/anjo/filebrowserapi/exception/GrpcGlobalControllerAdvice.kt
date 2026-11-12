@@ -64,8 +64,7 @@ class GrpcGlobalControllerAdvice : ServerInterceptor {
             when (exception) {
                 is IllegalArgumentException -> Status.INVALID_ARGUMENT.withDescription(exception.message)
                 is IllegalStateException -> Status.FAILED_PRECONDITION.withDescription(exception.message)
-                is CannotRealizeException -> Status.DATA_LOSS.withDescription(exception.message)
-                is BadInputException -> Status.INVALID_ARGUMENT.withDescription(exception.message)
+                is FileBrowserException -> grpcStatus(exception).withDescription(exception.message)
                 else ->
                     Status.UNKNOWN
                         .withDescription("Unexpected error occurred")
@@ -73,4 +72,12 @@ class GrpcGlobalControllerAdvice : ServerInterceptor {
             }
         return status
     }
+
+    private fun grpcStatus(exception: FileBrowserException): Status =
+        when (exception) {
+            is BadInputException -> Status.INVALID_ARGUMENT
+            is NotFoundException -> Status.NOT_FOUND
+            is AlreadyExistsException -> Status.ALREADY_EXISTS
+            is NotEmptyException -> Status.FAILED_PRECONDITION
+        }
 }

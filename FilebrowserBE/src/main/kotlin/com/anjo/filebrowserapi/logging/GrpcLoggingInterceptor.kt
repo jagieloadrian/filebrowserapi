@@ -18,7 +18,7 @@ class GrpcLoggingInterceptor : ServerInterceptor {
         next: ServerCallHandler<ReqT, RespT>?,
     ): ServerCall.Listener<ReqT> {
         val methodName = call?.methodDescriptor?.fullMethodName
-        logger.info { "Received gRPC call: $methodName with headers: $headers" }
+        logger.info { "Received gRPC call: $methodName" }
 
         val startTime = System.currentTimeMillis()
         return object : ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(

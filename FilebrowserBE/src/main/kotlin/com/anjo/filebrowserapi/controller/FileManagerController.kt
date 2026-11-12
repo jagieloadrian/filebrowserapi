@@ -2,8 +2,13 @@ package com.anjo.filebrowserapi.controller
 
 import com.anjo.filebrowserapi.service.FileManager
 import org.springframework.context.annotation.Profile
+import org.springframework.core.io.FileSystemResource
+import org.springframework.core.io.Resource
+import org.springframework.http.ContentDisposition
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.http.MediaTypeFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
+import java.nio.charset.StandardCharsets
 
 @RestController
 @Profile("web")
@@ -30,16 +36,28 @@ class FileManagerController(
     fun uploadFile(
         @RequestBody uploadFile: MultipartFile,
         @RequestParam path: String?,
-    ): ResponseEntity<String> = ResponseEntity.ok(fileManager.uploadFile(uploadFile, path))
+        @RequestParam(defaultValue = "false") overwrite: Boolean,
+    ): ResponseEntity<String> =
+        ResponseEntity.ok(fileManager.uploadFile(uploadFile.originalFilename, uploadFile.inputStream, path, overwrite))
 
-    @GetMapping(
-        "/{filename:.+}",
-        produces = [MediaType.MULTIPART_FORM_DATA_VALUE],
-    )
+    @GetMapping("/{filename:.+}")
     fun getFile(
         @PathVariable filename: String,
         @RequestParam("path", required = false) path: String?,
-    ): ResponseEntity<ByteArray> = ResponseEntity.ok(fileManager.getFile(filename, path))
+    ): ResponseEntity<Resource> {
+        val file = fileManager.getFile(filename, path)
+        return ResponseEntity
+            .ok()
+            .contentType(MediaTypeFactory.getMediaType(file.name).orElse(MediaType.APPLICATION_OCTET_STREAM))
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition
+                    .attachment()
+                    .filename(file.name, StandardCharsets.UTF_8)
+                    .build()
+                    .toString(),
+            ).body(FileSystemResource(file))
+    }
 
     @DeleteMapping("/{filename:.+}")
     fun deleteFile(

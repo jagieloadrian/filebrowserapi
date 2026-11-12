@@ -5,10 +5,13 @@ import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.verify
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.test.context.ActiveProfiles
@@ -51,6 +54,35 @@ class DirectoryManagerControllerTest(
         // then
         response.status shouldBe 201
         response.contentAsString shouldBe "/$FIRST_NAME"
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [" ", "a/b"])
+    fun `should return 400 with details when directory name is blank or contains slash`(input: String) {
+        // when
+        val response = mockMvc.post(DIRECTORIES) { param("directoryName", input) }.andReturn().response
+
+        // then
+        response.status shouldBe 400
+        response.contentAsString shouldContain "\"details\":[\"directoryName: must not be blank or contain '/'\"]"
+        verify(exactly = 0) { service.addDirectory(any(), any()) }
+    }
+
+    @Test
+    fun `should return 400 with details when new directory name contains slash`() {
+        // when
+        val response =
+            mockMvc
+                .patch(DIRECTORIES) {
+                    param("sourcePath", FIRST_NAME)
+                    param("newDirName", "a/b")
+                }.andReturn()
+                .response
+
+        // then
+        response.status shouldBe 400
+        response.contentAsString shouldContain "\"details\":[\"newDirName: must not be blank or contain '/'\"]"
+        verify(exactly = 0) { service.renameDirectory(any(), any()) }
     }
 
     @Test

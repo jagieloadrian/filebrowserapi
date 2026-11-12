@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "com.anjo"
-version = "1.0-SNPASHOT"
+version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -19,6 +19,8 @@ repositories {
 dependencies {
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.spring.boot.starter.validation)
+    implementation(libs.coroutines.core)
     implementation(libs.micrometer.prometheus)
     implementation(libs.micrometer.tracing.otel)
     implementation(libs.jackson.module.kotlin)
@@ -33,6 +35,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.springmockk)
     testImplementation(libs.kotest.assertions)
+    testImplementation(libs.kotest.property)
     testImplementation(libs.coroutines.test)
     testImplementation(kotlin("test"))
 }

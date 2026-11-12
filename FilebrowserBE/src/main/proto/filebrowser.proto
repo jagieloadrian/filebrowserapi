@@ -6,8 +6,8 @@ package com.anjo.filebrowser;
 
 service FilebrowserApi {
   rpc showFilesTree(PathRequest)returns (StringsResponse);
-  rpc uploadFile(UploadFile)returns (StringResponse);
-  rpc getFile(FileOperation)returns (FileResponse);
+  rpc uploadFile(stream UploadFile)returns (StringResponse);
+  rpc getFile(FileOperation)returns (stream FileResponse);
   rpc renameFile(FileOperation)returns (StringResponse);
   rpc deleteFile(FileOperation)returns (google.protobuf.Empty);
   rpc showDirectoriesTree(PathRequest)returns (StringsResponse);
@@ -37,8 +37,10 @@ message FileOperation {
 message UploadFile {
   bytes data = 1;
   string name = 2;
-  string contentType = 3;
+  reserved 3;
+  reserved "contentType";
   optional string path = 4;
+  bool overwrite = 5;
 }
 
 message FileResponse {
