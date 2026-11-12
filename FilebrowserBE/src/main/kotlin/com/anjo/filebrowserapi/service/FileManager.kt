@@ -8,8 +8,8 @@ import com.anjo.filebrowserapi.model.OperationType.DELETE
 import com.anjo.filebrowserapi.model.OperationType.READ
 import com.anjo.filebrowserapi.utils.formatResponsePath
 import org.springframework.stereotype.Service
-import org.springframework.web.multipart.MultipartFile
 import java.io.File
+import java.io.InputStream
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -37,18 +37,19 @@ class FileManager(
     }
 
     fun uploadFile(
-        uploadFile: MultipartFile,
+        originalName: String?,
+        content: InputStream,
         path: String?,
         overwrite: Boolean = false,
     ): String {
         modifierUtils.validPath(path, CREATE)
-        val fileName = validFileName(uploadFile.originalFilename)
+        val fileName = validFileName(originalName)
         val target = modifierUtils.resolveName(path, fileName)
         if (target.isDirectory) throw AlreadyExistsException("Directory $fileName already exists")
 
         val options = if (overwrite) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
         try {
-            Files.copy(uploadFile.inputStream, target.toPath(), *options)
+            Files.copy(content, target.toPath(), *options)
         } catch (_: FileAlreadyExistsException) {
             throw AlreadyExistsException("File $fileName already exists")
         }

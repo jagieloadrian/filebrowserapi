@@ -18,8 +18,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
-import org.springframework.mock.web.MockMultipartFile
-import org.springframework.web.multipart.MultipartFile
 import java.io.File
 import java.nio.file.Path
 import kotlin.test.Test
@@ -79,11 +77,10 @@ class FileManagerTest {
     @Test
     fun `should return file path when uploading file without path`() {
         // given
-        val multipartFile: MultipartFile = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", ByteArray(1))
         val expected = "/${FIRST_FILE_NAME}"
 
         // when
-        val result = service.uploadFile(multipartFile, null)
+        val result = service.uploadFile(FIRST_FILE_NAME, ByteArray(1).inputStream(), null)
 
         // then
         assertSoftly {
@@ -96,11 +93,10 @@ class FileManagerTest {
         // given
         val wrongPath = "/${SECOND_NAME}"
         val file = createFile(FIRST_FILE_NAME)
-        val multipartFile: MultipartFile = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", file.inputStream())
         val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
 
         // when
-        val exception = shouldThrow<NotFoundException> { service.uploadFile(multipartFile, wrongPath) }
+        val exception = shouldThrow<NotFoundException> { service.uploadFile(FIRST_FILE_NAME, file.inputStream(), wrongPath) }
 
         // then
         exception.message shouldBe expectedMessage
@@ -110,10 +106,9 @@ class FileManagerTest {
     fun `should throw AlreadyExistsException when uploaded file exists and overwrite is false`() {
         // given
         createFile(FIRST_FILE_NAME).writeText(TEST_MESSAGE)
-        val input = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", "new".toByteArray())
 
         // when
-        val exception = shouldThrow<AlreadyExistsException> { service.uploadFile(input, null) }
+        val exception = shouldThrow<AlreadyExistsException> { service.uploadFile(FIRST_FILE_NAME, "new".byteInputStream(), null) }
 
         // then
         exception.message shouldBe "File $FIRST_FILE_NAME already exists"
@@ -124,10 +119,9 @@ class FileManagerTest {
     fun `should replace file content when uploaded file exists and overwrite is true`() {
         // given
         createFile(FIRST_FILE_NAME).writeText(TEST_MESSAGE)
-        val input = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", "new".toByteArray())
 
         // when
-        val result = service.uploadFile(input, null, overwrite = true)
+        val result = service.uploadFile(FIRST_FILE_NAME, "new".byteInputStream(), null, overwrite = true)
 
         // then
         result shouldBe "/$FIRST_FILE_NAME"
@@ -138,10 +132,9 @@ class FileManagerTest {
     fun `should throw AlreadyExistsException when uploaded file name is a directory and overwrite is true`() {
         // given
         createFolder(FIRST_NAME)
-        val input = MockMultipartFile("file", FIRST_NAME, "text/plain", "new".toByteArray())
 
         // when & then
-        shouldThrow<AlreadyExistsException> { service.uploadFile(input, null, overwrite = true) }
+        shouldThrow<AlreadyExistsException> { service.uploadFile(FIRST_NAME, "new".byteInputStream(), null, overwrite = true) }
         File("$baseFolder/$FIRST_NAME").isDirectory shouldBe true
     }
 
@@ -241,10 +234,9 @@ class FileManagerTest {
     @Test
     fun `should store file under generated txt name when uploaded file has no name`() {
         // given
-        val input = MockMultipartFile("file", null, "text/plain", "content".toByteArray())
 
         // when
-        val result = service.uploadFile(input, null)
+        val result = service.uploadFile(null, "content".byteInputStream(), null)
 
         // then
         result shouldMatch Regex("^/[0-9a-f-]{8}-\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}\\.txt$")
@@ -272,7 +264,7 @@ class FileManagerTest {
     @Test
     fun `should throw BadInputException when uploadFile leaves base directory`() {
         // when & then
-        shouldThrow<BadInputException> { service.uploadFile(MockMultipartFile("file", "../evil.txt", "text/plain", ByteArray(1)), null) }
+        shouldThrow<BadInputException> { service.uploadFile("../evil.txt", ByteArray(1).inputStream(), null) }
     }
 
     @Test

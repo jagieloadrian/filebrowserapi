@@ -55,7 +55,7 @@ class FileManagerControllerTest(
     fun `should return stored path when file is uploaded`() {
         // given
         val input = MockMultipartFile("uploadFile", FIRST_FILE_NAME, "text/plain", TEST_MESSAGE.toByteArray())
-        every { service.uploadFile(any(), FIRST_NAME) } returns "/$FIRST_NAME/$FIRST_FILE_NAME"
+        every { service.uploadFile(FIRST_FILE_NAME, any(), FIRST_NAME) } returns "/$FIRST_NAME/$FIRST_FILE_NAME"
 
         // when
         val response =
@@ -75,7 +75,7 @@ class FileManagerControllerTest(
     fun `should pass overwrite flag to service when upload sets overwrite`() {
         // given
         val input = MockMultipartFile("uploadFile", FIRST_FILE_NAME, "text/plain", TEST_MESSAGE.toByteArray())
-        every { service.uploadFile(any(), null, true) } returns "/$FIRST_FILE_NAME"
+        every { service.uploadFile(FIRST_FILE_NAME, any(), null, true) } returns "/$FIRST_FILE_NAME"
 
         // when
         val response =
@@ -88,7 +88,7 @@ class FileManagerControllerTest(
 
         // then
         response.status shouldBe 200
-        verify(exactly = 1) { service.uploadFile(any(), null, true) }
+        verify(exactly = 1) { service.uploadFile(FIRST_FILE_NAME, any(), null, true) }
     }
 
     @ParameterizedTest
