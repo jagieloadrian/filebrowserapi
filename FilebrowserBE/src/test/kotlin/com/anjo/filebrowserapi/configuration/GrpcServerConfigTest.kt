@@ -13,6 +13,7 @@ import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.FileManager
 import io.grpc.ManagedChannelBuilder
 import io.grpc.Status
+import io.grpc.StatusException
 import io.grpc.StatusRuntimeException
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
@@ -110,6 +111,11 @@ class GrpcServerConfigTest {
                 Arguments.of(IllegalArgumentException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
                 Arguments.of(IllegalStateException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),
                 Arguments.of(RuntimeException(TEST_MESSAGE), Status.Code.UNKNOWN, "Unexpected error occurred"),
+                Arguments.of(
+                    StatusException(Status.NOT_FOUND.withDescription(TEST_MESSAGE)),
+                    Status.Code.NOT_FOUND,
+                    TEST_MESSAGE,
+                ),
             )
     }
 }

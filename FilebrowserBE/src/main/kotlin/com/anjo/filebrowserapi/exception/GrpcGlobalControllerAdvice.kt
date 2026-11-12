@@ -27,8 +27,8 @@ class GrpcGlobalControllerAdvice : ServerInterceptor {
                         trailers: Metadata,
                     ) {
                         if (!status.isOk) {
-                            val newStatus = status.cause?.let { getStatus(it, call) }
-                            logger.error(newStatus?.cause) { "gRPC call failed: ${newStatus?.description}" }
+                            val newStatus = status.cause?.let { getStatus(it, call) } ?: status
+                            logger.error(newStatus.cause) { "gRPC call failed: ${newStatus.description}" }
                             super.close(newStatus, trailers)
                         } else {
                             super.close(status, trailers)
