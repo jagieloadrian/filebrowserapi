@@ -57,6 +57,7 @@ class ObservabilityEndpointsTest(
         fun properties(registry: DynamicPropertyRegistry) {
             val workDir = Files.createTempDirectory("filebrowser-observability")
             registry.add("application.path") { workDir.toString() }
+            TestTokens.register(registry)
         }
     }
 }

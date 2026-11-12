@@ -13,6 +13,7 @@ import io.mockk.verify
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -23,6 +24,7 @@ import org.springframework.test.web.servlet.post
 import kotlin.test.Test
 
 @WebMvcTest(DirectoryManagerController::class)
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("web")
 class DirectoryManagerControllerTest(
     @Autowired private val mockMvc: MockMvc,

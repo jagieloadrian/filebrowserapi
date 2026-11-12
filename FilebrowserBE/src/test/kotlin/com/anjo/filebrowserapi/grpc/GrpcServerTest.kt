@@ -5,6 +5,7 @@ import com.anjo.filebrowser.FilebrowserApiGrpc
 import com.anjo.filebrowser.FilebrowserApiGrpcKt
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
+import com.anjo.filebrowserapi.TestTokens
 import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotEmptyException
@@ -56,7 +57,17 @@ class GrpcServerTest(
     private lateinit var fileManager: FileManager
 
     private val channel = ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build()
-    private val stub = FilebrowserApiGrpc.newBlockingStub(channel).withDeadlineAfter(5, TimeUnit.SECONDS)
+    private val writer =
+        MetadataUtils.newAttachHeadersInterceptor(
+            Metadata().apply {
+                put(Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER), "Bearer ${TestTokens.token(TestTokens.WRITER)}")
+            },
+        )
+    private val stub =
+        FilebrowserApiGrpc
+            .newBlockingStub(channel)
+            .withInterceptors(writer)
+            .withDeadlineAfter(5, TimeUnit.SECONDS)
 
     @AfterTest
     fun stop() {
@@ -131,7 +142,7 @@ class GrpcServerTest(
                 }
 
             // when
-            val result = FilebrowserApiGrpcKt.FilebrowserApiCoroutineStub(channel).uploadFile(chunks.asFlow())
+            val result = FilebrowserApiGrpcKt.FilebrowserApiCoroutineStub(channel).withInterceptors(writer).uploadFile(chunks.asFlow())
 
             // then
             result.path shouldBe "/$FIRST_NAME"
@@ -196,6 +207,7 @@ class GrpcServerTest(
         fun properties(registry: DynamicPropertyRegistry) {
             val workDir = Files.createTempDirectory("filebrowser-grpc")
             registry.add("application.path") { workDir.toString() }
+            TestTokens.register(registry)
         }
     }
 }

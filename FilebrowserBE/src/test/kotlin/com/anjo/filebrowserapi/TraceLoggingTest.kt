@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.system.CapturedOutput
 import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -36,7 +37,10 @@ class TraceLoggingTest(
         every { fileManager.showFilesTree(null) } throws RuntimeException("boom")
 
         // when
-        mockMvc.get("/api/v1/files") { header("traceparent", "00-$TRACE_ID-00f067aa0ba902b7-01") }
+        mockMvc.get("/api/v1/files") {
+            header("traceparent", "00-$TRACE_ID-00f067aa0ba902b7-01")
+            header(HttpHeaders.AUTHORIZATION, "Bearer ${TestTokens.token(TestTokens.READER)}")
+        }
 
         // then
         output.out shouldContain TRACE_ID
@@ -48,6 +52,7 @@ class TraceLoggingTest(
         fun properties(registry: DynamicPropertyRegistry) {
             val workDir = Files.createTempDirectory("filebrowser-trace")
             registry.add("application.path") { workDir.toString() }
+            TestTokens.register(registry)
         }
     }
 }

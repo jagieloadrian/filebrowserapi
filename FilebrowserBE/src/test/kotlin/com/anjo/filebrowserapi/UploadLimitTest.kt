@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.ByteArrayResource
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -40,6 +41,7 @@ class UploadLimitTest(
                 .post()
                 .uri("/api/v1/files")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer ${TestTokens.token(TestTokens.WRITER)}")
                 .body(input)
                 .exchange()
                 .returnResult(String::class.java)
@@ -55,6 +57,7 @@ class UploadLimitTest(
         fun properties(registry: DynamicPropertyRegistry) {
             val workDir = Files.createTempDirectory("filebrowser-upload-limit")
             registry.add("application.path") { workDir.toString() }
+            TestTokens.register(registry)
         }
     }
 }

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders
@@ -31,6 +32,7 @@ import java.nio.file.Path
 import kotlin.test.Test
 
 @WebMvcTest(FileManagerController::class)
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("web")
 class FileManagerControllerTest(
     @Autowired private val mockMvc: MockMvc,
