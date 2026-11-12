@@ -68,8 +68,8 @@ Done when: REST and gRPC expose the same operations and both profiles report hea
 1. Spring Security + OAuth2 Resource Server (JWT), Keycloak as identity provider.
 2. The same JWT check in gRPC through a `ServerInterceptor`.
 3. Every protected route gets a test that expects 401 without credentials.
-4. Decide where roles live. The standards keep roles in the platform, not in the identity provider, which needs a
-   user store; that conflicts with "no database until needed" (phase 5).
+4. Roles come from the OIDC provider: Keycloak realm or client roles in the JWT, mapped to Spring authorities and
+   checked the same way in the gRPC interceptor. No user store in the app.
 5. Optional: per-user directories (`/data/filebrowser/<user>`).
 
 Done when: every REST route and RPC rejects unauthenticated calls and no token appears in logs.
@@ -85,7 +85,7 @@ Done when: a push to `main` rolls the new image out to the cluster.
 1. Copy and move files and directories, recursive delete with confirmation.
 2. File metadata in responses (size, modification date, type) instead of bare paths.
 3. Search by name or extension.
-4. A database only when data appears that the file system cannot hold (sharing, tags, permissions, roles).
+4. A database only when data appears that the file system cannot hold (sharing, tags, permissions).
 
 ## Phase 6: FilebrowserUI
 1. Decide: build a client (Compose Multiplatform or web SPA) or delete the stub module.

@@ -36,6 +36,8 @@ Project aligned with the coding standards from the `standards` MCP server:
 - Not applied, needs input or later phases: Helm/Flux deploy (`.devops/helm`), `runLocal` task, OIDC, Testcontainers
   (no database), gRPC health/tracing.
 - Earlier commits on `main` carry `Co-Authored-By` trailers; history was not rewritten.
+- 2026-11-12: roles will come from the OIDC provider (Keycloak JWT), not from an app user store; the owner
+  updates the standards to match.
 
 ## Next steps and risks
 - P0: path traversal in `PathModifierUtils` (roadmap phase 1). Do not expose the service publicly until fixed.
