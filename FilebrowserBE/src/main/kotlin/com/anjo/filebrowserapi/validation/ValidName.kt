@@ -10,6 +10,10 @@ const val NAME_RULE = "must not be blank or contain '/'"
 
 fun isValidName(value: String): Boolean = value.isNotBlank() && '/' !in value
 
+private val SUBJECT = Regex("[A-Za-z0-9][A-Za-z0-9._@-]*")
+
+fun isValidSubject(value: String): Boolean = SUBJECT.matches(value)
+
 @Target(AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.RUNTIME)
 @Constraint(validatedBy = [ValidNameValidator::class])

@@ -6,6 +6,7 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
+import com.anjo.filebrowserapi.TestObjects.signIn
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
@@ -16,8 +17,10 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
+import org.springframework.security.core.context.SecurityContextHolder
 import java.io.File
 import java.nio.file.Path
 import kotlin.test.Test
@@ -33,6 +36,16 @@ class FileManagerTest {
     @BeforeEach
     fun createBaseFolder() {
         File(baseFolder).mkdirs()
+    }
+
+    @BeforeEach
+    fun signInUser() {
+        signIn()
+    }
+
+    @AfterEach
+    fun signOut() {
+        SecurityContextHolder.clearContext()
     }
 
     @Test

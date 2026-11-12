@@ -4,14 +4,20 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.Status
 import io.grpc.StatusException
 import org.springframework.grpc.server.exception.GrpcExceptionHandler
+import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.core.AuthenticationException
 import org.springframework.stereotype.Component
 
 @Component
 class GrpcGlobalControllerAdvice : GrpcExceptionHandler {
     private val logger = KotlinLogging.logger {}
 
-    override fun handleException(exception: Throwable): StatusException =
+    override fun handleException(exception: Throwable): StatusException? =
         when (exception) {
+            is AuthenticationException, is AccessDeniedException -> {
+                null
+            }
+
             is IllegalArgumentException -> {
                 Status.INVALID_ARGUMENT.withDescription(exception.message)
             }
@@ -28,7 +34,7 @@ class GrpcGlobalControllerAdvice : GrpcExceptionHandler {
                 logger.error(exception) { "Unexpected gRPC error" }
                 Status.UNKNOWN.withDescription("Unexpected error occurred")
             }
-        }.asException()
+        }?.asException()
 
     private fun grpcStatus(exception: FileBrowserException): Status =
         when (exception) {

@@ -1,6 +1,6 @@
 # Project Status
 
-Last update: 2026-11-12, branch `feature-8/phase-2-dependencies`.
+Last update: 2026-11-12, branch `feature-9/oidc-auth`.
 
 ## Completed
 
@@ -47,6 +47,14 @@ Project aligned with the coding standards from the `standards` MCP server:
 - gRPC runs on `spring-boot-starter-grpc-server`: health service, reflection, tracing; custom server config deleted.
 - 130 tests, gate green; jar smoke-tested in both profiles.
 
+### 2026-11-12, `feature-9/oidc-auth` (from `main`): roadmap phase 3 done
+- OIDC JWT bearer tokens required for REST (`/api/v1/**`) and gRPC; `filebrowser-reader` reads, `filebrowser-writer`
+  writes; 401/403 with the shared error body, `UNAUTHENTICATED`/`PERMISSION_DENIED` in gRPC.
+- Tests run the production decoder path against a local OIDC discovery + JWKS server; 226 tests, gate green; jar
+  smoke-tested (no audience: startup fails; health public, API 401).
+- OpenAPI documents the bearer JWT scheme (Swagger "Authorize").
+- Per-user directories: every path resolves inside `filebrowser/<sub>`; 237 tests, gate green.
+
 ## Decisions
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
@@ -70,7 +78,15 @@ Project aligned with the coding standards from the `standards` MCP server:
   to localhost by default).
 - gRPC port property is `spring.grpc.server.port`; the old `grpc.server.port` is gone.
 
+- Writer implies reader. Health, `/metrics`, Swagger and gRPC health are public; gRPC reflection needs a token.
+- Our `GrpcExceptionHandler` returns null for Spring Security exceptions so Spring gRPC maps them to
+  `UNAUTHENTICATED`/`PERMISSION_DENIED`.
+- Boot 4 cannot combine `public-key-location` with `issuer-uri`, hence the local JWKS server in tests.
+- Allowed `sub`: `[A-Za-z0-9][A-Za-z0-9._@-]*`, otherwise 400; directory created on first use. No migration code:
+  existing files are moved by hand (README).
+
 ## Next steps and risks
-- Push `feature-8/phase-2-dependencies` and open a PR; check CI on Gradle 9.
-- gRPC clients must move to the streaming `uploadFile`/`getFile`; deployments to `SPRING_GRPC_SERVER_PORT`.
-- Roadmap phase 3 (OIDC via Authelia).
+- Push `feature-9/oidc-auth` and open a PR. Deployments must set the issuer and audience env vars, or the app stops.
+- Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.
+- Existing deployments: move files from `filebrowser/` to `filebrowser/<sub>/` before upgrading.
+- Roadmap phase 4 (deployment) is blocked on the infra repo's `charts/app` values.

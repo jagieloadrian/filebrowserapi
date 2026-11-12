@@ -16,7 +16,7 @@ class DirectoryManager(
     private val modifierUtils: PathModifierUtils,
 ) {
     private val logger = KotlinLogging.logger {}
-    private val defaultPath = modifierUtils.generateDefaultPath()
+    private val defaultPath: String get() = modifierUtils.generateDefaultPath()
 
     fun showDirectoriesTree(path: String?): List<String> {
         val mergePath = modifierUtils.mergePath(path)
