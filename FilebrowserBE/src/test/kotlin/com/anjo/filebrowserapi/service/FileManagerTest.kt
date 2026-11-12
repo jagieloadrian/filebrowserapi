@@ -13,6 +13,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldMatch
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.mock.web.MockMultipartFile
@@ -156,6 +157,47 @@ class FileManagerTest {
 
         // then
         exception.message shouldBe expectedMessage
+    }
+
+    @Test
+    fun `should return renamed path when file is renamed`() {
+        // given
+        createFile(FIRST_FILE_NAME)
+
+        // when
+        val result = service.renameFile(SECOND_FILE_NAME, FIRST_FILE_NAME)
+
+        // then
+        result shouldBe "/$SECOND_FILE_NAME"
+        File("$baseFolder/$SECOND_FILE_NAME").exists() shouldBe true
+    }
+
+    @Test
+    fun `should throw CannotRealizeException when renaming missing file`() {
+        // when & then
+        shouldThrow<CannotRealizeException> { service.renameFile(SECOND_FILE_NAME, FIRST_FILE_NAME) }
+    }
+
+    @Test
+    fun `should throw CannotRealizeException when renamed path is a directory`() {
+        // given
+        createFolder(FIRST_NAME)
+
+        // when & then
+        shouldThrow<CannotRealizeException> { service.renameFile(SECOND_NAME, FIRST_NAME) }
+    }
+
+    @Test
+    fun `should store file under generated txt name when uploaded file has no name`() {
+        // given
+        val input = MockMultipartFile("file", null, "text/plain", "content".toByteArray())
+
+        // when
+        val result = service.uploadFile(input, null)
+
+        // then
+        result shouldMatch Regex("^/[0-9a-f-]{8}-\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}\\.txt$")
+        File("$baseFolder$result").readText() shouldBe "content"
     }
 
     private fun createFile(fileName: String): File {
