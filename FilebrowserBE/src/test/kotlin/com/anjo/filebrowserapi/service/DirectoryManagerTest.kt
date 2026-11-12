@@ -5,6 +5,7 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.THIRD_NAME
 import com.anjo.filebrowserapi.configuration.AppConfiguration
+import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.CannotRealizeException
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
@@ -212,5 +213,41 @@ class DirectoryManagerTest {
         val tempFolder = File("$baseFolder/$path")
         tempFolder.mkdir()
         return tempFolder
+    }
+
+    @Test
+    fun `should throw BadInputException when showDirectoriesTree leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.showDirectoriesTree("../..") }
+    }
+
+    @Test
+    fun `should throw BadInputException when addDirectory leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.addDirectory("../$FIRST_NAME", null) }
+    }
+
+    @Test
+    fun `should throw BadInputException when addDirectoriesRecursively leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.addDirectoriesRecursively("../../$FIRST_NAME") }
+    }
+
+    @Test
+    fun `should throw BadInputException when renameDirectory leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.renameDirectory("../$SECOND_NAME", FIRST_NAME) }
+    }
+
+    @Test
+    fun `should throw BadInputException when deleteDirectory leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.deleteDirectory("../") }
+    }
+
+    @Test
+    fun `should throw BadInputException when deleting base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.deleteDirectory("") }
     }
 }

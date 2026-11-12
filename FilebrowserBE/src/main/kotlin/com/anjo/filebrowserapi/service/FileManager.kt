@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import java.io.File
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -41,12 +40,11 @@ class FileManager(
     ): String {
         modifierUtils.validPath(path, CREATE)
         val fileName = validFileName(uploadFile.originalFilename)
-        val mergedPath = "${modifierUtils.mergePath(path)}/$fileName"
-        val targetLocation = Path.of(mergedPath)
+        val target = modifierUtils.resolveEntry(path, fileName)
 
-        Files.copy(uploadFile.inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING)
+        Files.copy(uploadFile.inputStream, target.toPath(), StandardCopyOption.REPLACE_EXISTING)
 
-        return formatResponsePath(mergedPath, defaultPath)
+        return formatResponsePath(target.path, defaultPath)
     }
 
     fun getFile(
@@ -54,9 +52,7 @@ class FileManager(
         path: String?,
     ): ByteArray {
         modifierUtils.validPath(path, READ)
-        val mergedPath = "${modifierUtils.mergePath(path)}/$fileName"
-        val targetFile = File(mergedPath)
-        return targetFile.readBytes()
+        return modifierUtils.resolveEntry(path, fileName).readBytes()
     }
 
     fun renameFile(
@@ -66,7 +62,7 @@ class FileManager(
         val validPath = path?.let { modifierUtils.formatPath(it) } ?: defaultPath
         val extractMidPath = modifierUtils.extractMidPath(validPath)
 
-        val sourceFile = File("$defaultPath/$path")
+        val sourceFile = modifierUtils.resolveEntry(path)
         val targetPath = modifierUtils.generatePathToRename(extractMidPath, newName)
         val targetDir = File(targetPath)
 
@@ -87,9 +83,7 @@ class FileManager(
         path: String?,
     ) {
         modifierUtils.validPath(path, DELETE)
-        val mergedPath = "${modifierUtils.mergePath(path)}/$fileName"
-
-        val file = File(mergedPath)
+        val file = modifierUtils.resolveEntry(path, fileName)
         if (!file.delete()) {
             throw BadInputException("Cannot remove non existing file")
         }

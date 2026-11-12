@@ -33,6 +33,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.springmockk)
     testImplementation(libs.kotest.assertions)
+    testImplementation(libs.kotest.property)
     testImplementation(libs.coroutines.test)
     testImplementation(kotlin("test"))
 }

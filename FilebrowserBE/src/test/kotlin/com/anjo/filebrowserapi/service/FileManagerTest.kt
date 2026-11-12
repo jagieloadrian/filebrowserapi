@@ -211,4 +211,34 @@ class FileManagerTest {
         tempFolder.mkdir()
         return tempFolder
     }
+
+    @Test
+    fun `should throw BadInputException when showFilesTree leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.showFilesTree("../..") }
+    }
+
+    @Test
+    fun `should throw BadInputException when uploadFile leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.uploadFile(MockMultipartFile("file", "../evil.txt", "text/plain", ByteArray(1)), null) }
+    }
+
+    @Test
+    fun `should throw BadInputException when getFile leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.getFile("../$FIRST_FILE_NAME", null) }
+    }
+
+    @Test
+    fun `should throw BadInputException when renameFile leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.renameFile("../../$SECOND_FILE_NAME", FIRST_FILE_NAME) }
+    }
+
+    @Test
+    fun `should throw BadInputException when deleteFile leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.deleteFile("../$FIRST_FILE_NAME", null) }
+    }
 }

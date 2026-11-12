@@ -33,8 +33,7 @@ class DirectoryManager(
         path: String?,
     ): String {
         modifierUtils.validPath(path, OperationType.CREATE)
-        val mergePath = "${modifierUtils.mergePath(path)}/$directoryName"
-        val directory = File(mergePath)
+        val directory = modifierUtils.resolveEntry(path, directoryName)
 
         if (directory.mkdir()) {
             return formatResponsePath(directory.path, defaultPath)
@@ -51,7 +50,7 @@ class DirectoryManager(
     }
 
     fun addDirectoriesRecursively(pathMultiDirectories: String): String {
-        val directories = File("$defaultPath/$pathMultiDirectories")
+        val directories = modifierUtils.resolveEntry(pathMultiDirectories)
         directories.mkdirs()
         return formatResponsePath(directories.path, defaultPath)
     }
@@ -63,7 +62,7 @@ class DirectoryManager(
         val validPath = modifierUtils.formatPath(path)
         val extractMidPath = modifierUtils.extractMidPath(validPath)
 
-        val sourceDir = File("$defaultPath/$path")
+        val sourceDir = modifierUtils.resolveEntry(path)
         val targetPath = modifierUtils.generatePathToRename(extractMidPath, newName)
         val targetDir = File(targetPath)
 
@@ -80,8 +79,7 @@ class DirectoryManager(
     }
 
     fun deleteDirectory(path: String) {
-        val generatePath = "$defaultPath/$path"
-        val file = File(generatePath)
+        val file = modifierUtils.resolveEntry(path)
 
         if (isEmptyDirectory(file)) {
             file.delete()

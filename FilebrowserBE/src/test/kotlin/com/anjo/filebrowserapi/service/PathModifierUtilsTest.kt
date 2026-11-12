@@ -4,11 +4,17 @@ import com.anjo.filebrowserapi.TestObjects.BASE_FOLDER
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.configuration.AppConfiguration
+import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.CannotRealizeException
 import com.anjo.filebrowserapi.model.OperationType
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import io.kotest.property.Arb
+import io.kotest.property.arbitrary.element
+import io.kotest.property.arbitrary.list
+import io.kotest.property.checkAll
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.NullAndEmptySource
@@ -117,4 +123,50 @@ class PathModifierUtilsTest {
         // then
         result shouldBe "$basePath/$FIRST_NAME/$SECOND_NAME"
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["..", "../outside", "a/../../outside", "/../outside", "a/b/../../../outside"])
+    fun `should throw BadInputException when path leaves base directory`(input: String) {
+        // when & then
+        shouldThrow<BadInputException> { utils.resolve(input) }
+    }
+
+    @Test
+    fun `should throw BadInputException when name leaves base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { utils.resolve(FIRST_NAME, "../../outside") }
+    }
+
+    @Test
+    fun `should resolve inside base directory when segments are relative`() {
+        // when
+        val result = utils.resolve("/$FIRST_NAME", "", null, SECOND_NAME)
+
+        // then
+        result.path shouldBe "$basePath/$FIRST_NAME/$SECOND_NAME"
+    }
+
+    @Test
+    fun `should throw BadInputException when entry is the base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { utils.resolveEntry(FIRST_NAME, "..") }
+    }
+
+    @Test
+    fun `should never resolve outside base directory when segments are arbitrary`() =
+        runTest {
+            // given
+            val segment = Arb.element("..", ".", "a", "b", "/", "a/..", "../a", "/a", "")
+
+            // when & then
+            checkAll(Arb.list(segment, 0..6)) { input ->
+                val result =
+                    try {
+                        utils.resolve(*input.toTypedArray()).toPath()
+                    } catch (e: BadInputException) {
+                        null
+                    }
+                result?.startsWith(Path.of(basePath))?.shouldBe(true)
+            }
+        }
 }
