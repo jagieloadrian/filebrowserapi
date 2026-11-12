@@ -5,8 +5,8 @@ import com.anjo.filebrowser.Filebrowser.FileResponse
 import com.anjo.filebrowser.Filebrowser.StringResponse
 import com.anjo.filebrowser.Filebrowser.StringsResponse
 import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
-import com.anjo.filebrowserapi.facade.DirectoryManager
-import com.anjo.filebrowserapi.facade.FileManager
+import com.anjo.filebrowserapi.service.DirectoryManager
+import com.anjo.filebrowserapi.service.FileManager
 import com.anjo.filebrowserapi.utils.ByteArrayToMultiPartFile
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString

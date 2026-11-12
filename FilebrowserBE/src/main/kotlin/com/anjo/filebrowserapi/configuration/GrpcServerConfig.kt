@@ -51,7 +51,6 @@ class GrpcServerConfig(
     override fun run(args: ApplicationArguments?) {
         runGrpcServer()
         logger.info { "gRPC server start on port: $port" }
-        // ponytail: gRPC threads are daemons; non-daemon waiter keeps JVM alive without blocking context startup
         thread(name = "grpc-await-termination") { server.awaitTermination() }
     }
 }

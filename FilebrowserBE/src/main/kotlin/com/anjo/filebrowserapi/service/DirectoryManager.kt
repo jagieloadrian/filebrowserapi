@@ -1,9 +1,8 @@
 package com.anjo.filebrowserapi.service
 
 import com.anjo.filebrowserapi.exception.CannotRealizeException
-import com.anjo.filebrowserapi.facade.DirectoryManager
 import com.anjo.filebrowserapi.model.OperationType
-import com.anjo.filebrowserapi.utils.CommonUtils.Companion.formatResponsePath
+import com.anjo.filebrowserapi.utils.formatResponsePath
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import java.io.File
@@ -11,11 +10,11 @@ import java.io.File
 @Service
 class DirectoryManager(
     private val modifierUtils: PathModifierUtils,
-) : DirectoryManager {
+) {
     private val logger = KotlinLogging.logger {}
     private val defaultPath = modifierUtils.generateDefaultPath()
 
-    override fun showDirectoriesTree(path: String?): List<String> {
+    fun showDirectoriesTree(path: String?): List<String> {
         val mergePath = modifierUtils.mergePath(path)
 
         return File(mergePath)
@@ -25,12 +24,11 @@ class DirectoryManager(
             }.map { file ->
                 formatResponsePath(file.path, defaultPath)
             }.drop(1)
-            // walk() order is filesystem-dependent; sort for stable responses
             .sorted()
             .toList()
     }
 
-    override fun addDirectory(
+    fun addDirectory(
         directoryName: String,
         path: String?,
     ): String {
@@ -52,13 +50,13 @@ class DirectoryManager(
         }
     }
 
-    override fun addDirectoriesRecursively(pathMultiDirectories: String): String {
+    fun addDirectoriesRecursively(pathMultiDirectories: String): String {
         val directories = File("$defaultPath/$pathMultiDirectories")
         directories.mkdirs()
         return formatResponsePath(directories.path, defaultPath)
     }
 
-    override fun renameDirectory(
+    fun renameDirectory(
         newName: String,
         path: String,
     ): String {
@@ -88,7 +86,7 @@ class DirectoryManager(
         }
     }
 
-    override fun deleteDirectory(path: String) {
+    fun deleteDirectory(path: String) {
         val generatePath = "$defaultPath/$path"
         val file = File(generatePath)
 

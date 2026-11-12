@@ -2,12 +2,10 @@ package com.anjo.filebrowserapi.service
 
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.CannotRealizeException
-import com.anjo.filebrowserapi.facade.FileManager
 import com.anjo.filebrowserapi.model.OperationType.CREATE
 import com.anjo.filebrowserapi.model.OperationType.DELETE
 import com.anjo.filebrowserapi.model.OperationType.READ
-import com.anjo.filebrowserapi.utils.CommonUtils.Companion.EIGHT
-import com.anjo.filebrowserapi.utils.CommonUtils.Companion.formatResponsePath
+import com.anjo.filebrowserapi.utils.formatResponsePath
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import java.io.File
@@ -18,25 +16,26 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
+private const val RANDOM_NAME_LENGTH = 8
+
 @Service
 class FileManager(
     private val modifierUtils: PathModifierUtils,
-) : FileManager {
+) {
     private val defaultPath = modifierUtils.generateDefaultPath()
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
 
-    override fun showFilesTree(path: String?): List<String> {
+    fun showFilesTree(path: String?): List<String> {
         val mergePath = modifierUtils.mergePath(path)
         return File(mergePath)
             .walk()
             .map { file -> formatResponsePath(file.path, defaultPath) }
             .drop(1)
-            // walk() order is filesystem-dependent; sort for stable responses
             .sorted()
             .toList()
     }
 
-    override fun uploadFile(
+    fun uploadFile(
         uploadFile: MultipartFile,
         path: String?,
     ): String {
@@ -50,7 +49,7 @@ class FileManager(
         return formatResponsePath(mergedPath, defaultPath)
     }
 
-    override fun getFile(
+    fun getFile(
         fileName: String,
         path: String?,
     ): ByteArray {
@@ -60,7 +59,7 @@ class FileManager(
         return targetFile.readBytes()
     }
 
-    override fun renameFile(
+    fun renameFile(
         newName: String,
         path: String?,
     ): String {
@@ -90,7 +89,7 @@ class FileManager(
         }
     }
 
-    override fun deleteFile(
+    fun deleteFile(
         fileName: String,
         path: String?,
     ) {
@@ -105,7 +104,7 @@ class FileManager(
 
     private fun validFileName(filename: String?): String =
         if (filename.isNullOrEmpty()) {
-            val randomString = UUID.randomUUID().toString().take(EIGHT)
+            val randomString = UUID.randomUUID().toString().take(RANDOM_NAME_LENGTH)
             "$randomString-${formatDate.format(LocalDateTime.now())}.txt"
         } else {
             filename

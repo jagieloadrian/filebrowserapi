@@ -39,10 +39,7 @@ class FileManagerController(
     fun getFile(
         @PathVariable filename: String,
         @RequestParam("path", required = false) path: String?,
-    ): ResponseEntity<ByteArray> {
-        // TODO add resolving producing type :)
-        return ResponseEntity.ok(fileManager.getFile(filename, path))
-    }
+    ): ResponseEntity<ByteArray> = ResponseEntity.ok(fileManager.getFile(filename, path))
 
     @DeleteMapping("/{filename:.+}")
     fun deleteFile(
