@@ -37,7 +37,7 @@ class DirectoryManager(
         path: String?,
     ): String {
         modifierUtils.validPath(path, OperationType.CREATE)
-        val directory = modifierUtils.resolveEntry(path, directoryName)
+        val directory = modifierUtils.resolveName(path, directoryName)
 
         if (directory.mkdir()) {
             return formatResponsePath(directory.path, defaultPath)

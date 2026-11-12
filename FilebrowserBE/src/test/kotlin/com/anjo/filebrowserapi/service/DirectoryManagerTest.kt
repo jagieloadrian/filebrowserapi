@@ -148,26 +148,19 @@ class DirectoryManagerTest {
     }
 
     @Test
-    fun `should return renamed path when name has slash`() {
+    fun `should throw BadInputException when new name has slash`() {
         // given
-        val name = "/$THIRD_NAME"
-        val expected = "/$THIRD_NAME"
-        val givenPath = FIRST_NAME
+        createFolder(FIRST_NAME)
 
-        createFolder(givenPath)
-        // when
-        val result = service.renameDirectory(name, givenPath)
-
-        // then
-        assertSoftly {
-            result shouldBe expected
-        }
+        // when & then
+        shouldThrow<BadInputException> { service.renameDirectory("/$THIRD_NAME", FIRST_NAME) }
+        File("$baseFolder/$FIRST_NAME").isDirectory shouldBe true
     }
 
     @Test
     fun `should throw NotFoundException when renaming missing directory`() {
         // given
-        val name = "/$THIRD_NAME"
+        val name = THIRD_NAME
         val givenPath = FIRST_NAME
         val expectedMessage = "Cannot rename not existing directory"
 

@@ -43,7 +43,7 @@ class FileManager(
     ): String {
         modifierUtils.validPath(path, CREATE)
         val fileName = validFileName(uploadFile.originalFilename)
-        val target = modifierUtils.resolveEntry(path, fileName)
+        val target = modifierUtils.resolveName(path, fileName)
         if (target.isDirectory) throw AlreadyExistsException("Directory $fileName already exists")
 
         val options = if (overwrite) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
@@ -61,7 +61,7 @@ class FileManager(
         path: String?,
     ): ByteArray {
         modifierUtils.validPath(path, READ)
-        val file = modifierUtils.resolveEntry(path, fileName)
+        val file = modifierUtils.resolveName(path, fileName)
         requireFile(file, "File $fileName does not exist")
         return file.readBytes()
     }
@@ -95,7 +95,7 @@ class FileManager(
         path: String?,
     ) {
         modifierUtils.validPath(path, DELETE)
-        val file = modifierUtils.resolveEntry(path, fileName)
+        val file = modifierUtils.resolveName(path, fileName)
         requireFile(file, "Cannot remove non existing file")
         Files.delete(file.toPath())
     }

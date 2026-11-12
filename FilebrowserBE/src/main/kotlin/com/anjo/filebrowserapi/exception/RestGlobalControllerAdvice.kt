@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.ErrorResponse
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.HandlerMethodValidationException
 
 @RestControllerAdvice
 @Profile("web")
@@ -27,6 +28,17 @@ class RestGlobalControllerAdvice {
             exception.message,
         )
 
+    @ExceptionHandler(HandlerMethodValidationException::class)
+    fun handleValidationException(exception: HandlerMethodValidationException) =
+        apiError(
+            exception.statusCode,
+            exception.javaClass.simpleName,
+            exception.body.detail,
+            exception.parameterValidationResults.flatMap { result ->
+                result.resolvableErrors.map { "${result.methodParameter.parameterName}: ${it.defaultMessage}" }
+            },
+        )
+
     @ExceptionHandler(Exception::class)
     fun handleException(exception: Exception): ResponseEntity<ApiError> =
         if (exception is ErrorResponse) {
@@ -40,5 +52,6 @@ class RestGlobalControllerAdvice {
         status: HttpStatusCode,
         error: String,
         message: String?,
-    ) = ResponseEntity.status(status).body(ApiError(error, message))
+        details: List<String> = emptyList(),
+    ) = ResponseEntity.status(status).body(ApiError(error, message, details))
 }

@@ -4,6 +4,8 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
+import com.anjo.filebrowserapi.validation.NAME_RULE
+import com.anjo.filebrowserapi.validation.isValidName
 import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.file.Path
@@ -64,7 +66,15 @@ class PathModifierUtils(
     fun generatePathToRename(
         extractMidPath: List<String>,
         newName: String,
-    ): String = resolveEntry(*extractMidPath.toTypedArray(), newName).path
+    ): String = resolveEntry(*extractMidPath.toTypedArray(), requireName(newName)).path
+
+    fun resolveName(
+        parent: String?,
+        name: String,
+    ): File = resolveEntry(parent, requireName(name))
+
+    private fun requireName(name: String): String =
+        name.also { if (!isValidName(it)) throw BadInputException("Invalid name '$it': $NAME_RULE") }
 
     fun generateDefaultPath(): String = baseDirectory.toString()
 

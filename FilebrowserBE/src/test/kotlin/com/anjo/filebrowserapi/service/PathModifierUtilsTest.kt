@@ -7,6 +7,7 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -135,6 +136,25 @@ class PathModifierUtilsTest {
     fun `should throw BadInputException when name leaves base directory`() {
         // when & then
         shouldThrow<BadInputException> { utils.resolve(FIRST_NAME, "../../outside") }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["", " ", "a/b", "/a", "a/"])
+    fun `should throw BadInputException when name is blank or contains slash`(input: String) {
+        // when & then
+        assertSoftly {
+            shouldThrow<BadInputException> { utils.resolveName(FIRST_NAME, input) }
+            shouldThrow<BadInputException> { utils.generatePathToRename(emptyList(), input) }
+        }
+    }
+
+    @Test
+    fun `should resolve name under parent when name is valid`() {
+        // when
+        val result = utils.resolveName(FIRST_NAME, SECOND_NAME)
+
+        // then
+        result.path shouldBe "$basePath/$FIRST_NAME/$SECOND_NAME"
     }
 
     @Test

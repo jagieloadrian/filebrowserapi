@@ -1,6 +1,7 @@
 package com.anjo.filebrowserapi.controller
 
 import com.anjo.filebrowserapi.service.DirectoryManager
+import com.anjo.filebrowserapi.validation.ValidName
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -25,7 +26,7 @@ class DirectoryManagerController(
 
     @PostMapping
     fun addDirectory(
-        @RequestParam("directoryName") directoryName: String,
+        @RequestParam("directoryName") @ValidName directoryName: String,
         @RequestParam("path", required = false) path: String?,
     ): ResponseEntity<String> = ResponseEntity(directoryManager.addDirectory(directoryName, path), HttpStatus.CREATED)
 
@@ -41,8 +42,8 @@ class DirectoryManagerController(
     @PatchMapping
     fun renameDirectory(
         @RequestParam("sourcePath") path: String,
-        @RequestParam("newDirName") newName: String,
-    ): ResponseEntity<String> = ResponseEntity.ok(directoryManager.renameDirectory(newName, path))
+        @RequestParam("newDirName") @ValidName newDirName: String,
+    ): ResponseEntity<String> = ResponseEntity.ok(directoryManager.renameDirectory(newDirName, path))
 
     @DeleteMapping
     fun deleteDirectory(
