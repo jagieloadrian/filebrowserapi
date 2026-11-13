@@ -6,8 +6,11 @@ import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
+import com.anjo.filebrowserapi.TestObjects.THIRD_NAME
 import com.anjo.filebrowserapi.TestObjects.signIn
 import com.anjo.filebrowserapi.configuration.AppConfiguration
+import com.anjo.filebrowserapi.exception.AlreadyExistsException
+import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.Entry
 import io.kotest.matchers.collections.shouldContainExactly
@@ -100,4 +103,88 @@ class EntryManagerTest {
         // when & then
         assertThrows<NotFoundException> { service.listEntries(SECOND_FILE_NAME, null, null) }
     }
+
+    @Test
+    fun `should copy file and keep source when copyEntry is called with file`() {
+        // when
+        val result = service.copyEntry("$FIRST_NAME/$FIRST_FILE_NAME", "/$SECOND_FILE_NAME")
+
+        // then
+        result shouldBe "/$SECOND_FILE_NAME"
+        File(baseFolder, SECOND_FILE_NAME).readText() shouldBe TEST_MESSAGE
+        File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").exists() shouldBe true
+    }
+
+    @Test
+    fun `should copy directory with its content when copyEntry is called with directory`() {
+        // when
+        val result = service.copyEntry(FIRST_NAME, THIRD_NAME)
+
+        // then
+        result shouldBe "/$THIRD_NAME"
+        File(baseFolder, "$THIRD_NAME/$FIRST_FILE_NAME").readText() shouldBe TEST_MESSAGE
+        File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").exists() shouldBe true
+    }
+
+    @Test
+    fun `should move directory with its content when moveEntry is called`() {
+        // when
+        val result = service.moveEntry(FIRST_NAME, "$THIRD_NAME.moved")
+
+        // then
+        result shouldBe "/$THIRD_NAME.moved"
+        File(baseFolder, "$THIRD_NAME.moved/$FIRST_FILE_NAME").readText() shouldBe TEST_MESSAGE
+        File(baseFolder, FIRST_NAME).exists() shouldBe false
+    }
+
+    @Test
+    fun `should move file into directory when moveEntry is called with file`() {
+        // when
+        val result = service.moveEntry("$SECOND_NAME.pdf", "$FIRST_NAME/$SECOND_NAME.pdf")
+
+        // then
+        result shouldBe "/$FIRST_NAME/$SECOND_NAME.pdf"
+        File(baseFolder, "$SECOND_NAME.pdf").exists() shouldBe false
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `should throw AlreadyExistsException when target exists`(copy: Boolean) {
+        // when & then
+        assertThrows<AlreadyExistsException> { transfer(copy, "$SECOND_NAME.pdf", FIRST_NAME) }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `should throw NotFoundException when source does not exist`(copy: Boolean) {
+        // when & then
+        assertThrows<NotFoundException> { transfer(copy, SECOND_FILE_NAME, THIRD_NAME) }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `should throw NotFoundException when target directory does not exist`(copy: Boolean) {
+        // when & then
+        assertThrows<NotFoundException> { transfer(copy, "$SECOND_NAME.pdf", "$THIRD_NAME/$SECOND_NAME.pdf") }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `should throw BadInputException when directory is put inside itself`(copy: Boolean) {
+        // when & then
+        assertThrows<BadInputException> { transfer(copy, FIRST_NAME, "$FIRST_NAME/$THIRD_NAME") }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `should throw BadInputException when base directory is source`(copy: Boolean) {
+        // when & then
+        assertThrows<BadInputException> { transfer(copy, "/", THIRD_NAME) }
+    }
+
+    private fun transfer(
+        copy: Boolean,
+        source: String,
+        target: String,
+    ) = if (copy) service.copyEntry(source, target) else service.moveEntry(source, target)
 }

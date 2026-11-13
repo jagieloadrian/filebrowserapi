@@ -17,6 +17,8 @@ service FilebrowserApi {
   rpc renameDirectory(FileOperation)returns (StringResponse);
   rpc deleteDirectory(PathRequest)returns (google.protobuf.Empty);
   rpc listEntries(EntriesRequest)returns (EntriesResponse);
+  rpc copyEntry(EntryTransfer)returns (StringResponse);
+  rpc moveEntry(EntryTransfer)returns (StringResponse);
 }
 
 message PathRequest {
@@ -65,4 +67,9 @@ message Entry {
 
 message EntriesResponse {
   repeated Entry entries = 1;
+}
+
+message EntryTransfer {
+  string source = 1;
+  string target = 2;
 }

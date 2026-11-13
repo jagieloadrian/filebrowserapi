@@ -159,4 +159,16 @@ class FilebrowserGrpc(
                         .build()
                 },
             ).build()
+
+    override suspend fun copyEntry(request: Filebrowser.EntryTransfer): StringResponse =
+        StringResponse
+            .newBuilder()
+            .setPath(entryManager.copyEntry(request.source, request.target))
+            .build()
+
+    override suspend fun moveEntry(request: Filebrowser.EntryTransfer): StringResponse =
+        StringResponse
+            .newBuilder()
+            .setPath(entryManager.moveEntry(request.source, request.target))
+            .build()
 }

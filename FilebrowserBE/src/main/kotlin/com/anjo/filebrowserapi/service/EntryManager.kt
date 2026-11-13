@@ -1,5 +1,7 @@
 package com.anjo.filebrowserapi.service
 
+import com.anjo.filebrowserapi.exception.AlreadyExistsException
+import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.utils.formatResponsePath
@@ -7,6 +9,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.MediaTypeFactory
 import org.springframework.stereotype.Service
 import java.io.File
+import java.nio.file.Files
 import java.time.Instant
 
 @Service
@@ -30,6 +33,37 @@ class EntryManager(
             .map { it.toEntry(defaultPath) }
             .sortedBy { it.path }
             .toList()
+    }
+
+    fun copyEntry(
+        source: String,
+        target: String,
+    ): String =
+        transfer(source, target) { from, to ->
+            from.copyRecursively(to)
+        }
+
+    fun moveEntry(
+        source: String,
+        target: String,
+    ): String =
+        transfer(source, target) { from, to ->
+            Files.move(from.toPath(), to.toPath())
+        }
+
+    private fun transfer(
+        source: String,
+        target: String,
+        action: (File, File) -> Unit,
+    ): String {
+        val from = modifierUtils.resolveEntry(source)
+        val to = modifierUtils.resolveEntry(target)
+        if (!from.exists()) throw NotFoundException("$source does not exist")
+        if (to.exists()) throw AlreadyExistsException("$target already exists")
+        if (to.toPath().startsWith(from.toPath())) throw BadInputException("Cannot put $source inside itself")
+        if (to.parentFile?.isDirectory != true) throw NotFoundException("Target directory of $target does not exist")
+        action(from, to)
+        return formatResponsePath(to.path, modifierUtils.generateDefaultPath())
     }
 
     private fun File.toEntry(defaultPath: String) =

@@ -203,6 +203,8 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.POST, "$DIRECTORIES/recursively"),
                 Arguments.of(HttpMethod.PATCH, DIRECTORIES),
                 Arguments.of(HttpMethod.DELETE, DIRECTORIES),
+                Arguments.of(HttpMethod.POST, "$ENTRIES/copy"),
+                Arguments.of(HttpMethod.POST, "$ENTRIES/move"),
             )
 
         @JvmStatic

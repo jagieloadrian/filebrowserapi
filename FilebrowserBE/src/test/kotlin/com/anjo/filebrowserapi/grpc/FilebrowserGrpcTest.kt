@@ -262,6 +262,24 @@ class FilebrowserGrpcTest {
             result[1].modified.nanos shouldBe modified.nano
         }
 
+    @Test
+    fun `should return target path when copyEntry and moveEntry are called`() =
+        runTest {
+            // given
+            val request =
+                Filebrowser.EntryTransfer
+                    .newBuilder()
+                    .setSource(FIRST_NAME)
+                    .setTarget(SECOND_NAME)
+                    .build()
+            every { entryManager.copyEntry(FIRST_NAME, SECOND_NAME) } returns "/$SECOND_NAME"
+            every { entryManager.moveEntry(FIRST_NAME, SECOND_NAME) } returns "/$SECOND_NAME"
+
+            // when & then
+            service.copyEntry(request).path shouldBe "/$SECOND_NAME"
+            service.moveEntry(request).path shouldBe "/$SECOND_NAME"
+        }
+
     private fun pathRequest(path: String) =
         Filebrowser.PathRequest
             .newBuilder()

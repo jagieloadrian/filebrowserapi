@@ -7,12 +7,15 @@ import com.anjo.filebrowserapi.service.EntryManager
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import java.time.Instant
 import kotlin.test.Test
 
@@ -45,6 +48,30 @@ class EntryControllerTest(
         response.status shouldBe 200
         response.contentAsString shouldBe
             """[{"path":"/$FIRST_NAME/$FIRST_FILE_NAME","directory":false,"size":4,"modified":"2026-11-13T10:00:00Z","contentType":"text/plain"}]"""
+    }
+
+    @ParameterizedTest
+    @CsvSource("copy,201", "move,200")
+    fun `should return target path when entry is copied or moved`(
+        operation: String,
+        status: Int,
+    ) {
+        // given
+        every { service.copyEntry(FIRST_NAME, "/copy") } returns "/copy"
+        every { service.moveEntry(FIRST_NAME, "/copy") } returns "/copy"
+
+        // when
+        val response =
+            mockMvc
+                .post("$ENTRIES/$operation") {
+                    param("source", FIRST_NAME)
+                    param("target", "/copy")
+                }.andReturn()
+                .response
+
+        // then
+        response.status shouldBe status
+        response.contentAsString shouldBe "/copy"
     }
 
     private companion object {
