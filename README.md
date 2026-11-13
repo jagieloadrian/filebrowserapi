@@ -104,8 +104,10 @@ Before the first rollout:
 * Register the app in homelab-infra: `scripts/new-app.sh own filebrowser`.
 * Add the deploy GitHub App (on the `main` ruleset bypass list): variable `DEPLOY_APP_CLIENT_ID`, secret
   `DEPLOY_APP_PRIVATE_KEY`. CI then writes each new `main` image tag into `release.yaml`; without them no tag is bumped.
+  Install the App on homelab-infra too (contents read): it is private, and `devops.yml` needs its chart.
 
-`devops.yml` renders both releases with the chart and the patches and validates them with kubeconform.
+`devops.yml` renders both releases with the chart and the patches and validates them with kubeconform. Without the
+App it validates only the manifests in `.devops/helm` and warns.
 
 ## Quality gate
     ./gradlew check build
