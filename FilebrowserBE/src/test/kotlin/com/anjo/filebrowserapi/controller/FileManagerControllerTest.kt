@@ -57,6 +57,19 @@ class FileManagerControllerTest(
     }
 
     @Test
+    fun `should return 400 with error body when upload has no uploadFile part`() {
+        // given
+        val input = MockMultipartFile("file", FIRST_FILE_NAME, "text/plain", TEST_MESSAGE.toByteArray())
+
+        // when
+        val response = mockMvc.multipart(FILES) { file(input) }.andReturn().response
+
+        // then
+        response.status shouldBe 400
+        response.contentAsString shouldContain "uploadFile"
+    }
+
+    @Test
     fun `should return stored path when file is uploaded`() {
         // given
         val input = MockMultipartFile("uploadFile", FIRST_FILE_NAME, "text/plain", TEST_MESSAGE.toByteArray())
