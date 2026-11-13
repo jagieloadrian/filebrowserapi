@@ -95,6 +95,8 @@ Project aligned with the coding standards from the `standards` MCP server:
   unchanged (owner's choice). Both releases share one RWO `local-path` PVC on the `rpi` node.
 - The issuer is the placeholder `https://issuer.invalid`; API calls answer 500 until it points at Authelia.
 - The `local` profile turns authentication off; it is only used by `runLocal`.
+- 2026-11-13: homelab-infra is private, so `devops.yml` reads the chart with the deploy App token; without the App
+  it validates only `.devops/helm`. statistics-service's `devops.yml` has the same `Not Found` bug.
 
 ## Next steps and risks
 - Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.
