@@ -6,16 +6,19 @@ import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.service.EntryManager
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import java.time.Instant
 import kotlin.test.Test
 
@@ -32,7 +35,7 @@ class EntryControllerTest(
     fun `should return entries with metadata when GET is called with filters`() {
         // given
         val entry = Entry("/$FIRST_NAME/$FIRST_FILE_NAME", false, 4, Instant.parse("2026-11-13T10:00:00Z"), "text/plain")
-        every { service.listEntries(FIRST_NAME, "first", "txt") } returns listOf(entry)
+        every { service.listEntries(FIRST_NAME, "first", "txt", null) } returns listOf(entry)
 
         // when
         val response =
@@ -47,7 +50,7 @@ class EntryControllerTest(
         // then
         response.status shouldBe 200
         response.contentAsString shouldBe
-            """[{"path":"/$FIRST_NAME/$FIRST_FILE_NAME","directory":false,"size":4,"modified":"2026-11-13T10:00:00Z","contentType":"text/plain"}]"""
+            """[{"path":"/$FIRST_NAME/$FIRST_FILE_NAME","directory":false,"size":4,"modified":"2026-11-13T10:00:00Z","contentType":"text/plain","description":null,"tags":[]}]"""
     }
 
     @ParameterizedTest
@@ -72,6 +75,44 @@ class EntryControllerTest(
         // then
         response.status shouldBe status
         response.contentAsString shouldBe "/copy"
+    }
+
+    @Test
+    fun `should return updated entry when metadata is saved`() {
+        // given
+        val entry = Entry("/$FIRST_NAME", true, 0, Instant.parse("2026-11-13T10:00:00Z"), null, "notes", listOf("work"))
+        every { service.updateMeta(FIRST_NAME, "notes", listOf("work")) } returns entry
+
+        // when
+        val response =
+            mockMvc
+                .put("$ENTRIES/meta") {
+                    param("path", FIRST_NAME)
+                    contentType = MediaType.APPLICATION_JSON
+                    content = """{"description":"notes","tags":["work"]}"""
+                }.andReturn()
+                .response
+
+        // then
+        response.status shouldBe 200
+        response.contentAsString shouldContain """"tags":["work"]"""
+    }
+
+    @Test
+    fun `should return 400 with details when a tag breaks the rule`() {
+        // when
+        val response =
+            mockMvc
+                .put("$ENTRIES/meta") {
+                    param("path", FIRST_NAME)
+                    contentType = MediaType.APPLICATION_JSON
+                    content = """{"tags":["a,b"]}"""
+                }.andReturn()
+                .response
+
+        // then
+        response.status shouldBe 400
+        response.contentAsString shouldContain "tags: tags must be"
     }
 
     private companion object {

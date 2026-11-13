@@ -13,8 +13,13 @@ import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.Entry
+import com.anjo.filebrowserapi.model.EntryMeta
+import com.anjo.filebrowserapi.repository.MetadataRepository
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.assertThrows
@@ -33,11 +38,14 @@ class EntryManagerTest {
 
     private val baseFolder: File get() = File("$workDir/$BASE_FOLDER")
 
-    private val service by lazy { EntryManager(PathModifierUtils(AppConfiguration(workDir.toString()))) }
+    private val metadata = mockk<MetadataRepository>(relaxed = true)
+
+    private val service by lazy { EntryManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata) }
 
     @BeforeEach
     fun signInUser() {
         signIn()
+        every { metadata.findUnder(any(), any()) } returns emptyMap()
         File(baseFolder, FIRST_NAME).mkdirs()
         File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").writeText(TEST_MESSAGE)
         File(baseFolder, "$SECOND_NAME.pdf").writeText(TEST_MESSAGE)
@@ -180,6 +188,56 @@ class EntryManagerTest {
     fun `should throw BadInputException when base directory is source`(copy: Boolean) {
         // when & then
         assertThrows<BadInputException> { transfer(copy, "/", THIRD_NAME) }
+    }
+
+    @Test
+    fun `should return description and tags and filter by tag when metadata exists`() {
+        // given
+        val key = "/$FIRST_NAME/$FIRST_FILE_NAME"
+        every { metadata.findUnder("user-1", "") } returns mapOf(key to EntryMeta(key, "notes", listOf("work")))
+
+        // when
+        val result = service.listEntries(null, null, null, "WORK")
+
+        // then
+        result.map { it.path } shouldContainExactly listOf(key)
+        result[0].description shouldBe "notes"
+        result[0].tags shouldBe listOf("work")
+    }
+
+    @Test
+    fun `should save normalized description and tags when updateMeta is called`() {
+        // when
+        val result = service.updateMeta(FIRST_NAME, "  notes  ", listOf("Work", "work", "Draft"))
+
+        // then
+        result.description shouldBe "notes"
+        result.tags shouldBe listOf("draft", "work")
+        verify(exactly = 1) { metadata.save("user-1", "/$FIRST_NAME", "notes", listOf("draft", "work")) }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [" lead", "a,b", ""])
+    fun `should throw BadInputException when a tag breaks the rule`(tag: String) {
+        // when & then
+        assertThrows<BadInputException> { service.updateMeta(FIRST_NAME, null, listOf(tag)) }
+    }
+
+    @Test
+    fun `should throw NotFoundException when updateMeta gets missing entry`() {
+        // when & then
+        assertThrows<NotFoundException> { service.updateMeta(THIRD_NAME, "notes", emptyList()) }
+    }
+
+    @Test
+    fun `should copy and relocate metadata when entries are copied and moved`() {
+        // when
+        service.copyEntry(FIRST_NAME, THIRD_NAME)
+        service.moveEntry(THIRD_NAME, "$THIRD_NAME.moved")
+
+        // then
+        verify(exactly = 1) { metadata.copy("user-1", "/$FIRST_NAME", "/$THIRD_NAME") }
+        verify(exactly = 1) { metadata.relocate("user-1", "/$THIRD_NAME", "/$THIRD_NAME.moved") }
     }
 
     private fun transfer(

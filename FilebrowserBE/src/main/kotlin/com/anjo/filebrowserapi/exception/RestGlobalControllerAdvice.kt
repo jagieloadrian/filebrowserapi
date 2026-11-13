@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
 import org.springframework.http.ResponseEntity
 import org.springframework.web.ErrorResponse
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.HandlerMethodValidationException
@@ -37,6 +38,15 @@ class RestGlobalControllerAdvice {
             exception.parameterValidationResults.flatMap { result ->
                 result.resolvableErrors.map { "${result.methodParameter.parameterName}: ${it.defaultMessage}" }
             },
+        )
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleBodyValidationException(exception: MethodArgumentNotValidException) =
+        apiError(
+            exception.statusCode,
+            exception.javaClass.simpleName,
+            exception.body.detail,
+            exception.bindingResult.fieldErrors.map { "${it.field}: ${it.defaultMessage}" },
         )
 
     @ExceptionHandler(Exception::class)

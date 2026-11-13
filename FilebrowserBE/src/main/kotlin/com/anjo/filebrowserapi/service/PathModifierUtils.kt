@@ -51,11 +51,13 @@ class PathModifierUtils(
         return target.toFile()
     }
 
-    private fun baseDirectory(): Path {
+    fun currentUser(): String {
         val subject = SecurityContextHolder.getContext().authentication?.name ?: throw IllegalStateException("No authenticated user")
         if (!isValidSubject(subject)) throw BadInputException("The token subject cannot name a directory")
-        return Files.createDirectories(rootDirectory.resolve(subject))
+        return subject
     }
+
+    private fun baseDirectory(): Path = Files.createDirectories(rootDirectory.resolve(currentUser()))
 
     fun mergePath(path: String?): String = resolve(path).path
 

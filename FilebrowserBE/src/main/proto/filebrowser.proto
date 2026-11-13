@@ -18,6 +18,7 @@ service FilebrowserApi {
   rpc deleteDirectory(PathRequest)returns (google.protobuf.Empty);
   rpc deleteDirectoryRecursively(PathRequest)returns (google.protobuf.Empty);
   rpc listEntries(EntriesRequest)returns (EntriesResponse);
+  rpc updateEntryMeta(EntryMetaUpdate)returns (Entry);
   rpc copyEntry(EntryTransfer)returns (StringResponse);
   rpc moveEntry(EntryTransfer)returns (StringResponse);
 }
@@ -56,6 +57,7 @@ message EntriesRequest {
   string path = 1;
   string name = 2;
   string extension = 3;
+  string tag = 4;
 }
 
 message Entry {
@@ -64,6 +66,8 @@ message Entry {
   int64 size = 3;
   google.protobuf.Timestamp modified = 4;
   string content_type = 5;
+  string description = 6;
+  repeated string tags = 7;
 }
 
 message EntriesResponse {
@@ -73,4 +77,10 @@ message EntriesResponse {
 message EntryTransfer {
   string source = 1;
   string target = 2;
+}
+
+message EntryMetaUpdate {
+  string path = 1;
+  string description = 2;
+  repeated string tags = 3;
 }

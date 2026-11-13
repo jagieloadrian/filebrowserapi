@@ -6,6 +6,7 @@ import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType.CREATE
 import com.anjo.filebrowserapi.model.OperationType.DELETE
 import com.anjo.filebrowserapi.model.OperationType.READ
+import com.anjo.filebrowserapi.repository.MetadataRepository
 import com.anjo.filebrowserapi.utils.formatResponsePath
 import org.springframework.stereotype.Service
 import java.io.File
@@ -22,6 +23,7 @@ private const val RANDOM_NAME_LENGTH = 8
 @Service
 class FileManager(
     private val modifierUtils: PathModifierUtils,
+    private val metadata: MetadataRepository,
 ) {
     private val defaultPath: String get() = modifierUtils.generateDefaultPath()
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
@@ -80,7 +82,9 @@ class FileManager(
         if (targetFile.exists()) throw AlreadyExistsException("File $newName already exists")
 
         Files.move(sourceFile.toPath(), targetFile.toPath())
-        return formatResponsePath(targetFile.path, defaultPath)
+        val target = formatResponsePath(targetFile.path, defaultPath)
+        metadata.relocate(modifierUtils.currentUser(), formatResponsePath(sourceFile.path, defaultPath), target)
+        return target
     }
 
     private fun requireFile(
@@ -99,6 +103,7 @@ class FileManager(
         val file = modifierUtils.resolveName(path, fileName)
         requireFile(file, "Cannot remove non existing file")
         Files.delete(file.toPath())
+        metadata.forget(modifierUtils.currentUser(), formatResponsePath(file.path, defaultPath))
     }
 
     private fun validFileName(filename: String?): String =

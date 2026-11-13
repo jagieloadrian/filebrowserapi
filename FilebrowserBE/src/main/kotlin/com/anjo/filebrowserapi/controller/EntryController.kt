@@ -1,11 +1,15 @@
 package com.anjo.filebrowserapi.controller
 
 import com.anjo.filebrowserapi.model.Entry
+import com.anjo.filebrowserapi.model.EntryMetaRequest
 import com.anjo.filebrowserapi.service.EntryManager
+import jakarta.validation.Valid
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -22,7 +26,14 @@ class EntryController(
         @RequestParam("path", required = false) path: String?,
         @RequestParam("name", required = false) name: String?,
         @RequestParam("extension", required = false) extension: String?,
-    ): List<Entry> = entryManager.listEntries(path, name, extension)
+        @RequestParam("tag", required = false) tag: String?,
+    ): List<Entry> = entryManager.listEntries(path, name, extension, tag)
+
+    @PutMapping("/meta")
+    fun updateMeta(
+        @RequestParam("path") path: String,
+        @Valid @RequestBody request: EntryMetaRequest,
+    ): Entry = entryManager.updateMeta(path, request.description, request.tags)
 
     @PostMapping("/copy")
     @ResponseStatus(HttpStatus.CREATED)

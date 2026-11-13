@@ -11,12 +11,15 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
+import com.anjo.filebrowserapi.repository.MetadataRepository
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
@@ -31,7 +34,9 @@ class FileManagerTest {
 
     private val baseFolder: String get() = "$workDir/$BASE_FOLDER"
 
-    private val service by lazy { FileManager(PathModifierUtils(AppConfiguration(workDir.toString()))) }
+    private val metadata = mockk<MetadataRepository>(relaxed = true)
+
+    private val service by lazy { FileManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata) }
 
     @BeforeEach
     fun createBaseFolder() {
@@ -227,6 +232,7 @@ class FileManagerTest {
         // then
         result shouldBe "/$SECOND_FILE_NAME"
         File("$baseFolder/$SECOND_FILE_NAME").exists() shouldBe true
+        verify(exactly = 1) { metadata.relocate("user-1", "/$FIRST_FILE_NAME", "/$SECOND_FILE_NAME") }
     }
 
     @Test

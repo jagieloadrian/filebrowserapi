@@ -10,12 +10,15 @@ import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotEmptyException
 import com.anjo.filebrowserapi.exception.NotFoundException
+import com.anjo.filebrowserapi.repository.MetadataRepository
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
@@ -30,7 +33,9 @@ class DirectoryManagerTest {
 
     private val baseFolder: String get() = "$workDir/$BASE_FOLDER"
 
-    private val service by lazy { DirectoryManager(PathModifierUtils(AppConfiguration(workDir.toString()))) }
+    private val metadata = mockk<MetadataRepository>(relaxed = true)
+
+    private val service by lazy { DirectoryManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata) }
 
     @BeforeEach
     fun createBaseFolder() {
@@ -158,6 +163,7 @@ class DirectoryManagerTest {
         assertSoftly {
             result shouldBe expected
         }
+        verify(exactly = 1) { metadata.relocate("user-1", "/$FIRST_NAME", expected) }
     }
 
     @Test
@@ -269,6 +275,7 @@ class DirectoryManagerTest {
         service.deleteDirectoryRecursively(FIRST_NAME)
 
         // then
+        verify(exactly = 1) { metadata.forget("user-1", "/$FIRST_NAME") }
         File("$baseFolder/$FIRST_NAME").exists() shouldBe false
         File(baseFolder).exists() shouldBe true
     }

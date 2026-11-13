@@ -7,6 +7,7 @@ import com.anjo.filebrowser.Filebrowser.StringsResponse
 import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
+import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
@@ -148,22 +149,11 @@ class FilebrowserGrpc(
     override suspend fun listEntries(request: Filebrowser.EntriesRequest): Filebrowser.EntriesResponse =
         Filebrowser.EntriesResponse
             .newBuilder()
-            .addAllEntries(
-                entryManager.listEntries(request.path, request.name, request.extension).map { entry ->
-                    Filebrowser.Entry
-                        .newBuilder()
-                        .setPath(entry.path)
-                        .setDirectory(entry.directory)
-                        .setSize(entry.size)
-                        .setModified(
-                            Timestamp
-                                .newBuilder()
-                                .setSeconds(entry.modified.epochSecond)
-                                .setNanos(entry.modified.nano),
-                        ).setContentType(entry.contentType.orEmpty())
-                        .build()
-                },
-            ).build()
+            .addAllEntries(entryManager.listEntries(request.path, request.name, request.extension, request.tag).map { it.toProto() })
+            .build()
+
+    override suspend fun updateEntryMeta(request: Filebrowser.EntryMetaUpdate): Filebrowser.Entry =
+        entryManager.updateMeta(request.path, request.description, request.tagsList).toProto()
 
     override suspend fun copyEntry(request: Filebrowser.EntryTransfer): StringResponse =
         StringResponse
@@ -175,5 +165,21 @@ class FilebrowserGrpc(
         StringResponse
             .newBuilder()
             .setPath(entryManager.moveEntry(request.source, request.target))
+            .build()
+
+    private fun Entry.toProto(): Filebrowser.Entry =
+        Filebrowser.Entry
+            .newBuilder()
+            .setPath(path)
+            .setDirectory(directory)
+            .setSize(size)
+            .setModified(
+                Timestamp
+                    .newBuilder()
+                    .setSeconds(modified.epochSecond)
+                    .setNanos(modified.nano),
+            ).setContentType(contentType.orEmpty())
+            .setDescription(description.orEmpty())
+            .addAllTags(tags)
             .build()
 }

@@ -243,7 +243,7 @@ class FilebrowserGrpcTest {
                     .setName("first")
                     .setExtension("txt")
                     .build()
-            every { entryManager.listEntries(FIRST_NAME, "first", "txt") } returns
+            every { entryManager.listEntries(FIRST_NAME, "first", "txt", "") } returns
                 listOf(
                     Entry("/$FIRST_NAME", true, 0, modified, null),
                     Entry("/$FIRST_NAME/$FIRST_FILE_NAME", false, 4, modified, "text/plain"),
@@ -292,6 +292,28 @@ class FilebrowserGrpcTest {
             // then
             result shouldBe Empty.getDefaultInstance()
             verify(exactly = 1) { directoryManager.deleteDirectoryRecursively(FIRST_NAME) }
+        }
+
+    @Test
+    fun `should return updated entry when updateEntryMeta is called`() =
+        runTest {
+            // given
+            val request =
+                Filebrowser.EntryMetaUpdate
+                    .newBuilder()
+                    .setPath(FIRST_NAME)
+                    .setDescription("notes")
+                    .addTags("work")
+                    .build()
+            every { entryManager.updateMeta(FIRST_NAME, "notes", listOf("work")) } returns
+                Entry("/$FIRST_NAME", true, 0, Instant.EPOCH, null, "notes", listOf("work"))
+
+            // when
+            val result = service.updateEntryMeta(request)
+
+            // then
+            result.description shouldBe "notes"
+            result.tagsList shouldBe listOf("work")
         }
 
     private fun pathRequest(path: String) =

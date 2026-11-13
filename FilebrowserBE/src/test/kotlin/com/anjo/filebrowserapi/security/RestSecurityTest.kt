@@ -204,6 +204,7 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.PATCH, DIRECTORIES),
                 Arguments.of(HttpMethod.DELETE, DIRECTORIES),
                 Arguments.of(HttpMethod.DELETE, "$DIRECTORIES/recursively"),
+                Arguments.of(HttpMethod.PUT, "$ENTRIES/meta"),
                 Arguments.of(HttpMethod.POST, "$ENTRIES/copy"),
                 Arguments.of(HttpMethod.POST, "$ENTRIES/move"),
             )

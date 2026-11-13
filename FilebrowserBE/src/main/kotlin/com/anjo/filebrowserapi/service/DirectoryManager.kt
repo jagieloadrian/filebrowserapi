@@ -5,6 +5,7 @@ import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotEmptyException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
+import com.anjo.filebrowserapi.repository.MetadataRepository
 import com.anjo.filebrowserapi.utils.formatResponsePath
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
@@ -14,6 +15,7 @@ import java.nio.file.Files
 @Service
 class DirectoryManager(
     private val modifierUtils: PathModifierUtils,
+    private val metadata: MetadataRepository,
 ) {
     private val logger = KotlinLogging.logger {}
     private val defaultPath: String get() = modifierUtils.generateDefaultPath()
@@ -72,7 +74,9 @@ class DirectoryManager(
         if (targetDir.exists()) throw AlreadyExistsException("Directory $newName already exists")
 
         Files.move(sourceDir.toPath(), targetDir.toPath())
-        return formatResponsePath(targetDir.path, defaultPath)
+        val target = formatResponsePath(targetDir.path, defaultPath)
+        metadata.relocate(modifierUtils.currentUser(), formatResponsePath(sourceDir.path, defaultPath), target)
+        return target
     }
 
     fun deleteDirectory(path: String) {
@@ -80,12 +84,14 @@ class DirectoryManager(
         requireDirectory(directory, "Directory $path does not exist")
         if (!directory.list().isNullOrEmpty()) throw NotEmptyException("Cannot remove not empty directory")
         Files.delete(directory.toPath())
+        metadata.forget(modifierUtils.currentUser(), formatResponsePath(directory.path, defaultPath))
     }
 
     fun deleteDirectoryRecursively(path: String) {
         val directory = modifierUtils.resolveEntry(path)
         requireDirectory(directory, "Directory $path does not exist")
         check(directory.deleteRecursively()) { "Directory $path was only partly deleted" }
+        metadata.forget(modifierUtils.currentUser(), formatResponsePath(directory.path, defaultPath))
     }
 
     private fun requireDirectory(
