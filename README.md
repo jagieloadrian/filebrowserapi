@@ -89,8 +89,8 @@ The container logs JSON with `timestamp`, `level`, `message`, `logger` and `trac
 The REST profile serves `/health/live`, `/health/ready` and Prometheus metrics at `/metrics`.
 
 ## Deployment
-`.devops/helm/release.yaml` holds two HelmReleases of the shared chart `homelab-infra/charts/app`, on node
-`homelab/node: rpi`:
+`.devops/helm/release.yaml` holds two HelmReleases of the cluster's shared chart `charts/app` (Flux source
+`flux-system`), on node `homelab/node: rpi`:
 * `filebrowser`: REST (`web`), `filebrowser.home.arpa`, HTTP probes on `/health/live` and `/health/ready`.
 * `filebrowser-grpc`: gRPC (`server`), `filebrowser-grpc.home.arpa`, native Kubernetes `grpc` probes on 9090.
 
@@ -101,13 +101,12 @@ spool there before they are moved.
 Before the first rollout:
 * Set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` in both releases. It is the placeholder
   `https://issuer.invalid` until Authelia runs; health is green, but every API call fails.
-* Register the app in homelab-infra: `scripts/new-app.sh own filebrowser`.
+* Register `.devops/helm` of this repo in the cluster's Flux (GitRepository and Kustomization).
 * Add the deploy GitHub App (on the `main` ruleset bypass list): variable `DEPLOY_APP_CLIENT_ID`, secret
   `DEPLOY_APP_PRIVATE_KEY`. CI then writes each new `main` image tag into `release.yaml`; without them no tag is bumped.
-  Install the App on homelab-infra too (contents read): it is private, and `devops.yml` needs its chart.
 
-`devops.yml` renders both releases with the chart and the patches and validates them with kubeconform. Without the
-App it validates only the manifests in `.devops/helm` and warns.
+`devops.yml` validates `.devops/helm` with kubeconform (Kubernetes and Flux schemas). The chart lives outside this
+repo, so CI does not render it with the patches.
 
 ## Quality gate
     ./gradlew check build

@@ -62,8 +62,8 @@ Open problems: none known; next work is deployment (phase 4).
 
 ## Phase 4: Deployment
 1. Done: `.devops/helm/release.yaml` with HelmReleases for REST and gRPC, a shared PVC, CI bumps the image tag,
-   `devops.yml` validates with `helm template` and kubeconform. Open: OIDC issuer (placeholder until Authelia runs) and
-   the registration in homelab-infra.
+   `devops.yml` validates with kubeconform. Open: OIDC issuer (placeholder until Authelia runs) and the registration
+   in the cluster's Flux.
 2. Done: `runLocal` starts the REST API without OIDC.
 3. Done: `/tmp` is a 2Gi `emptyDir`, enough for one 1GB upload.
 4. Done: HTTP probes for `web`, native `grpc` probes on 9090 for `server`.
