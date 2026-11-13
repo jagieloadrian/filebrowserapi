@@ -24,6 +24,7 @@ private const val RANDOM_NAME_LENGTH = 8
 class FileManager(
     private val modifierUtils: PathModifierUtils,
     private val metadata: MetadataRepository,
+    private val trash: TrashManager,
 ) {
     private val defaultPath: String get() = modifierUtils.generateDefaultPath()
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
@@ -102,8 +103,7 @@ class FileManager(
         modifierUtils.validPath(path, DELETE)
         val file = modifierUtils.resolveName(path, fileName)
         requireFile(file, "Cannot remove non existing file")
-        Files.delete(file.toPath())
-        metadata.forget(modifierUtils.currentUser(), formatResponsePath(file.path, defaultPath))
+        trash.moveToTrash(file)
     }
 
     private fun validFileName(filename: String?): String =

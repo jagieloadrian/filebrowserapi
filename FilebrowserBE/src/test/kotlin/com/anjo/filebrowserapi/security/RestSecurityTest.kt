@@ -183,6 +183,7 @@ class RestSecurityTest(
         private const val FILES = "/api/v1/files"
         private const val DIRECTORIES = "/api/v1/directories"
         private const val ENTRIES = "/api/v1/entries"
+        private const val TRASH = "/api/v1/trash"
 
         @JvmStatic
         fun readRoutes() =
@@ -192,6 +193,7 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.GET, DIRECTORIES),
                 Arguments.of(HttpMethod.GET, ENTRIES),
                 Arguments.of(HttpMethod.GET, "$ENTRIES/duplicates"),
+                Arguments.of(HttpMethod.GET, TRASH),
             )
 
         @JvmStatic
@@ -206,6 +208,9 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.DELETE, DIRECTORIES),
                 Arguments.of(HttpMethod.DELETE, "$DIRECTORIES/recursively"),
                 Arguments.of(HttpMethod.PUT, "$ENTRIES/meta"),
+                Arguments.of(HttpMethod.POST, "$TRASH/x/restore"),
+                Arguments.of(HttpMethod.DELETE, "$TRASH/x"),
+                Arguments.of(HttpMethod.DELETE, TRASH),
                 Arguments.of(HttpMethod.POST, "$ENTRIES/copy"),
                 Arguments.of(HttpMethod.POST, "$ENTRIES/move"),
             )

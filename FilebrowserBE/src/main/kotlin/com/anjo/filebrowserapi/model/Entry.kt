@@ -5,6 +5,7 @@ import com.anjo.filebrowserapi.validation.MAX_TAGS
 import com.anjo.filebrowserapi.validation.ValidTags
 import jakarta.validation.constraints.Size
 import java.time.Instant
+import java.util.UUID
 
 data class Entry(
     val path: String,
@@ -41,4 +42,12 @@ data class DuplicateGroup(
     val sha256: String,
     val size: Long,
     val paths: List<String>,
+)
+
+data class TrashItem(
+    val id: UUID,
+    val path: String,
+    val directory: Boolean,
+    val size: Long,
+    val deletedAt: Instant,
 )

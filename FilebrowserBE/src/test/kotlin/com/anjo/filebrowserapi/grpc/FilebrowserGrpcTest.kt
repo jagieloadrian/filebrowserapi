@@ -9,9 +9,11 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.model.DuplicateGroup
 import com.anjo.filebrowserapi.model.Entry
+import com.anjo.filebrowserapi.model.TrashItem
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
+import com.anjo.filebrowserapi.service.TrashManager
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
 import io.grpc.Status
@@ -39,8 +41,9 @@ class FilebrowserGrpcTest {
     private val directoryManager = mockk<DirectoryManager>()
     private val fileManager = mockk<FileManager>()
     private val entryManager = mockk<EntryManager>()
+    private val trashManager = mockk<TrashManager>()
     private val service =
-        FilebrowserGrpc(directoryManager, fileManager, entryManager, AppConfiguration(maxUploadSize = DataSize.ofBytes(16)))
+        FilebrowserGrpc(directoryManager, fileManager, entryManager, trashManager, AppConfiguration(maxUploadSize = DataSize.ofBytes(16)))
 
     @TempDir
     private lateinit var workDir: Path
@@ -329,6 +332,35 @@ class FilebrowserGrpcTest {
             // then
             result.map { it.sha256 to it.pathsList } shouldBe listOf("ab" to listOf("/a", "/b"))
             result[0].size shouldBe 4
+        }
+
+    @Test
+    fun `should list, restore, purge and empty trash`() =
+        runTest {
+            // given
+            val id = java.util.UUID.randomUUID()
+            val trashId =
+                Filebrowser.TrashId
+                    .newBuilder()
+                    .setId(id.toString())
+                    .build()
+            every { trashManager.list() } returns listOf(TrashItem(id, "/a", false, 3, Instant.ofEpochSecond(5)))
+            every { trashManager.restore(id.toString()) } returns "/a"
+            every { trashManager.purge(id.toString()) } just Runs
+            every { trashManager.empty() } just Runs
+
+            // when
+            val items = service.listTrash(Empty.getDefaultInstance()).itemsList
+            val restored = service.restoreTrash(trashId)
+            service.purgeTrash(trashId)
+            service.emptyTrash(Empty.getDefaultInstance())
+
+            // then
+            items.map { it.id to it.path } shouldBe listOf(id.toString() to "/a")
+            items[0].deletedAt.seconds shouldBe 5
+            restored.path shouldBe "/a"
+            verify(exactly = 1) { trashManager.purge(id.toString()) }
+            verify(exactly = 1) { trashManager.empty() }
         }
 
     private fun pathRequest(path: String) =

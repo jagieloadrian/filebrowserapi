@@ -36,7 +36,9 @@ class FileManagerTest {
 
     private val metadata = mockk<MetadataRepository>(relaxed = true)
 
-    private val service by lazy { FileManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata) }
+    private val utils by lazy { PathModifierUtils(AppConfiguration(workDir.toString())) }
+
+    private val service by lazy { FileManager(utils, metadata, TrashManager(utils, metadata, mockk(relaxed = true))) }
 
     @BeforeEach
     fun createBaseFolder() {

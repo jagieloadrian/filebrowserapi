@@ -16,6 +16,7 @@ import java.nio.file.Files
 class DirectoryManager(
     private val modifierUtils: PathModifierUtils,
     private val metadata: MetadataRepository,
+    private val trash: TrashManager,
 ) {
     private val logger = KotlinLogging.logger {}
     private val defaultPath: String get() = modifierUtils.generateDefaultPath()
@@ -83,15 +84,13 @@ class DirectoryManager(
         val directory = modifierUtils.resolveEntry(path)
         requireDirectory(directory, "Directory $path does not exist")
         if (!directory.list().isNullOrEmpty()) throw NotEmptyException("Cannot remove not empty directory")
-        Files.delete(directory.toPath())
-        metadata.forget(modifierUtils.currentUser(), formatResponsePath(directory.path, defaultPath))
+        trash.moveToTrash(directory)
     }
 
     fun deleteDirectoryRecursively(path: String) {
         val directory = modifierUtils.resolveEntry(path)
         requireDirectory(directory, "Directory $path does not exist")
-        check(directory.deleteRecursively()) { "Directory $path was only partly deleted" }
-        metadata.forget(modifierUtils.currentUser(), formatResponsePath(directory.path, defaultPath))
+        trash.moveToTrash(directory)
     }
 
     private fun requireDirectory(

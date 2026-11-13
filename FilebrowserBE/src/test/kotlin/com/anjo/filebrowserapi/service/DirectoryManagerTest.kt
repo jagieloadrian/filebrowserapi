@@ -35,7 +35,9 @@ class DirectoryManagerTest {
 
     private val metadata = mockk<MetadataRepository>(relaxed = true)
 
-    private val service by lazy { DirectoryManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata) }
+    private val utils by lazy { PathModifierUtils(AppConfiguration(workDir.toString())) }
+
+    private val service by lazy { DirectoryManager(utils, metadata, TrashManager(utils, metadata, mockk(relaxed = true))) }
 
     @BeforeEach
     fun createBaseFolder() {
@@ -275,7 +277,7 @@ class DirectoryManagerTest {
         service.deleteDirectoryRecursively(FIRST_NAME)
 
         // then
-        verify(exactly = 1) { metadata.forget("user-1", "/$FIRST_NAME") }
+        verify(exactly = 1) { metadata.relocate("user-1", "/$FIRST_NAME", match { it.startsWith("trash:") }) }
         File("$baseFolder/$FIRST_NAME").exists() shouldBe false
         File(baseFolder).exists() shouldBe true
     }

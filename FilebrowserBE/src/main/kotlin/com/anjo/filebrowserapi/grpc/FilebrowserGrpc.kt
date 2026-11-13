@@ -11,6 +11,7 @@ import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
+import com.anjo.filebrowserapi.service.TrashManager
 import com.google.protobuf.Empty
 import com.google.protobuf.Timestamp
 import com.google.protobuf.kotlin.toByteString
@@ -24,6 +25,7 @@ import kotlinx.coroutines.withContext
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import java.nio.file.Files
+import java.time.Instant
 
 internal const val CHUNK_SIZE = 64 * 1024
 
@@ -33,6 +35,7 @@ class FilebrowserGrpc(
     private val directoryManager: DirectoryManager,
     private val fileManager: FileManager,
     private val entryManager: EntryManager,
+    private val trashManager: TrashManager,
     private val properties: AppConfiguration,
 ) : FilebrowserApiCoroutineImplBase() {
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
@@ -169,6 +172,38 @@ class FilebrowserGrpc(
                 },
             ).build()
 
+    override suspend fun listTrash(request: Empty): Filebrowser.TrashResponse =
+        Filebrowser.TrashResponse
+            .newBuilder()
+            .addAllItems(
+                trashManager.list().map {
+                    Filebrowser.TrashItem
+                        .newBuilder()
+                        .setId(it.id.toString())
+                        .setPath(it.path)
+                        .setDirectory(it.directory)
+                        .setSize(it.size)
+                        .setDeletedAt(it.deletedAt.toProto())
+                        .build()
+                },
+            ).build()
+
+    override suspend fun restoreTrash(request: Filebrowser.TrashId): StringResponse =
+        StringResponse
+            .newBuilder()
+            .setPath(trashManager.restore(request.id))
+            .build()
+
+    override suspend fun purgeTrash(request: Filebrowser.TrashId): Empty {
+        trashManager.purge(request.id)
+        return Empty.getDefaultInstance()
+    }
+
+    override suspend fun emptyTrash(request: Empty): Empty {
+        trashManager.empty()
+        return Empty.getDefaultInstance()
+    }
+
     override suspend fun copyEntry(request: Filebrowser.EntryTransfer): StringResponse =
         StringResponse
             .newBuilder()
@@ -187,13 +222,16 @@ class FilebrowserGrpc(
             .setPath(path)
             .setDirectory(directory)
             .setSize(size)
-            .setModified(
-                Timestamp
-                    .newBuilder()
-                    .setSeconds(modified.epochSecond)
-                    .setNanos(modified.nano),
-            ).setContentType(contentType.orEmpty())
+            .setModified(modified.toProto())
+            .setContentType(contentType.orEmpty())
             .setDescription(description.orEmpty())
             .addAllTags(tags)
+            .build()
+
+    private fun Instant.toProto(): Timestamp =
+        Timestamp
+            .newBuilder()
+            .setSeconds(epochSecond)
+            .setNanos(nano)
             .build()
 }
