@@ -75,7 +75,11 @@ Project aligned with the coding standards from the `standards` MCP server:
   (`/api/v1/entries/duplicates`), trash with 30-day purge, last 10 versions on overwrite, expiring public share links.
 - REST and gRPC parity for every feature; `listTrash`, `listVersions`, `listShares`, `findDuplicates` are reads.
 - Fix found by a test: request logs printed the share token in the URL; now masked as `/share/***`.
-- 447 tests, gate green.
+- Standards follow-up (owner's review): queries use Exposed 1.6.1 DSL instead of `JdbcClient`; all tests are Kotest
+  `FunSpec` specs.
+- Per-user quota (5GB incl. trash and versions) and a 2GB free-space reserve on the data disk: 507 /
+  `RESOURCE_EXHAUSTED`, `GET /api/v1/quota`.
+- 464 tests, all Kotest, gate green; a deliberate token leak makes the log-capture test fail.
 
 ## Decisions
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
@@ -122,11 +126,21 @@ Project aligned with the coding standards from the `standards` MCP server:
 - DELETE moves to the trash (breaking behaviour, `feat!`); defaults chosen without a design round (owner's request):
   30 days trash, 10 versions, links 7 days (max 30), files only.
 - Share tokens: 32 random bytes, base64url, stored as SHA-256 hex; the public download is REST only.
+- Exposed without its Spring starter: one `Database.connect(dataSource)` bean, `transaction(db)` per repository call.
+  Services are blocking (Spring MVC), so no `Dispatchers.IO` wrapper (`Db.tx`) as in the coroutine standard.
+- Repository specs run on Testcontainers + Flyway without a Spring context and clean the tables before each test.
+- Spring specs: class-body `FunSpec()` with `@ApplyExtension(SpringExtension::class)`; springmockk `@MockkBean` only
+  works on fields, so no constructor injection there.
+- Data tests use `withTests`, not `withData`: in Kotest 6.2.7 `withData` cases are containers, so `beforeEach` and
+  Spring's per-test hooks skip them. Blank values get named cases (Kotest rejects blank test names).
+- Log assertions use `TestObjects.captureOutput` (swaps `System.out`/`err`); Kotest has no `OutputCaptureExtension`.
+- Quota usage is computed by walking the user's files, trash and versions on each write (fine for a homelab; keep a
+  running total in the DB if it gets slow). Concurrent writes can overshoot the quota by one upload.
 
 ## Next steps and risks
 - Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password in Vault under
   `secret/apps/filebrowser` and `secret/apps/filebrowser-grpc` (`SPRING_DATASOURCE_PASSWORD`).
-- Trash and versions use disk until purged; no quota yet.
+- Trash and versions count against the quota until purged; users free space by emptying the trash.
 - Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.
 - Existing deployments: move files from `filebrowser/` to `filebrowser/<sub>/` before upgrading.
 - Phase 4 rollout: set the issuer once Authelia runs, register `.devops/helm` in the cluster's Flux, deploy GitHub

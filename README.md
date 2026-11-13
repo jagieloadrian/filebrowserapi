@@ -14,8 +14,8 @@
  * Spring Boot 4.1.2 (Spring gRPC server starter for the `server` profile)
  * Gradle 9.9.1
  * gRPC 1.85.1 + Protobuf 4.36.2
- * Kotest 6
- * PostgreSQL 17 with Flyway for metadata (tags, descriptions, trash, versions, share links, content hashes); the
+ * Kotest 6 (`FunSpec` specs), MockK, Testcontainers
+ * PostgreSQL 17 with Exposed 1.6.1 and Flyway for metadata (tags, descriptions, trash, versions, share links, content hashes); the
    file system stays the source of truth for files
 
 ## Prerequisites
