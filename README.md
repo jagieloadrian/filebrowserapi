@@ -61,6 +61,15 @@ In Swagger, click "Authorize" and paste an access token to try the API.
   otherwise 409 / `ALREADY_EXISTS`.
 * Names must not be blank or contain `/` (400 / `INVALID_ARGUMENT`); no path may leave the base directory.
 * REST and gRPC expose the same operations (`PATCH /api/v1/files?sourcePath=&newFileName=` renames a file).
+* REST uploads send the file as multipart part `uploadFile`; without it the answer is 400.
+* `GET /api/v1/entries?path=&name=&extension=` (gRPC `listEntries`) lists everything below `path` with `directory`,
+  `size`, `modified` and `contentType`. `name` matches part of the name ignoring case; `extension` keeps only files.
+  The path-only trees `GET /api/v1/files` and `GET /api/v1/directories` stay unchanged.
+* `POST /api/v1/entries/copy` and `/move` with `source` and `target` (gRPC `copyEntry`, `moveEntry`) copy or move a
+  file or a whole directory. `target` is the full new path: an existing target is 409, a missing source or target
+  directory 404, a directory into itself 400.
+* `DELETE /api/v1/directories/recursively?path=` (gRPC `deleteDirectoryRecursively`) deletes a directory with its
+  content. Plain `DELETE /api/v1/directories` still refuses a non-empty directory (409).
 * The `server` profile serves gRPC on `spring.grpc.server.port` (default 9090, env `SPRING_GRPC_SERVER_PORT`) with
   the standard `grpc.health.v1.Health` service, server reflection and `traceId` from `traceparent` in logs.
 * gRPC `uploadFile` is client-streaming (name, path and `overwrite` in the first message); `getFile` streams 64 KiB

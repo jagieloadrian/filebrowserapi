@@ -1,6 +1,6 @@
 # Project Status
 
-Last update: 2026-11-12, branch `feature-10/deployment`.
+Last update: 2026-11-13, branch `feature-11/file-operations`.
 
 ## Completed
 
@@ -61,6 +61,14 @@ Project aligned with the coding standards from the `standards` MCP server:
   memory 512Mi / 384Mi (measured RSS 313 / 273 MiB). `devops.yml` validates; CI bumps the tag via the deploy App.
 - 238 tests, gate green; chart output with patches rendered locally (helm + kubectl kustomize).
 
+### 2026-11-13, `feature-11/file-operations` (from `main`): roadmap phase 5 done
+- `GET /api/v1/entries` (gRPC `listEntries`): metadata (`directory`, `size`, `modified`, `contentType`), filters
+  `name` and `extension`.
+- Copy and move of files and directories (`/api/v1/entries/copy|move`, gRPC `copyEntry`/`moveEntry`).
+- Recursive delete on `DELETE /api/v1/directories/recursively` (gRPC `deleteDirectoryRecursively`).
+- Fix: a REST upload without the `uploadFile` part answered 500, now 400.
+- 302 tests, gate green; all new endpoints smoke-tested with `runLocal`.
+
 ## Decisions
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
@@ -97,6 +105,10 @@ Project aligned with the coding standards from the `standards` MCP server:
 - The `local` profile turns authentication off; it is only used by `runLocal`.
 - 2026-11-13: CI references no other repository (owner's rule until the repos share an organization): `devops.yml`
   validates only `.devops/helm`; the chart output with patches is checked by hand (helm + kubectl kustomize).
+
+- 2026-11-13: phase 5 only adds endpoints and RPCs; nothing in `/api/v1` or the proto changed shape, so no `v2`.
+  The explicit `/recursively` endpoint is the delete confirmation.
+- No database (phase 5.4): nothing needs storage beyond the file system.
 
 ## Next steps and risks
 - Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.

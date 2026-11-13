@@ -71,10 +71,12 @@ Open problems: none known; next work is deployment (phase 4).
 Done when: a push to `main` rolls the new image out to the cluster.
 
 ## Phase 5: Features
-1. Copy and move files and directories, recursive delete with confirmation.
-2. File metadata in responses (size, modification date, type) instead of bare paths.
-3. Search by name or extension.
-4. A database only when data appears that the file system cannot hold (sharing, tags, permissions).
+1. Done: copy and move files and directories (`/api/v1/entries/copy|move`); recursive delete only on its own endpoint
+   (`DELETE /api/v1/directories/recursively`), so a plain delete cannot remove content by accident.
+2. Done: `GET /api/v1/entries` returns size, modification date and type. New endpoint instead of changing the
+   path-only trees, so `/api/v1` stays compatible.
+3. Done: search by part of the name or by extension (filters on `/api/v1/entries`).
+4. Not needed yet: no data exists that the file system cannot hold (sharing, tags, permissions).
 
 ## Phase 6: FilebrowserUI
 1. Decide: build a client (Compose Multiplatform or web SPA) or delete the stub module.
