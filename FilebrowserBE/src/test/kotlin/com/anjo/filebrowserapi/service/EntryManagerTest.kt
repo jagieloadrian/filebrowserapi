@@ -12,6 +12,7 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
+import com.anjo.filebrowserapi.exception.QuotaExceededException
 import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.model.EntryMeta
 import com.anjo.filebrowserapi.model.FileHash
@@ -40,8 +41,9 @@ class EntryManagerTest {
     private val baseFolder: File get() = File("$workDir/$BASE_FOLDER")
 
     private val metadata = mockk<MetadataRepository>(relaxed = true)
+    private val quota = mockk<QuotaManager>(relaxed = true)
 
-    private val service by lazy { EntryManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata) }
+    private val service by lazy { EntryManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata, quota) }
 
     @BeforeEach
     fun signInUser() {
@@ -281,6 +283,16 @@ class EntryManagerTest {
         // then
         result shouldBe emptyList()
         verify(exactly = 1) { metadata.saveHashes("user-1", match { hashes -> hashes.map { it.path } == listOf("/$SECOND_NAME.pdf") }) }
+    }
+
+    @Test
+    fun `should reserve the copied size and copy nothing when the quota is exceeded`() {
+        // given
+        every { quota.reserve(TEST_MESSAGE.length.toLong()) } throws QuotaExceededException("full")
+
+        // when & then
+        assertThrows<QuotaExceededException> { service.copyEntry(FIRST_NAME, THIRD_NAME) }
+        File(baseFolder, THIRD_NAME).exists() shouldBe false
     }
 
     private fun transfer(

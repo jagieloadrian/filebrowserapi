@@ -11,11 +11,13 @@ import com.anjo.filebrowserapi.model.CreatedShare
 import com.anjo.filebrowserapi.model.DuplicateGroup
 import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.model.FileVersion
+import com.anjo.filebrowserapi.model.Quota
 import com.anjo.filebrowserapi.model.Share
 import com.anjo.filebrowserapi.model.TrashItem
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
+import com.anjo.filebrowserapi.service.QuotaManager
 import com.anjo.filebrowserapi.service.ShareManager
 import com.anjo.filebrowserapi.service.TrashManager
 import com.anjo.filebrowserapi.service.VersionManager
@@ -49,6 +51,7 @@ class FilebrowserGrpcTest {
     private val trashManager = mockk<TrashManager>()
     private val versionManager = mockk<VersionManager>()
     private val shareManager = mockk<ShareManager>()
+    private val quotaManager = mockk<QuotaManager>()
     private val service =
         FilebrowserGrpc(
             directoryManager,
@@ -57,6 +60,7 @@ class FilebrowserGrpcTest {
             trashManager,
             versionManager,
             shareManager,
+            quotaManager,
             AppConfiguration(maxUploadSize = DataSize.ofBytes(16)),
         )
 
@@ -97,7 +101,7 @@ class FilebrowserGrpcTest {
                     .setData("Message".toByteArray().toByteString())
                     .build()
             var received = ""
-            every { fileManager.uploadFile(FIRST_FILE_NAME, any(), FIRST_NAME, true) } answers {
+            every { fileManager.uploadFile(FIRST_FILE_NAME, any(), TEST_MESSAGE.length.toLong(), FIRST_NAME, true) } answers {
                 received = secondArg<InputStream>().readBytes().decodeToString()
                 expected
             }
@@ -126,7 +130,7 @@ class FilebrowserGrpcTest {
 
             // then
             result.status.code shouldBe Status.Code.RESOURCE_EXHAUSTED
-            verify(exactly = 0) { fileManager.uploadFile(any(), any(), any(), any()) }
+            verify(exactly = 0) { fileManager.uploadFile(any(), any(), any(), any(), any()) }
         }
 
     @Test
@@ -428,6 +432,19 @@ class FilebrowserGrpcTest {
             created.share.expiresAt.seconds shouldBe 9
             listed.map { it.path } shouldBe listOf("/a")
             verify(exactly = 1) { shareManager.revoke(share.id.toString()) }
+        }
+
+    @Test
+    fun `should return quota`() =
+        runTest {
+            // given
+            every { quotaManager.quota() } returns Quota(6, 10)
+
+            // when
+            val quota = service.getQuota(Empty.getDefaultInstance())
+
+            // then
+            quota.used to quota.limit shouldBe (6L to 10L)
         }
 
     private fun shareRequest() = Filebrowser.ShareRequest.newBuilder().setPath(FIRST_NAME)

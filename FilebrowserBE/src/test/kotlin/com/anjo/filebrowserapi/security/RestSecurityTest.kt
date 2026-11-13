@@ -228,6 +228,7 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.GET, TRASH),
                 Arguments.of(HttpMethod.GET, "/api/v1/versions"),
                 Arguments.of(HttpMethod.GET, SHARES),
+                Arguments.of(HttpMethod.GET, "/api/v1/quota"),
             )
 
         @JvmStatic

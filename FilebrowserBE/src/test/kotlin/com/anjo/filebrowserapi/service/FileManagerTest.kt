@@ -11,6 +11,7 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
+import com.anjo.filebrowserapi.exception.QuotaExceededException
 import com.anjo.filebrowserapi.repository.MetadataRepository
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
@@ -18,6 +19,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
@@ -36,11 +38,12 @@ class FileManagerTest {
 
     private val metadata = mockk<MetadataRepository>(relaxed = true)
     private val versions = mockk<VersionManager>(relaxed = true)
+    private val quota = mockk<QuotaManager>(relaxed = true)
 
     private val utils by lazy { PathModifierUtils(AppConfiguration(workDir.toString())) }
 
     private val service by lazy {
-        FileManager(utils, metadata, TrashManager(utils, metadata, mockk(relaxed = true), mockk(relaxed = true)), versions)
+        FileManager(utils, metadata, TrashManager(utils, metadata, mockk(relaxed = true), mockk(relaxed = true)), versions, quota)
     }
 
     @BeforeEach
@@ -103,7 +106,7 @@ class FileManagerTest {
         val expected = "/${FIRST_FILE_NAME}"
 
         // when
-        val result = service.uploadFile(FIRST_FILE_NAME, ByteArray(1).inputStream(), null)
+        val result = service.uploadFile(FIRST_FILE_NAME, ByteArray(1).inputStream(), 1, null)
 
         // then
         assertSoftly {
@@ -119,7 +122,7 @@ class FileManagerTest {
         val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
 
         // when
-        val exception = shouldThrow<NotFoundException> { service.uploadFile(FIRST_FILE_NAME, file.inputStream(), wrongPath) }
+        val exception = shouldThrow<NotFoundException> { service.uploadFile(FIRST_FILE_NAME, file.inputStream(), 0, wrongPath) }
 
         // then
         exception.message shouldBe expectedMessage
@@ -131,7 +134,7 @@ class FileManagerTest {
         createFile(FIRST_FILE_NAME).writeText(TEST_MESSAGE)
 
         // when
-        val exception = shouldThrow<AlreadyExistsException> { service.uploadFile(FIRST_FILE_NAME, "new".byteInputStream(), null) }
+        val exception = shouldThrow<AlreadyExistsException> { service.uploadFile(FIRST_FILE_NAME, "new".byteInputStream(), 3, null) }
 
         // then
         exception.message shouldBe "File $FIRST_FILE_NAME already exists"
@@ -144,7 +147,7 @@ class FileManagerTest {
         createFile(FIRST_FILE_NAME).writeText(TEST_MESSAGE)
 
         // when
-        val result = service.uploadFile(FIRST_FILE_NAME, "new".byteInputStream(), null, overwrite = true)
+        val result = service.uploadFile(FIRST_FILE_NAME, "new".byteInputStream(), 3, null, overwrite = true)
 
         // then
         result shouldBe "/$FIRST_FILE_NAME"
@@ -158,7 +161,7 @@ class FileManagerTest {
         createFolder(FIRST_NAME)
 
         // when & then
-        shouldThrow<AlreadyExistsException> { service.uploadFile(FIRST_NAME, "new".byteInputStream(), null, overwrite = true) }
+        shouldThrow<AlreadyExistsException> { service.uploadFile(FIRST_NAME, "new".byteInputStream(), 3, null, overwrite = true) }
         File("$baseFolder/$FIRST_NAME").isDirectory shouldBe true
     }
 
@@ -261,11 +264,21 @@ class FileManagerTest {
         // given
 
         // when
-        val result = service.uploadFile(null, "content".byteInputStream(), null)
+        val result = service.uploadFile(null, "content".byteInputStream(), 7, null)
 
         // then
         result shouldMatch Regex("^/[0-9a-f-]{8}-\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}\\.txt$")
         File("$baseFolder$result").readText() shouldBe "content"
+    }
+
+    @Test
+    fun `should not write the file when the quota is exceeded`() {
+        // given
+        every { quota.reserve(3) } throws QuotaExceededException("full")
+
+        // when & then
+        shouldThrow<QuotaExceededException> { service.uploadFile(FIRST_FILE_NAME, "new".byteInputStream(), 3, null) }
+        File("$baseFolder/$FIRST_FILE_NAME").exists() shouldBe false
     }
 
     private fun createFile(fileName: String): File {
@@ -289,7 +302,7 @@ class FileManagerTest {
     @Test
     fun `should throw BadInputException when uploadFile leaves base directory`() {
         // when & then
-        shouldThrow<BadInputException> { service.uploadFile("../evil.txt", ByteArray(1).inputStream(), null) }
+        shouldThrow<BadInputException> { service.uploadFile("../evil.txt", ByteArray(1).inputStream(), 1, null) }
     }
 
     @Test

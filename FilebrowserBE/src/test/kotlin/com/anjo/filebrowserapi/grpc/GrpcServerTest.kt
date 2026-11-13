@@ -10,6 +10,7 @@ import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotEmptyException
 import com.anjo.filebrowserapi.exception.NotFoundException
+import com.anjo.filebrowserapi.exception.QuotaExceededException
 import com.anjo.filebrowserapi.service.FileManager
 import com.google.protobuf.kotlin.toByteString
 import com.ninjasquad.springmockk.MockkBean
@@ -128,7 +129,7 @@ class GrpcServerTest(
         runTest {
             // given
             var received = ""
-            every { fileManager.uploadFile(FIRST_NAME, any(), "", false) } answers {
+            every { fileManager.uploadFile(FIRST_NAME, any(), any(), "", false) } answers {
                 received = secondArg<InputStream>().readBytes().decodeToString()
                 "/$FIRST_NAME"
             }
@@ -191,6 +192,7 @@ class GrpcServerTest(
                 Arguments.of(NotFoundException(TEST_MESSAGE), Status.Code.NOT_FOUND, TEST_MESSAGE),
                 Arguments.of(AlreadyExistsException(TEST_MESSAGE), Status.Code.ALREADY_EXISTS, TEST_MESSAGE),
                 Arguments.of(NotEmptyException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),
+                Arguments.of(QuotaExceededException(TEST_MESSAGE), Status.Code.RESOURCE_EXHAUSTED, TEST_MESSAGE),
                 Arguments.of(BadInputException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
                 Arguments.of(IllegalArgumentException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
                 Arguments.of(IllegalStateException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),

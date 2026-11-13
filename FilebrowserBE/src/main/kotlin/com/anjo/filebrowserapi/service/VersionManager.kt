@@ -12,7 +12,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
-private const val VERSIONS_FOLDER = "filebrowser-versions"
+internal const val VERSIONS_FOLDER = "filebrowser-versions"
 private const val KEPT_VERSIONS = 10
 
 @Service

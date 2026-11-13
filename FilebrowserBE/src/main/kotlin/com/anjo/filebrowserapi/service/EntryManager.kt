@@ -26,6 +26,7 @@ private const val HASH_BUFFER = 64 * 1024
 class EntryManager(
     private val modifierUtils: PathModifierUtils,
     private val metadata: MetadataRepository,
+    private val quota: QuotaManager,
 ) {
     fun listEntries(
         path: String?,
@@ -91,6 +92,7 @@ class EntryManager(
         target: String,
     ): String =
         transfer(source, target) { from, to, fromKey, toKey ->
+            quota.reserve(diskUsage(from.toPath()))
             from.copyRecursively(to)
             metadata.copy(modifierUtils.currentUser(), fromKey, toKey)
         }

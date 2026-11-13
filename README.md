@@ -57,6 +57,11 @@ In Swagger, click "Authorize" and paste an access token to try the API.
 ### API rules
 * `application.max-upload-size` (default `1GB`, env `APPLICATION_MAX_UPLOAD_SIZE`) limits one upload: REST answers 413,
   gRPC `RESOURCE_EXHAUSTED`.
+* Every write that adds bytes (upload, copy) checks two limits first and answers 507 / `RESOURCE_EXHAUSTED`:
+  `application.quota` per user (default `5GB`, env `APPLICATION_QUOTA`), counting files, trash and versions, and
+  `application.min-free-space` (default `2GB`, env `APPLICATION_MIN_FREE_SPACE`) that must stay free on the disk
+  holding `application.path`. The `local-path` PVC does not enforce its size, so the second limit protects the node's
+  disk. `GET /api/v1/quota` (gRPC `getQuota`) returns `used` and `limit` in bytes.
 * An upload never replaces an existing file unless it sets `overwrite` (REST `?overwrite=true`, gRPC field `overwrite`);
   otherwise 409 / `ALREADY_EXISTS`.
 * Names must not be blank or contain `/` (400 / `INVALID_ARGUMENT`); no path may leave the base directory.

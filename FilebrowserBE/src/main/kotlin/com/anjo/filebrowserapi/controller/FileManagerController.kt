@@ -41,7 +41,7 @@ class FileManagerController(
         @RequestParam path: String?,
         @RequestParam(defaultValue = "false") overwrite: Boolean,
     ): ResponseEntity<String> =
-        ResponseEntity.ok(fileManager.uploadFile(uploadFile.originalFilename, uploadFile.inputStream, path, overwrite))
+        ResponseEntity.ok(fileManager.uploadFile(uploadFile.originalFilename, uploadFile.inputStream, uploadFile.size, path, overwrite))
 
     @GetMapping("/{filename:.+}")
     fun getFile(

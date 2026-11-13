@@ -96,6 +96,7 @@ class RestGlobalControllerAdviceTest(
                 Arguments.of(NotFoundException(TEST_MESSAGE), 404),
                 Arguments.of(AlreadyExistsException(TEST_MESSAGE), 409),
                 Arguments.of(NotEmptyException(TEST_MESSAGE), 409),
+                Arguments.of(QuotaExceededException(TEST_MESSAGE), 507),
             )
     }
 }

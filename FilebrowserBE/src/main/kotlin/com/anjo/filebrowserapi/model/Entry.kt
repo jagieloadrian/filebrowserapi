@@ -70,3 +70,8 @@ data class CreatedShare(
     val share: Share,
     val token: String,
 )
+
+data class Quota(
+    val used: Long,
+    val limit: Long,
+)

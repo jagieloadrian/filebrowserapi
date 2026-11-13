@@ -24,6 +24,7 @@ class RestGlobalControllerAdvice {
                 is BadInputException -> HttpStatus.BAD_REQUEST
                 is NotFoundException -> HttpStatus.NOT_FOUND
                 is AlreadyExistsException, is NotEmptyException -> HttpStatus.CONFLICT
+                is QuotaExceededException -> HttpStatus.INSUFFICIENT_STORAGE
             },
             exception.javaClass.simpleName,
             exception.message,

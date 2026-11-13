@@ -12,6 +12,7 @@ import com.anjo.filebrowserapi.model.Share
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
+import com.anjo.filebrowserapi.service.QuotaManager
 import com.anjo.filebrowserapi.service.ShareManager
 import com.anjo.filebrowserapi.service.TrashManager
 import com.anjo.filebrowserapi.service.VersionManager
@@ -41,6 +42,7 @@ class FilebrowserGrpc(
     private val trashManager: TrashManager,
     private val versionManager: VersionManager,
     private val shareManager: ShareManager,
+    private val quotaManager: QuotaManager,
     private val properties: AppConfiguration,
 ) : FilebrowserApiCoroutineImplBase() {
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
@@ -70,7 +72,7 @@ class FilebrowserGrpc(
                 val metadata = head ?: throw BadInputException("Upload stream is empty")
                 val path =
                     Files.newInputStream(spool).use {
-                        fileManager.uploadFile(metadata.name, it, metadata.path, metadata.overwrite)
+                        fileManager.uploadFile(metadata.name, it, size, metadata.path, metadata.overwrite)
                     }
                 StringResponse
                     .newBuilder()
@@ -247,6 +249,15 @@ class FilebrowserGrpc(
     override suspend fun revokeShare(request: Filebrowser.ShareId): Empty {
         shareManager.revoke(request.id)
         return Empty.getDefaultInstance()
+    }
+
+    override suspend fun getQuota(request: Empty): Filebrowser.Quota {
+        val quota = quotaManager.quota()
+        return Filebrowser.Quota
+            .newBuilder()
+            .setUsed(quota.used)
+            .setLimit(quota.limit)
+            .build()
     }
 
     override suspend fun copyEntry(request: Filebrowser.EntryTransfer): StringResponse =

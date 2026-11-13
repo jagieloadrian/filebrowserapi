@@ -17,7 +17,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
-private const val TRASH_FOLDER = "filebrowser-trash"
+internal const val TRASH_FOLDER = "filebrowser-trash"
 private const val TRASH_KEY = "trash:"
 private val RETENTION: Duration = Duration.ofDays(30)
 

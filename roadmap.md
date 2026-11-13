@@ -80,7 +80,7 @@ Done when: a push to `main` rolls the new image out to the cluster.
    (30 days), file versions (last 10), public share links (hashed tokens, max 30 days) and cached content hashes for
    duplicate detection. Only additive endpoints and RPCs, except DELETE, which now moves to the trash.
 
-Open: a user quota, since the trash and versions keep disk space until they are purged.
+5. Done 2026-11-13: per-user quota (5GB, counts trash and versions) and a 2GB free-space reserve on the disk.
 
 ## Phase 6: FilebrowserUI
 1. Decide: build a client (Compose Multiplatform or web SPA) or delete the stub module.

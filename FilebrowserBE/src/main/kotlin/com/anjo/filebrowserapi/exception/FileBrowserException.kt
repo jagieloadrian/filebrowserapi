@@ -19,3 +19,7 @@ class AlreadyExistsException(
 class NotEmptyException(
     message: String,
 ) : FileBrowserException(message)
+
+class QuotaExceededException(
+    message: String,
+) : FileBrowserException(message)

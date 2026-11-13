@@ -26,6 +26,7 @@ class FileManager(
     private val metadata: MetadataRepository,
     private val trash: TrashManager,
     private val versions: VersionManager,
+    private val quota: QuotaManager,
 ) {
     private val defaultPath: String get() = modifierUtils.generateDefaultPath()
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
@@ -43,6 +44,7 @@ class FileManager(
     fun uploadFile(
         originalName: String?,
         content: InputStream,
+        size: Long,
         path: String?,
         overwrite: Boolean = false,
     ): String {
@@ -51,6 +53,7 @@ class FileManager(
         val target = modifierUtils.resolveName(path, fileName)
         if (target.isDirectory) throw AlreadyExistsException("Directory $fileName already exists")
 
+        quota.reserve(size)
         val options = if (overwrite) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
         if (overwrite && target.isFile) versions.keep(target)
         try {
