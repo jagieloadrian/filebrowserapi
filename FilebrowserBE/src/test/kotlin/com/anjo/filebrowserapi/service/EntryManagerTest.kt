@@ -14,6 +14,7 @@ import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.model.EntryMeta
+import com.anjo.filebrowserapi.model.FileHash
 import com.anjo.filebrowserapi.repository.MetadataRepository
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -46,6 +47,7 @@ class EntryManagerTest {
     fun signInUser() {
         signIn()
         every { metadata.findUnder(any(), any()) } returns emptyMap()
+        every { metadata.findHashes(any(), any()) } returns emptyMap()
         File(baseFolder, FIRST_NAME).mkdirs()
         File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").writeText(TEST_MESSAGE)
         File(baseFolder, "$SECOND_NAME.pdf").writeText(TEST_MESSAGE)
@@ -238,6 +240,47 @@ class EntryManagerTest {
         // then
         verify(exactly = 1) { metadata.copy("user-1", "/$FIRST_NAME", "/$THIRD_NAME") }
         verify(exactly = 1) { metadata.relocate("user-1", "/$THIRD_NAME", "/$THIRD_NAME.moved") }
+    }
+
+    @Test
+    fun `should group files with equal content and hash only files of a shared size`() {
+        // given
+        File(baseFolder, "copy.txt").writeText(TEST_MESSAGE)
+        File(baseFolder, "same-size.txt").writeText(TEST_MESSAGE.reversed())
+        File(baseFolder, "unique.txt").writeText("x")
+
+        // when
+        val result = service.findDuplicates(null)
+
+        // then
+        result.map { it.paths } shouldContainExactly listOf(listOf("/copy.txt", "/$FIRST_NAME/$FIRST_FILE_NAME", "/$SECOND_NAME.pdf"))
+        result[0].size shouldBe TEST_MESSAGE.length.toLong()
+        verify(exactly = 1) { metadata.saveHashes("user-1", match { hashes -> hashes.size == 4 }) }
+    }
+
+    @Test
+    fun `should reuse cached hash when size and modification time are unchanged`() {
+        // given
+        val first = File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME")
+        val second = File(baseFolder, "$SECOND_NAME.pdf")
+        every { metadata.findHashes("user-1", "") } returns
+            mapOf(
+                "/$FIRST_NAME/$FIRST_FILE_NAME" to
+                    FileHash(
+                        "/$FIRST_NAME/$FIRST_FILE_NAME",
+                        first.length(),
+                        first.lastModified(),
+                        "cached",
+                    ),
+                "/$SECOND_NAME.pdf" to FileHash("/$SECOND_NAME.pdf", second.length(), second.lastModified() - 1, "stale"),
+            )
+
+        // when
+        val result = service.findDuplicates(null)
+
+        // then
+        result shouldBe emptyList()
+        verify(exactly = 1) { metadata.saveHashes("user-1", match { hashes -> hashes.map { it.path } == listOf("/$SECOND_NAME.pdf") }) }
     }
 
     private fun transfer(

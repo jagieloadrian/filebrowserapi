@@ -7,6 +7,7 @@ import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
+import com.anjo.filebrowserapi.model.DuplicateGroup
 import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
@@ -314,6 +315,20 @@ class FilebrowserGrpcTest {
             // then
             result.description shouldBe "notes"
             result.tagsList shouldBe listOf("work")
+        }
+
+    @Test
+    fun `should return duplicate groups when findDuplicates is called`() =
+        runTest {
+            // given
+            every { entryManager.findDuplicates(FIRST_NAME) } returns listOf(DuplicateGroup("ab", 4, listOf("/a", "/b")))
+
+            // when
+            val result = service.findDuplicates(pathRequest(FIRST_NAME)).groupsList
+
+            // then
+            result.map { it.sha256 to it.pathsList } shouldBe listOf("ab" to listOf("/a", "/b"))
+            result[0].size shouldBe 4
         }
 
     private fun pathRequest(path: String) =

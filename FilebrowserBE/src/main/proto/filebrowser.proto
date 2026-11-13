@@ -19,6 +19,7 @@ service FilebrowserApi {
   rpc deleteDirectoryRecursively(PathRequest)returns (google.protobuf.Empty);
   rpc listEntries(EntriesRequest)returns (EntriesResponse);
   rpc updateEntryMeta(EntryMetaUpdate)returns (Entry);
+  rpc findDuplicates(PathRequest)returns (DuplicatesResponse);
   rpc copyEntry(EntryTransfer)returns (StringResponse);
   rpc moveEntry(EntryTransfer)returns (StringResponse);
 }
@@ -83,4 +84,14 @@ message EntryMetaUpdate {
   string path = 1;
   string description = 2;
   repeated string tags = 3;
+}
+
+message DuplicateGroup {
+  string sha256 = 1;
+  int64 size = 2;
+  repeated string paths = 3;
+}
+
+message DuplicatesResponse {
+  repeated DuplicateGroup groups = 1;
 }

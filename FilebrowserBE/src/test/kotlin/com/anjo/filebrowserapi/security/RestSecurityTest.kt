@@ -191,6 +191,7 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.GET, "$FILES/missing.txt"),
                 Arguments.of(HttpMethod.GET, DIRECTORIES),
                 Arguments.of(HttpMethod.GET, ENTRIES),
+                Arguments.of(HttpMethod.GET, "$ENTRIES/duplicates"),
             )
 
         @JvmStatic

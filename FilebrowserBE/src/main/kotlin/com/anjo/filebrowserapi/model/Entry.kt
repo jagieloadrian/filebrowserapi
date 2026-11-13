@@ -29,3 +29,16 @@ data class EntryMetaRequest(
     @field:ValidTags
     val tags: List<String> = emptyList(),
 )
+
+data class FileHash(
+    val path: String,
+    val size: Long,
+    val modifiedMs: Long,
+    val sha256: String,
+)
+
+data class DuplicateGroup(
+    val sha256: String,
+    val size: Long,
+    val paths: List<String>,
+)

@@ -2,6 +2,7 @@ package com.anjo.filebrowserapi.controller
 
 import com.anjo.filebrowserapi.TestObjects.FIRST_FILE_NAME
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
+import com.anjo.filebrowserapi.model.DuplicateGroup
 import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.service.EntryManager
 import com.ninjasquad.springmockk.MockkBean
@@ -75,6 +76,19 @@ class EntryControllerTest(
         // then
         response.status shouldBe status
         response.contentAsString shouldBe "/copy"
+    }
+
+    @Test
+    fun `should return duplicate groups when duplicates are requested`() {
+        // given
+        every { service.findDuplicates(null) } returns listOf(DuplicateGroup("ab", 4, listOf("/a.txt", "/b.txt")))
+
+        // when
+        val response = mockMvc.get("$ENTRIES/duplicates").andReturn().response
+
+        // then
+        response.status shouldBe 200
+        response.contentAsString shouldBe """[{"sha256":"ab","size":4,"paths":["/a.txt","/b.txt"]}]"""
     }
 
     @Test

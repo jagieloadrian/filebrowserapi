@@ -155,6 +155,20 @@ class FilebrowserGrpc(
     override suspend fun updateEntryMeta(request: Filebrowser.EntryMetaUpdate): Filebrowser.Entry =
         entryManager.updateMeta(request.path, request.description, request.tagsList).toProto()
 
+    override suspend fun findDuplicates(request: Filebrowser.PathRequest): Filebrowser.DuplicatesResponse =
+        Filebrowser.DuplicatesResponse
+            .newBuilder()
+            .addAllGroups(
+                entryManager.findDuplicates(request.path).map {
+                    Filebrowser.DuplicateGroup
+                        .newBuilder()
+                        .setSha256(it.sha256)
+                        .setSize(it.size)
+                        .addAllPaths(it.paths)
+                        .build()
+                },
+            ).build()
+
     override suspend fun copyEntry(request: Filebrowser.EntryTransfer): StringResponse =
         StringResponse
             .newBuilder()

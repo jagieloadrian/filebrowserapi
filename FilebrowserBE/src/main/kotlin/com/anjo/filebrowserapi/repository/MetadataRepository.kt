@@ -1,15 +1,19 @@
 package com.anjo.filebrowserapi.repository
 
 import com.anjo.filebrowserapi.model.EntryMeta
+import com.anjo.filebrowserapi.model.FileHash
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 
-private val PATH_TABLES = listOf("entry_meta")
+private val PATH_TABLES = listOf("entry_meta", "file_hash")
 private const val UNDER = "owner = :owner and (path = :path or path like :prefix escape '\\')"
 
 @Repository
 class MetadataRepository(
     private val jdbc: JdbcClient,
+    private val batch: NamedParameterJdbcTemplate,
 ) {
     fun findUnder(
         owner: String,
@@ -79,6 +83,37 @@ class MetadataRepository(
         ).param("to", to)
             .param("cut", from.length + 1)
             .update()
+    }
+
+    fun findHashes(
+        owner: String,
+        path: String,
+    ): Map<String, FileHash> =
+        under("select path, size, modified_ms, sha256 from file_hash where $UNDER", owner, path)
+            .query { rs, _ -> FileHash(rs.getString("path"), rs.getLong("size"), rs.getLong("modified_ms"), rs.getString("sha256")) }
+            .list()
+            .associateBy { it.path }
+
+    fun saveHashes(
+        owner: String,
+        hashes: List<FileHash>,
+    ) {
+        if (hashes.isEmpty()) return
+        batch.batchUpdate(
+            """
+            insert into file_hash (owner, path, size, modified_ms, sha256) values (:owner, :path, :size, :modified, :sha256)
+            on conflict (owner, path) do update set size = excluded.size, modified_ms = excluded.modified_ms, sha256 = excluded.sha256
+            """.trimIndent(),
+            hashes
+                .map {
+                    MapSqlParameterSource()
+                        .addValue("owner", owner)
+                        .addValue("path", it.path)
+                        .addValue("size", it.size)
+                        .addValue("modified", it.modifiedMs)
+                        .addValue("sha256", it.sha256)
+                }.toTypedArray(),
+        )
     }
 
     fun forget(

@@ -38,6 +38,7 @@ private val GRPC_READS =
         FilebrowserApiGrpc.getGetFileMethod(),
         FilebrowserApiGrpc.getShowDirectoriesTreeMethod(),
         FilebrowserApiGrpc.getListEntriesMethod(),
+        FilebrowserApiGrpc.getFindDuplicatesMethod(),
     ).map { it.fullMethodName }
 
 private val GRPC_WRITES = FilebrowserApiGrpc.getServiceDescriptor().methods.map { it.fullMethodName } - GRPC_READS.toSet()

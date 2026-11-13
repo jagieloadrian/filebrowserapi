@@ -1,5 +1,6 @@
 package com.anjo.filebrowserapi.repository
 
+import com.anjo.filebrowserapi.model.FileHash
 import io.kotest.matchers.maps.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -80,6 +81,20 @@ class MetadataRepositoryTest(
         // then
         repository.findUnder(OWNER, "").keys shouldBe setOf("/a/b.txt", "/c/b.txt")
         repository.findUnder(OWNER, "/c").getValue("/c/b.txt").tags shouldBe listOf("x")
+    }
+
+    @Test
+    fun `should store hashes and move them with their files`() {
+        // given
+        repository.saveHashes(OWNER, listOf(FileHash("/a/x.bin", 3, 10, "abc"), FileHash("/b.bin", 3, 11, "abc")))
+        repository.saveHashes(OWNER, listOf(FileHash("/b.bin", 4, 12, "def")))
+
+        // when
+        repository.relocate(OWNER, "/a", "/z")
+
+        // then
+        repository.findHashes(OWNER, "") shouldBe
+            mapOf("/z/x.bin" to FileHash("/z/x.bin", 3, 10, "abc"), "/b.bin" to FileHash("/b.bin", 4, 12, "def"))
     }
 
     private companion object {

@@ -1,5 +1,6 @@
 package com.anjo.filebrowserapi.controller
 
+import com.anjo.filebrowserapi.model.DuplicateGroup
 import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.model.EntryMetaRequest
 import com.anjo.filebrowserapi.service.EntryManager
@@ -28,6 +29,11 @@ class EntryController(
         @RequestParam("extension", required = false) extension: String?,
         @RequestParam("tag", required = false) tag: String?,
     ): List<Entry> = entryManager.listEntries(path, name, extension, tag)
+
+    @GetMapping("/duplicates")
+    fun findDuplicates(
+        @RequestParam("path", required = false) path: String?,
+    ): List<DuplicateGroup> = entryManager.findDuplicates(path)
 
     @PutMapping("/meta")
     fun updateMeta(
