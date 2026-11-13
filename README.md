@@ -142,8 +142,11 @@ Before the first rollout:
 * Add the deploy GitHub App (on the `main` ruleset bypass list): variable `DEPLOY_APP_CLIENT_ID`, secret
   `DEPLOY_APP_PRIVATE_KEY`. CI then writes each new `main` image tag into `release.yaml`; without them no tag is bumped.
 
-`devops.yml` validates `.devops/helm` with kubeconform (Kubernetes and Flux schemas). The chart lives outside this
-repo, so CI does not render it with the patches.
+`devops.yml` validates `.devops/helm` with kubeconform (Kubernetes and Flux schemas) and renders both releases with
+homelab-infra `charts/app` (`helm template`, without the Flux `postRenderers` patches) through kubeconform. homelab-infra
+is private: the chart is fetched with a token of the deploy GitHub App, limited to homelab-infra and Contents: read, so
+the app must be installed on homelab-infra too (GitHub → Settings → GitHub Apps → the app → Configure → Repository
+access → add `homelab-infra`); without it the step fails with `Not Found`.
 
 ## Quality gate
     ./gradlew check build
