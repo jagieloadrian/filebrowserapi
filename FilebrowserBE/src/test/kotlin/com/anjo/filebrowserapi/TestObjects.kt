@@ -2,6 +2,8 @@ package com.anjo.filebrowserapi
 
 import org.springframework.security.authentication.TestingAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 
 object TestObjects {
     const val USER = "user-1"
@@ -17,5 +19,21 @@ object TestObjects {
 
     fun signIn(sub: String = USER) {
         SecurityContextHolder.getContext().authentication = TestingAuthenticationToken(sub, null)
+    }
+
+    inline fun captureOutput(block: () -> Unit): String {
+        val out = System.out
+        val err = System.err
+        val buffer = ByteArrayOutputStream()
+        val capture = PrintStream(buffer, true, Charsets.UTF_8)
+        System.setOut(capture)
+        System.setErr(capture)
+        try {
+            block()
+        } finally {
+            System.setOut(out)
+            System.setErr(err)
+        }
+        return buffer.toString(Charsets.UTF_8)
     }
 }

@@ -1,0 +1,3 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:17-alpine:///filebrowser?TC_DAEMON=true

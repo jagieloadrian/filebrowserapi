@@ -4,6 +4,7 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
+import com.anjo.filebrowserapi.utils.formatResponsePath
 import com.anjo.filebrowserapi.validation.NAME_RULE
 import com.anjo.filebrowserapi.validation.isValidName
 import com.anjo.filebrowserapi.validation.isValidSubject
@@ -37,6 +38,11 @@ class PathModifierUtils(
         return target
     }
 
+    fun resolveOwned(
+        owner: String,
+        path: String,
+    ): File = resolveIn(rootDirectory.resolve(owner), arrayOf(path))
+
     private fun resolveIn(
         base: Path,
         segments: Array<out String?>,
@@ -51,11 +57,20 @@ class PathModifierUtils(
         return target.toFile()
     }
 
-    private fun baseDirectory(): Path {
+    fun currentUser(): String {
         val subject = SecurityContextHolder.getContext().authentication?.name ?: throw IllegalStateException("No authenticated user")
         if (!isValidSubject(subject)) throw BadInputException("The token subject cannot name a directory")
-        return Files.createDirectories(rootDirectory.resolve(subject))
+        return subject
     }
+
+    private fun baseDirectory(): Path = Files.createDirectories(rootDirectory.resolve(currentUser()))
+
+    fun storeDirectory(
+        store: String,
+        owner: String,
+    ): Path = Files.createDirectories(Path.of(properties.path, store, owner).toAbsolutePath().normalize())
+
+    fun relativePath(file: File): String = formatResponsePath(file.path, generateDefaultPath())
 
     fun mergePath(path: String?): String = resolve(path).path
 

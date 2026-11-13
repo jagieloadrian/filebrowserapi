@@ -7,13 +7,28 @@ import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
+import com.anjo.filebrowserapi.model.CreatedShare
+import com.anjo.filebrowserapi.model.DuplicateGroup
+import com.anjo.filebrowserapi.model.Entry
+import com.anjo.filebrowserapi.model.FileVersion
+import com.anjo.filebrowserapi.model.Quota
+import com.anjo.filebrowserapi.model.Share
+import com.anjo.filebrowserapi.model.TrashItem
 import com.anjo.filebrowserapi.service.DirectoryManager
+import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
+import com.anjo.filebrowserapi.service.QuotaManager
+import com.anjo.filebrowserapi.service.ShareManager
+import com.anjo.filebrowserapi.service.TrashManager
+import com.anjo.filebrowserapi.service.VersionManager
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
 import io.grpc.Status
 import io.grpc.StatusException
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.IsolationMode
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.engine.spec.tempdir
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
 import io.mockk.every
@@ -23,25 +38,54 @@ import io.mockk.verify
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.io.TempDir
 import org.springframework.util.unit.DataSize
+import java.io.File
 import java.io.InputStream
-import java.nio.file.Path
+import java.time.Instant
 import kotlin.random.Random
-import kotlin.test.Test
 
-class FilebrowserGrpcTest {
-    private val directoryManager = mockk<DirectoryManager>()
-    private val fileManager = mockk<FileManager>()
-    private val service = FilebrowserGrpc(directoryManager, fileManager, AppConfiguration(maxUploadSize = DataSize.ofBytes(16)))
+class FilebrowserGrpcTest :
+    FunSpec({
+        isolationMode = IsolationMode.InstancePerRoot
 
-    @TempDir
-    private lateinit var workDir: Path
+        val directoryManager = mockk<DirectoryManager>()
+        val fileManager = mockk<FileManager>()
+        val entryManager = mockk<EntryManager>()
+        val trashManager = mockk<TrashManager>()
+        val versionManager = mockk<VersionManager>()
+        val shareManager = mockk<ShareManager>()
+        val quotaManager = mockk<QuotaManager>()
+        val service =
+            FilebrowserGrpc(
+                directoryManager,
+                fileManager,
+                entryManager,
+                trashManager,
+                versionManager,
+                shareManager,
+                quotaManager,
+                AppConfiguration(maxUploadSize = DataSize.ofBytes(16)),
+            )
+        val workDir = tempdir()
 
-    @Test
-    fun `should return files tree when showFilesTree is called`() =
-        runTest {
+        fun shareRequest() = Filebrowser.ShareRequest.newBuilder().setPath(FIRST_NAME)
+
+        fun pathRequest(path: String) =
+            Filebrowser.PathRequest
+                .newBuilder()
+                .setPath(path)
+                .build()
+
+        fun fileOperation(
+            name: String,
+            path: String,
+        ) = Filebrowser.FileOperation
+            .newBuilder()
+            .setName(name)
+            .setPath(path)
+            .build()
+
+        test("should return files tree when showFilesTree is called") {
             // given
             val expected = listOf("/$FIRST_NAME", "/$FIRST_NAME/$FIRST_FILE_NAME")
             val request = pathRequest(FIRST_NAME)
@@ -54,9 +98,7 @@ class FilebrowserGrpcTest {
             result.directoriesList shouldBe expected
         }
 
-    @Test
-    fun `should store streamed chunks and return path when uploadFile is called`() =
-        runTest {
+        test("should store streamed chunks and return path when uploadFile is called") {
             // given
             val expected = "/$FIRST_NAME/$FIRST_FILE_NAME"
             val head =
@@ -73,7 +115,7 @@ class FilebrowserGrpcTest {
                     .setData("Message".toByteArray().toByteString())
                     .build()
             var received = ""
-            every { fileManager.uploadFile(FIRST_FILE_NAME, any(), FIRST_NAME, true) } answers {
+            every { fileManager.uploadFile(FIRST_FILE_NAME, any(), TEST_MESSAGE.length.toLong(), FIRST_NAME, true) } answers {
                 received = secondArg<InputStream>().readBytes().decodeToString()
                 expected
             }
@@ -86,9 +128,7 @@ class FilebrowserGrpcTest {
             received shouldBe TEST_MESSAGE
         }
 
-    @Test
-    fun `should throw RESOURCE_EXHAUSTED when upload stream exceeds max upload size`() =
-        runTest {
+        test("should throw RESOURCE_EXHAUSTED when upload stream exceeds max upload size") {
             // given
             val chunk =
                 Filebrowser.UploadFile
@@ -102,23 +142,19 @@ class FilebrowserGrpcTest {
 
             // then
             result.status.code shouldBe Status.Code.RESOURCE_EXHAUSTED
-            verify(exactly = 0) { fileManager.uploadFile(any(), any(), any(), any()) }
+            verify(exactly = 0) { fileManager.uploadFile(any(), any(), any(), any(), any()) }
         }
 
-    @Test
-    fun `should throw BadInputException when upload stream is empty`() =
-        runTest {
+        test("should throw BadInputException when upload stream is empty") {
             // when & then
             shouldThrow<BadInputException> { service.uploadFile(emptyFlow()) }
         }
 
-    @Test
-    fun `should stream file in chunks when getFile is called`() =
-        runTest {
+        test("should stream file in chunks when getFile is called") {
             // given
             val expected = Random.nextBytes(CHUNK_SIZE * 2 + 1)
             every { fileManager.getFile(FIRST_FILE_NAME, FIRST_NAME) } returns
-                workDir.resolve(FIRST_FILE_NAME).toFile().apply { writeBytes(expected) }
+                File(workDir, FIRST_FILE_NAME).apply { writeBytes(expected) }
 
             // when
             val result = service.getFile(fileOperation(FIRST_FILE_NAME, FIRST_NAME)).toList()
@@ -128,9 +164,7 @@ class FilebrowserGrpcTest {
             result.fold(ByteArray(0)) { acc, chunk -> acc + chunk.data.toByteArray() } shouldBe expected
         }
 
-    @Test
-    fun `should return new path when renameFile is called`() =
-        runTest {
+        test("should return new path when renameFile is called") {
             // given
             val expected = "/$SECOND_NAME"
             every { fileManager.renameFile(SECOND_NAME, FIRST_NAME) } returns expected
@@ -142,9 +176,7 @@ class FilebrowserGrpcTest {
             result.path shouldBe expected
         }
 
-    @Test
-    fun `should delete file when deleteFile is called`() =
-        runTest {
+        test("should delete file when deleteFile is called") {
             // given
             every { fileManager.deleteFile(FIRST_FILE_NAME, FIRST_NAME) } just Runs
 
@@ -156,9 +188,7 @@ class FilebrowserGrpcTest {
             verify(exactly = 1) { fileManager.deleteFile(FIRST_FILE_NAME, FIRST_NAME) }
         }
 
-    @Test
-    fun `should return directories tree from directory manager when showDirectoriesTree is called`() =
-        runTest {
+        test("should return directories tree from directory manager when showDirectoriesTree is called") {
             // given
             val expected = listOf("/$FIRST_NAME/$SECOND_NAME")
             every { directoryManager.showDirectoriesTree(FIRST_NAME) } returns expected
@@ -170,9 +200,7 @@ class FilebrowserGrpcTest {
             result.directoriesList shouldBe expected
         }
 
-    @Test
-    fun `should return directory path when addDirectory is called`() =
-        runTest {
+        test("should return directory path when addDirectory is called") {
             // given
             val expected = "/$FIRST_NAME/$SECOND_NAME"
             every { directoryManager.addDirectory(SECOND_NAME, FIRST_NAME) } returns expected
@@ -184,9 +212,7 @@ class FilebrowserGrpcTest {
             result.path shouldBe expected
         }
 
-    @Test
-    fun `should return last directory path when addDirectoriesRecursively is called`() =
-        runTest {
+        test("should return last directory path when addDirectoriesRecursively is called") {
             // given
             val input = "$FIRST_NAME/$SECOND_NAME"
             every { directoryManager.addDirectoriesRecursively(input) } returns "/$input"
@@ -198,9 +224,7 @@ class FilebrowserGrpcTest {
             result.path shouldBe "/$input"
         }
 
-    @Test
-    fun `should return new path when renameDirectory is called`() =
-        runTest {
+        test("should return new path when renameDirectory is called") {
             // given
             val expected = "/$SECOND_NAME"
             every { directoryManager.renameDirectory(SECOND_NAME, FIRST_NAME) } returns expected
@@ -212,9 +236,7 @@ class FilebrowserGrpcTest {
             result.path shouldBe expected
         }
 
-    @Test
-    fun `should delete directory when deleteDirectory is called`() =
-        runTest {
+        test("should delete directory when deleteDirectory is called") {
             // given
             every { directoryManager.deleteDirectory(FIRST_NAME) } just Runs
 
@@ -226,18 +248,178 @@ class FilebrowserGrpcTest {
             verify(exactly = 1) { directoryManager.deleteDirectory(FIRST_NAME) }
         }
 
-    private fun pathRequest(path: String) =
-        Filebrowser.PathRequest
-            .newBuilder()
-            .setPath(path)
-            .build()
+        test("should return entries with metadata when listEntries is called") {
+            // given
+            val modified = Instant.parse("2026-11-13T10:00:00.5Z")
+            val request =
+                Filebrowser.EntriesRequest
+                    .newBuilder()
+                    .setPath(FIRST_NAME)
+                    .setName("first")
+                    .setExtension("txt")
+                    .build()
+            every { entryManager.listEntries(FIRST_NAME, "first", "txt", "") } returns
+                listOf(
+                    Entry("/$FIRST_NAME", true, 0, modified, null),
+                    Entry("/$FIRST_NAME/$FIRST_FILE_NAME", false, 4, modified, "text/plain"),
+                )
 
-    private fun fileOperation(
-        name: String,
-        path: String,
-    ) = Filebrowser.FileOperation
-        .newBuilder()
-        .setName(name)
-        .setPath(path)
-        .build()
-}
+            // when
+            val result = service.listEntries(request).entriesList
+
+            // then
+            result.map { it.path } shouldBe listOf("/$FIRST_NAME", "/$FIRST_NAME/$FIRST_FILE_NAME")
+            result[0].directory shouldBe true
+            result[0].contentType shouldBe ""
+            result[1].size shouldBe 4
+            result[1].contentType shouldBe "text/plain"
+            result[1].modified.seconds shouldBe modified.epochSecond
+            result[1].modified.nanos shouldBe modified.nano
+        }
+
+        test("should return target path when copyEntry and moveEntry are called") {
+            // given
+            val request =
+                Filebrowser.EntryTransfer
+                    .newBuilder()
+                    .setSource(FIRST_NAME)
+                    .setTarget(SECOND_NAME)
+                    .build()
+            every { entryManager.copyEntry(FIRST_NAME, SECOND_NAME) } returns "/$SECOND_NAME"
+            every { entryManager.moveEntry(FIRST_NAME, SECOND_NAME) } returns "/$SECOND_NAME"
+
+            // when & then
+            service.copyEntry(request).path shouldBe "/$SECOND_NAME"
+            service.moveEntry(request).path shouldBe "/$SECOND_NAME"
+        }
+
+        test("should delete directory with content when deleteDirectoryRecursively is called") {
+            // given
+            every { directoryManager.deleteDirectoryRecursively(FIRST_NAME) } just Runs
+
+            // when
+            val result = service.deleteDirectoryRecursively(pathRequest(FIRST_NAME))
+
+            // then
+            result shouldBe Empty.getDefaultInstance()
+            verify(exactly = 1) { directoryManager.deleteDirectoryRecursively(FIRST_NAME) }
+        }
+
+        test("should return updated entry when updateEntryMeta is called") {
+            // given
+            val request =
+                Filebrowser.EntryMetaUpdate
+                    .newBuilder()
+                    .setPath(FIRST_NAME)
+                    .setDescription("notes")
+                    .addTags("work")
+                    .build()
+            every { entryManager.updateMeta(FIRST_NAME, "notes", listOf("work")) } returns
+                Entry("/$FIRST_NAME", true, 0, Instant.EPOCH, null, "notes", listOf("work"))
+
+            // when
+            val result = service.updateEntryMeta(request)
+
+            // then
+            result.description shouldBe "notes"
+            result.tagsList shouldBe listOf("work")
+        }
+
+        test("should return duplicate groups when findDuplicates is called") {
+            // given
+            every { entryManager.findDuplicates(FIRST_NAME) } returns listOf(DuplicateGroup("ab", 4, listOf("/a", "/b")))
+
+            // when
+            val result = service.findDuplicates(pathRequest(FIRST_NAME)).groupsList
+
+            // then
+            result.map { it.sha256 to it.pathsList } shouldBe listOf("ab" to listOf("/a", "/b"))
+            result[0].size shouldBe 4
+        }
+
+        test("should list, restore, purge and empty trash") {
+            // given
+            val id = java.util.UUID.randomUUID()
+            val trashId =
+                Filebrowser.TrashId
+                    .newBuilder()
+                    .setId(id.toString())
+                    .build()
+            every { trashManager.list() } returns listOf(TrashItem(id, "/a", false, 3, Instant.ofEpochSecond(5)))
+            every { trashManager.restore(id.toString()) } returns "/a"
+            every { trashManager.purge(id.toString()) } just Runs
+            every { trashManager.empty() } just Runs
+
+            // when
+            val items = service.listTrash(Empty.getDefaultInstance()).itemsList
+            val restored = service.restoreTrash(trashId)
+            service.purgeTrash(trashId)
+            service.emptyTrash(Empty.getDefaultInstance())
+
+            // then
+            items.map { it.id to it.path } shouldBe listOf(id.toString() to "/a")
+            items[0].deletedAt.seconds shouldBe 5
+            restored.path shouldBe "/a"
+            verify(exactly = 1) { trashManager.purge(id.toString()) }
+            verify(exactly = 1) { trashManager.empty() }
+        }
+
+        test("should list and restore versions") {
+            // given
+            val id = java.util.UUID.randomUUID()
+            every { versionManager.list(FIRST_NAME) } returns listOf(FileVersion(id, "/a", 3, Instant.ofEpochSecond(7)))
+            every { versionManager.restore(id.toString()) } returns "/a"
+
+            // when
+            val versions = service.listVersions(pathRequest(FIRST_NAME)).versionsList
+            val restored =
+                service.restoreVersion(
+                    Filebrowser.VersionId
+                        .newBuilder()
+                        .setId(id.toString())
+                        .build(),
+                )
+
+            // then
+            versions.map { it.id to it.createdAt.seconds } shouldBe listOf(id.toString() to 7L)
+            restored.path shouldBe "/a"
+        }
+
+        test("should create list and revoke shares") {
+            // given
+            val share = Share(java.util.UUID.randomUUID(), "/a", Instant.ofEpochSecond(1), Instant.ofEpochSecond(9))
+            every { shareManager.create(FIRST_NAME, null) } returns CreatedShare(share, "tok")
+            every { shareManager.create(FIRST_NAME, 3) } returns CreatedShare(share, "tok3")
+            every { shareManager.list() } returns listOf(share)
+            every { shareManager.revoke(share.id.toString()) } just Runs
+
+            // when
+            val created = service.createShare(shareRequest().build())
+            val createdForDays = service.createShare(shareRequest().setDays(3).build())
+            val listed = service.listShares(Empty.getDefaultInstance()).sharesList
+            service.revokeShare(
+                Filebrowser.ShareId
+                    .newBuilder()
+                    .setId(share.id.toString())
+                    .build(),
+            )
+
+            // then
+            created.token shouldBe "tok"
+            createdForDays.token shouldBe "tok3"
+            created.share.expiresAt.seconds shouldBe 9
+            listed.map { it.path } shouldBe listOf("/a")
+            verify(exactly = 1) { shareManager.revoke(share.id.toString()) }
+        }
+
+        test("should return quota") {
+            // given
+            every { quotaManager.quota() } returns Quota(6, 10)
+
+            // when
+            val quota = service.getQuota(Empty.getDefaultInstance())
+
+            // then
+            quota.used to quota.limit shouldBe (6L to 10L)
+        }
+    })

@@ -1,5 +1,8 @@
 package com.anjo.filebrowserapi
 
+import io.kotest.core.extensions.ApplyExtension
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
@@ -12,43 +15,43 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import java.nio.file.Files
-import kotlin.test.Test
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @AutoConfigureMetrics
 @ActiveProfiles("web")
-class ObservabilityEndpointsTest(
-    @Autowired private val mockMvc: MockMvc,
-) {
-    @Test
-    fun `should report UP when liveness probe is called`() {
-        // when
-        val response = mockMvc.get("/health/live").andReturn().response
+@ApplyExtension(SpringExtension::class)
+class ObservabilityEndpointsTest : FunSpec() {
+    @Autowired
+    private lateinit var mockMvc: MockMvc
 
-        // then
-        response.status shouldBe 200
-        response.contentAsString shouldContain "\"status\":\"UP\""
-    }
+    init {
+        test("should report UP when liveness probe is called") {
+            // when
+            val response = mockMvc.get("/health/live").andReturn().response
 
-    @Test
-    fun `should report UP when readiness probe is called`() {
-        // when
-        val response = mockMvc.get("/health/ready").andReturn().response
+            // then
+            response.status shouldBe 200
+            response.contentAsString shouldContain "\"status\":\"UP\""
+        }
 
-        // then
-        response.status shouldBe 200
-        response.contentAsString shouldContain "\"status\":\"UP\""
-    }
+        test("should report UP when readiness probe is called") {
+            // when
+            val response = mockMvc.get("/health/ready").andReturn().response
 
-    @Test
-    fun `should expose prometheus metrics when metrics endpoint is called`() {
-        // when
-        val response = mockMvc.get("/metrics").andReturn().response
+            // then
+            response.status shouldBe 200
+            response.contentAsString shouldContain "\"status\":\"UP\""
+        }
 
-        // then
-        response.status shouldBe 200
-        response.contentAsString shouldContain "jvm_memory_used_bytes"
+        test("should expose prometheus metrics when metrics endpoint is called") {
+            // when
+            val response = mockMvc.get("/metrics").andReturn().response
+
+            // then
+            response.status shouldBe 200
+            response.contentAsString shouldContain "jvm_memory_used_bytes"
+        }
     }
 
     companion object {

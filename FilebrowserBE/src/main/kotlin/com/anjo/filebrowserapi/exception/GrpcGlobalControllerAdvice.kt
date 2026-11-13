@@ -42,5 +42,6 @@ class GrpcGlobalControllerAdvice : GrpcExceptionHandler {
             is NotFoundException -> Status.NOT_FOUND
             is AlreadyExistsException -> Status.ALREADY_EXISTS
             is NotEmptyException -> Status.FAILED_PRECONDITION
+            is QuotaExceededException -> Status.RESOURCE_EXHAUSTED
         }
 }

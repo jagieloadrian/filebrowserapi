@@ -1,6 +1,6 @@
 # Project Status
 
-Last update: 2026-11-12, branch `feature-10/deployment`.
+Last update: 2026-11-13, branch `feature-12/file-metadata`.
 
 ## Completed
 
@@ -61,6 +61,26 @@ Project aligned with the coding standards from the `standards` MCP server:
   memory 512Mi / 384Mi (measured RSS 313 / 273 MiB). `devops.yml` validates; CI bumps the tag via the deploy App.
 - 238 tests, gate green; chart output with patches rendered locally (helm + kubectl kustomize).
 
+### 2026-11-13, `feature-11/file-operations` (from `main`): roadmap phase 5 done
+- `GET /api/v1/entries` (gRPC `listEntries`): metadata (`directory`, `size`, `modified`, `contentType`), filters
+  `name` and `extension`.
+- Copy and move of files and directories (`/api/v1/entries/copy|move`, gRPC `copyEntry`/`moveEntry`).
+- Recursive delete on `DELETE /api/v1/directories/recursively` (gRPC `deleteDirectoryRecursively`).
+- Fix: a REST upload without the `uploadFile` part answered 500, now 400.
+- 302 tests, gate green; all new endpoints smoke-tested with `runLocal`.
+
+### 2026-11-13, `feature-12/file-metadata` (from `feature-11`): metadata features
+- PostgreSQL 17 + Flyway (V1 to V5), `JdbcClient`; Testcontainers in tests, Docker Compose in `runLocal`.
+- Tags and descriptions (`PUT /api/v1/entries/meta`, `?tag=` filter), duplicates by SHA-256
+  (`/api/v1/entries/duplicates`), trash with 30-day purge, last 10 versions on overwrite, expiring public share links.
+- REST and gRPC parity for every feature; `listTrash`, `listVersions`, `listShares`, `findDuplicates` are reads.
+- Fix found by a test: request logs printed the share token in the URL; now masked as `/share/***`.
+- Standards follow-up (owner's review): queries use Exposed 1.6.1 DSL instead of `JdbcClient`; all tests are Kotest
+  `FunSpec` specs.
+- Per-user quota (5GB incl. trash and versions) and a 2GB free-space reserve on the data disk: 507 /
+  `RESOURCE_EXHAUSTED`, `GET /api/v1/quota`.
+- 464 tests, all Kotest, gate green; a deliberate token leak makes the log-capture test fail.
+
 ## Decisions
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
@@ -98,7 +118,29 @@ Project aligned with the coding standards from the `standards` MCP server:
 - 2026-11-13: CI references no other repository (owner's rule until the repos share an organization): `devops.yml`
   validates only `.devops/helm`; the chart output with patches is checked by hand (helm + kubectl kustomize).
 
+- 2026-11-13: phase 5 only adds endpoints and RPCs; nothing in `/api/v1` or the proto changed shape, so no `v2`.
+  The explicit `/recursively` endpoint is the delete confirmation.
+- 2026-11-13: PostgreSQL for metadata only; files stay on disk. Rows are keyed by owner and path ("/docs/a.txt") and
+  follow rename, move and copy by prefix; a stale row is harmless. Trashed items use the key `trash:<id>`, which no
+  user path matches, so their tags, versions and links come back on restore and vanish on purge.
+- DELETE moves to the trash (breaking behaviour, `feat!`); defaults chosen without a design round (owner's request):
+  30 days trash, 10 versions, links 7 days (max 30), files only.
+- Share tokens: 32 random bytes, base64url, stored as SHA-256 hex; the public download is REST only.
+- Exposed without its Spring starter: one `Database.connect(dataSource)` bean, `transaction(db)` per repository call.
+  Services are blocking (Spring MVC), so no `Dispatchers.IO` wrapper (`Db.tx`) as in the coroutine standard.
+- Repository specs run on Testcontainers + Flyway without a Spring context and clean the tables before each test.
+- Spring specs: class-body `FunSpec()` with `@ApplyExtension(SpringExtension::class)`; springmockk `@MockkBean` only
+  works on fields, so no constructor injection there.
+- Data tests use `withTests`, not `withData`: in Kotest 6.2.7 `withData` cases are containers, so `beforeEach` and
+  Spring's per-test hooks skip them. Blank values get named cases (Kotest rejects blank test names).
+- Log assertions use `TestObjects.captureOutput` (swaps `System.out`/`err`); Kotest has no `OutputCaptureExtension`.
+- Quota usage is computed by walking the user's files, trash and versions on each write (fine for a homelab; keep a
+  running total in the DB if it gets slow). Concurrent writes can overshoot the quota by one upload.
+
 ## Next steps and risks
+- Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password in Vault under
+  `secret/apps/filebrowser` and `secret/apps/filebrowser-grpc` (`SPRING_DATASOURCE_PASSWORD`).
+- Trash and versions count against the quota until purged; users free space by emptying the trash.
 - Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.
 - Existing deployments: move files from `filebrowser/` to `filebrowser/<sub>/` before upgrading.
 - Phase 4 rollout: set the issuer once Authelia runs, register `.devops/helm` in the cluster's Flux, deploy GitHub

@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.web.servlet.HandlerInterceptor
 
+private val SHARE_TOKEN = Regex("/share/[^/]+")
+
 class RestLoggerInterceptor : HandlerInterceptor {
     private val logger = KotlinLogging.logger {}
 
@@ -13,7 +15,7 @@ class RestLoggerInterceptor : HandlerInterceptor {
         response: HttpServletResponse,
         handler: Any,
     ): Boolean {
-        logger.info { "Incoming request: Method = ${request.method}; URL: ${request.requestURL}" }
+        logger.info { "Incoming request: Method = ${request.method}; URL: ${request.requestURL.replace(SHARE_TOKEN, "/share/***")}" }
         request.setAttribute("startTime", System.currentTimeMillis())
         return super.preHandle(request, response, handler)
     }

@@ -16,11 +16,12 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
+import java.io.File
 import java.nio.charset.StandardCharsets
 
 @RestController
@@ -36,30 +37,17 @@ class FileManagerController(
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun uploadFile(
-        @RequestBody uploadFile: MultipartFile,
+        @RequestPart("uploadFile") uploadFile: MultipartFile,
         @RequestParam path: String?,
         @RequestParam(defaultValue = "false") overwrite: Boolean,
     ): ResponseEntity<String> =
-        ResponseEntity.ok(fileManager.uploadFile(uploadFile.originalFilename, uploadFile.inputStream, path, overwrite))
+        ResponseEntity.ok(fileManager.uploadFile(uploadFile.originalFilename, uploadFile.inputStream, uploadFile.size, path, overwrite))
 
     @GetMapping("/{filename:.+}")
     fun getFile(
         @PathVariable filename: String,
         @RequestParam("path", required = false) path: String?,
-    ): ResponseEntity<Resource> {
-        val file = fileManager.getFile(filename, path)
-        return ResponseEntity
-            .ok()
-            .contentType(MediaTypeFactory.getMediaType(file.name).orElse(MediaType.APPLICATION_OCTET_STREAM))
-            .header(
-                HttpHeaders.CONTENT_DISPOSITION,
-                ContentDisposition
-                    .attachment()
-                    .filename(file.name, StandardCharsets.UTF_8)
-                    .build()
-                    .toString(),
-            ).body(FileSystemResource(file))
-    }
+    ): ResponseEntity<Resource> = fileManager.getFile(filename, path).download()
 
     @PatchMapping
     fun renameFile(
@@ -73,3 +61,16 @@ class FileManagerController(
         @RequestParam("path", required = false) path: String?,
     ): ResponseEntity<Unit> = ResponseEntity(fileManager.deleteFile(filename, path), HttpStatus.NO_CONTENT)
 }
+
+internal fun File.download(): ResponseEntity<Resource> =
+    ResponseEntity
+        .ok()
+        .contentType(MediaTypeFactory.getMediaType(name).orElse(MediaType.APPLICATION_OCTET_STREAM))
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition
+                .attachment()
+                .filename(name, StandardCharsets.UTF_8)
+                .build()
+                .toString(),
+        ).body(FileSystemResource(this))

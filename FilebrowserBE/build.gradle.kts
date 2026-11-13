@@ -23,6 +23,15 @@ dependencies {
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.validation)
+    implementation(libs.spring.boot.starter.jdbc)
+    implementation(libs.spring.boot.starter.flyway)
+    implementation(libs.flyway.postgresql)
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.jdbc)
+    implementation(libs.exposed.java.time)
+    runtimeOnly(libs.postgresql)
+    developmentOnly(platform(SpringBootPlugin.BOM_COORDINATES))
+    developmentOnly(libs.spring.boot.docker.compose)
     implementation(libs.spring.boot.starter.resource.server)
     implementation(libs.coroutines.core)
     implementation(libs.micrometer.prometheus)
@@ -42,11 +51,12 @@ dependencies {
     testImplementation(libs.spring.boot.micrometer.metrics.test)
     testImplementation(libs.spring.boot.starter.grpc.server.test)
     testImplementation(libs.spring.boot.starter.resource.server.test)
+    testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.springmockk)
     testImplementation(libs.kotest.assertions)
     testImplementation(libs.kotest.property)
-    testImplementation(libs.coroutines.test)
-    testImplementation(kotlin("test"))
+    testImplementation(libs.kotest.runner)
+    testImplementation(libs.kotest.spring)
 }
 
 protobuf {
@@ -133,7 +143,7 @@ tasks.register<BootRun>("runLocal") {
     group = "application"
     description = "Runs the REST API without OIDC: .devops/application-local.yaml over application.yaml"
     mainClass = tasks.bootRun.flatMap { it.mainClass }
-    classpath = sourceSets.main.get().runtimeClasspath
+    classpath = tasks.bootRun.get().classpath
     args("--spring.config.additional-location=file:${rootProject.file(".devops/application-local.yaml")}")
 }
 

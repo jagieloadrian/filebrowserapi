@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 package com.anjo.filebrowser;
 
@@ -15,6 +16,22 @@ service FilebrowserApi {
   rpc addDirectoriesRecursively(PathRequest)returns (StringResponse);
   rpc renameDirectory(FileOperation)returns (StringResponse);
   rpc deleteDirectory(PathRequest)returns (google.protobuf.Empty);
+  rpc deleteDirectoryRecursively(PathRequest)returns (google.protobuf.Empty);
+  rpc listEntries(EntriesRequest)returns (EntriesResponse);
+  rpc updateEntryMeta(EntryMetaUpdate)returns (Entry);
+  rpc findDuplicates(PathRequest)returns (DuplicatesResponse);
+  rpc listTrash(google.protobuf.Empty)returns (TrashResponse);
+  rpc restoreTrash(TrashId)returns (StringResponse);
+  rpc purgeTrash(TrashId)returns (google.protobuf.Empty);
+  rpc emptyTrash(google.protobuf.Empty)returns (google.protobuf.Empty);
+  rpc listVersions(PathRequest)returns (VersionsResponse);
+  rpc restoreVersion(VersionId)returns (StringResponse);
+  rpc createShare(ShareRequest)returns (CreatedShare);
+  rpc listShares(google.protobuf.Empty)returns (SharesResponse);
+  rpc revokeShare(ShareId)returns (google.protobuf.Empty);
+  rpc getQuota(google.protobuf.Empty)returns (Quota);
+  rpc copyEntry(EntryTransfer)returns (StringResponse);
+  rpc moveEntry(EntryTransfer)returns (StringResponse);
 }
 
 message PathRequest {
@@ -45,4 +62,106 @@ message UploadFile {
 
 message FileResponse {
   bytes data = 1;
+}
+
+message EntriesRequest {
+  string path = 1;
+  string name = 2;
+  string extension = 3;
+  string tag = 4;
+}
+
+message Entry {
+  string path = 1;
+  bool directory = 2;
+  int64 size = 3;
+  google.protobuf.Timestamp modified = 4;
+  string content_type = 5;
+  string description = 6;
+  repeated string tags = 7;
+}
+
+message EntriesResponse {
+  repeated Entry entries = 1;
+}
+
+message EntryTransfer {
+  string source = 1;
+  string target = 2;
+}
+
+message EntryMetaUpdate {
+  string path = 1;
+  string description = 2;
+  repeated string tags = 3;
+}
+
+message DuplicateGroup {
+  string sha256 = 1;
+  int64 size = 2;
+  repeated string paths = 3;
+}
+
+message DuplicatesResponse {
+  repeated DuplicateGroup groups = 1;
+}
+
+message TrashId {
+  string id = 1;
+}
+
+message TrashItem {
+  string id = 1;
+  string path = 2;
+  bool directory = 3;
+  int64 size = 4;
+  google.protobuf.Timestamp deleted_at = 5;
+}
+
+message TrashResponse {
+  repeated TrashItem items = 1;
+}
+
+message VersionId {
+  string id = 1;
+}
+
+message FileVersion {
+  string id = 1;
+  int64 size = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
+message VersionsResponse {
+  repeated FileVersion versions = 1;
+}
+
+message ShareRequest {
+  string path = 1;
+  optional int64 days = 2;
+}
+
+message ShareId {
+  string id = 1;
+}
+
+message Share {
+  string id = 1;
+  string path = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message CreatedShare {
+  Share share = 1;
+  string token = 2;
+}
+
+message Quota {
+  int64 used = 1;
+  int64 limit = 2;
+}
+
+message SharesResponse {
+  repeated Share shares = 1;
 }

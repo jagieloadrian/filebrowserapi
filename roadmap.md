@@ -71,10 +71,16 @@ Open problems: none known; next work is deployment (phase 4).
 Done when: a push to `main` rolls the new image out to the cluster.
 
 ## Phase 5: Features
-1. Copy and move files and directories, recursive delete with confirmation.
-2. File metadata in responses (size, modification date, type) instead of bare paths.
-3. Search by name or extension.
-4. A database only when data appears that the file system cannot hold (sharing, tags, permissions).
+1. Done: copy and move files and directories (`/api/v1/entries/copy|move`); recursive delete only on its own endpoint
+   (`DELETE /api/v1/directories/recursively`), so a plain delete cannot remove content by accident.
+2. Done: `GET /api/v1/entries` returns size, modification date and type. New endpoint instead of changing the
+   path-only trees, so `/api/v1` stays compatible.
+3. Done: search by part of the name or by extension (filters on `/api/v1/entries`).
+4. Done 2026-11-13: PostgreSQL with Flyway holds what the file system cannot: tags and descriptions, the trash
+   (30 days), file versions (last 10), public share links (hashed tokens, max 30 days) and cached content hashes for
+   duplicate detection. Only additive endpoints and RPCs, except DELETE, which now moves to the trash.
+
+5. Done 2026-11-13: per-user quota (5GB, counts trash and versions) and a 2GB free-space reserve on the disk.
 
 ## Phase 6: FilebrowserUI
 1. Decide: build a client (Compose Multiplatform or web SPA) or delete the stub module.

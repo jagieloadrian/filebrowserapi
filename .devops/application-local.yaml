@@ -1,5 +1,8 @@
 spring:
   profiles:
     active: web,local
+  docker:
+    compose:
+      file: ../.devops/postgres-compose/compose.yaml
 application:
   path: build/local-data

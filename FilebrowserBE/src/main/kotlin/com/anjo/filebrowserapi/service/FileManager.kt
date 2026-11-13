@@ -6,6 +6,7 @@ import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType.CREATE
 import com.anjo.filebrowserapi.model.OperationType.DELETE
 import com.anjo.filebrowserapi.model.OperationType.READ
+import com.anjo.filebrowserapi.repository.MetadataRepository
 import com.anjo.filebrowserapi.utils.formatResponsePath
 import org.springframework.stereotype.Service
 import java.io.File
@@ -22,6 +23,10 @@ private const val RANDOM_NAME_LENGTH = 8
 @Service
 class FileManager(
     private val modifierUtils: PathModifierUtils,
+    private val metadata: MetadataRepository,
+    private val trash: TrashManager,
+    private val versions: VersionManager,
+    private val quota: QuotaManager,
 ) {
     private val defaultPath: String get() = modifierUtils.generateDefaultPath()
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
@@ -39,6 +44,7 @@ class FileManager(
     fun uploadFile(
         originalName: String?,
         content: InputStream,
+        size: Long,
         path: String?,
         overwrite: Boolean = false,
     ): String {
@@ -47,7 +53,9 @@ class FileManager(
         val target = modifierUtils.resolveName(path, fileName)
         if (target.isDirectory) throw AlreadyExistsException("Directory $fileName already exists")
 
+        quota.reserve(size)
         val options = if (overwrite) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
+        if (overwrite && target.isFile) versions.keep(target)
         try {
             Files.copy(content, target.toPath(), *options)
         } catch (_: FileAlreadyExistsException) {
@@ -80,7 +88,9 @@ class FileManager(
         if (targetFile.exists()) throw AlreadyExistsException("File $newName already exists")
 
         Files.move(sourceFile.toPath(), targetFile.toPath())
-        return formatResponsePath(targetFile.path, defaultPath)
+        val target = formatResponsePath(targetFile.path, defaultPath)
+        metadata.relocate(modifierUtils.currentUser(), formatResponsePath(sourceFile.path, defaultPath), target)
+        return target
     }
 
     private fun requireFile(
@@ -98,7 +108,7 @@ class FileManager(
         modifierUtils.validPath(path, DELETE)
         val file = modifierUtils.resolveName(path, fileName)
         requireFile(file, "Cannot remove non existing file")
-        Files.delete(file.toPath())
+        trash.moveToTrash(file)
     }
 
     private fun validFileName(filename: String?): String =
