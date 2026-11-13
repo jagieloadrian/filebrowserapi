@@ -9,6 +9,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
 import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
@@ -111,6 +112,14 @@ class RestSecurityTest : FunSpec() {
                 // then
                 response.status shouldBe 200
             }
+        }
+
+        test("should add no CORS headers when no origin is configured") {
+            // when
+            val response = mockMvc.preflight(FILES, "http://localhost:8081").andReturn().response
+
+            // then
+            response.getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN).shouldBeNull()
         }
 
         test("should document bearer JWT scheme for every operation when OpenAPI is requested") {

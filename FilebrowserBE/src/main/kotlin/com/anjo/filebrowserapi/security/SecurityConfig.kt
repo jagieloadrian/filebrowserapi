@@ -1,6 +1,7 @@
 package com.anjo.filebrowserapi.security
 
 import com.anjo.filebrowser.FilebrowserApiGrpc
+import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.model.ApiError
 import io.grpc.health.v1.HealthGrpc
 import io.swagger.v3.oas.annotations.OpenAPIDefinition
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.grpc.server.GlobalServerInterceptor
 import org.springframework.grpc.server.security.AuthenticationProcessInterceptor
 import org.springframework.grpc.server.security.GrpcSecurity
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -25,12 +27,16 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import tools.jackson.databind.json.JsonMapper
 
 const val READER = "filebrowser-reader"
 const val WRITER = "filebrowser-writer"
 private const val ROLE_PREFIX = "ROLE_"
 private const val LOCAL_USER = "local"
+private val CORS_PATHS = listOf("/api/**", "/share/**")
 
 private val GRPC_READS =
     listOf(
@@ -78,6 +84,7 @@ class SecurityConfig {
         val deniedHandler = BearerTokenAccessDeniedHandler()
         http {
             csrf { disable() }
+            cors { }
             sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
             authorizeHttpRequests {
                 authorize("/health/**", permitAll)
@@ -131,11 +138,28 @@ class SecurityConfig {
     fun localSecurity(http: HttpSecurity): SecurityFilterChain {
         http {
             csrf { disable() }
+            cors { }
             anonymous { principal = LOCAL_USER }
             authorizeHttpRequests { authorize(anyRequest, permitAll) }
         }
         return http.build()
     }
+
+    @Bean
+    @Profile("web")
+    fun corsConfigurationSource(properties: AppConfiguration): CorsConfigurationSource =
+        UrlBasedCorsConfigurationSource().apply {
+            val origins = properties.cors.allowedOrigins
+            if (origins.isEmpty()) return@apply
+            val config =
+                CorsConfiguration().apply {
+                    allowedOrigins = origins
+                    allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                    allowedHeaders = listOf(HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE)
+                    exposedHeaders = listOf(HttpHeaders.CONTENT_DISPOSITION)
+                }
+            CORS_PATHS.forEach { registerCorsConfiguration(it, config) }
+        }
 
     private fun JsonMapper.writeError(
         response: HttpServletResponse,

@@ -8,6 +8,7 @@ import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -39,16 +40,27 @@ class LocalProfileTest : FunSpec() {
             response.contentAsString shouldContain "/notes"
             root.resolve("filebrowser/local/notes").isDirectory() shouldBe true
         }
+
+        test("should answer preflight without token when local profile allows the origin") {
+            // when
+            val response = mockMvc.preflight(DIRECTORIES, ORIGIN).andReturn().response
+
+            // then
+            response.status shouldBe 200
+            response.getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN) shouldBe ORIGIN
+        }
     }
 
     companion object {
         private const val DIRECTORIES = "/api/v1/directories"
+        private const val ORIGIN = "http://localhost:8081"
         private val root: Path = Files.createTempDirectory("filebrowser-local")
 
         @JvmStatic
         @DynamicPropertySource
         fun properties(registry: DynamicPropertyRegistry) {
             registry.add("application.path") { root.toString() }
+            registry.add("application.cors.allowed-origins") { ORIGIN }
         }
     }
 }
