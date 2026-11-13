@@ -35,10 +35,13 @@ class FileManagerTest {
     private val baseFolder: String get() = "$workDir/$BASE_FOLDER"
 
     private val metadata = mockk<MetadataRepository>(relaxed = true)
+    private val versions = mockk<VersionManager>(relaxed = true)
 
     private val utils by lazy { PathModifierUtils(AppConfiguration(workDir.toString())) }
 
-    private val service by lazy { FileManager(utils, metadata, TrashManager(utils, metadata, mockk(relaxed = true))) }
+    private val service by lazy {
+        FileManager(utils, metadata, TrashManager(utils, metadata, mockk(relaxed = true), mockk(relaxed = true)), versions)
+    }
 
     @BeforeEach
     fun createBaseFolder() {
@@ -146,6 +149,7 @@ class FileManagerTest {
         // then
         result shouldBe "/$FIRST_FILE_NAME"
         File("$baseFolder/$FIRST_FILE_NAME").readText() shouldBe "new"
+        verify(exactly = 1) { versions.keep(File("$baseFolder/$FIRST_FILE_NAME")) }
     }
 
     @Test

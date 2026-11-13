@@ -51,3 +51,10 @@ data class TrashItem(
     val size: Long,
     val deletedAt: Instant,
 )
+
+data class FileVersion(
+    val id: UUID,
+    val path: String,
+    val size: Long,
+    val createdAt: Instant,
+)

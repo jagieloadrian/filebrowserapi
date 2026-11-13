@@ -12,6 +12,7 @@ import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
 import com.anjo.filebrowserapi.service.TrashManager
+import com.anjo.filebrowserapi.service.VersionManager
 import com.google.protobuf.Empty
 import com.google.protobuf.Timestamp
 import com.google.protobuf.kotlin.toByteString
@@ -36,6 +37,7 @@ class FilebrowserGrpc(
     private val fileManager: FileManager,
     private val entryManager: EntryManager,
     private val trashManager: TrashManager,
+    private val versionManager: VersionManager,
     private val properties: AppConfiguration,
 ) : FilebrowserApiCoroutineImplBase() {
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
@@ -203,6 +205,26 @@ class FilebrowserGrpc(
         trashManager.empty()
         return Empty.getDefaultInstance()
     }
+
+    override suspend fun listVersions(request: Filebrowser.PathRequest): Filebrowser.VersionsResponse =
+        Filebrowser.VersionsResponse
+            .newBuilder()
+            .addAllVersions(
+                versionManager.list(request.path).map {
+                    Filebrowser.FileVersion
+                        .newBuilder()
+                        .setId(it.id.toString())
+                        .setSize(it.size)
+                        .setCreatedAt(it.createdAt.toProto())
+                        .build()
+                },
+            ).build()
+
+    override suspend fun restoreVersion(request: Filebrowser.VersionId): StringResponse =
+        StringResponse
+            .newBuilder()
+            .setPath(versionManager.restore(request.id))
+            .build()
 
     override suspend fun copyEntry(request: Filebrowser.EntryTransfer): StringResponse =
         StringResponse

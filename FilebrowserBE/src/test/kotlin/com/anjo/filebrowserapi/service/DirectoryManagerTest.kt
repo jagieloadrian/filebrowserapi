@@ -37,7 +37,9 @@ class DirectoryManagerTest {
 
     private val utils by lazy { PathModifierUtils(AppConfiguration(workDir.toString())) }
 
-    private val service by lazy { DirectoryManager(utils, metadata, TrashManager(utils, metadata, mockk(relaxed = true))) }
+    private val service by lazy {
+        DirectoryManager(utils, metadata, TrashManager(utils, metadata, mockk(relaxed = true), mockk(relaxed = true)))
+    }
 
     @BeforeEach
     fun createBaseFolder() {

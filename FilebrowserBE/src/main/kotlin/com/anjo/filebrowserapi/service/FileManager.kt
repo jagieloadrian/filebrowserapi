@@ -25,6 +25,7 @@ class FileManager(
     private val modifierUtils: PathModifierUtils,
     private val metadata: MetadataRepository,
     private val trash: TrashManager,
+    private val versions: VersionManager,
 ) {
     private val defaultPath: String get() = modifierUtils.generateDefaultPath()
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
@@ -51,6 +52,7 @@ class FileManager(
         if (target.isDirectory) throw AlreadyExistsException("Directory $fileName already exists")
 
         val options = if (overwrite) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
+        if (overwrite && target.isFile) versions.keep(target)
         try {
             Files.copy(content, target.toPath(), *options)
         } catch (_: FileAlreadyExistsException) {

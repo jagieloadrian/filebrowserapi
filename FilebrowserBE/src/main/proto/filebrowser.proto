@@ -24,6 +24,8 @@ service FilebrowserApi {
   rpc restoreTrash(TrashId)returns (StringResponse);
   rpc purgeTrash(TrashId)returns (google.protobuf.Empty);
   rpc emptyTrash(google.protobuf.Empty)returns (google.protobuf.Empty);
+  rpc listVersions(PathRequest)returns (VersionsResponse);
+  rpc restoreVersion(VersionId)returns (StringResponse);
   rpc copyEntry(EntryTransfer)returns (StringResponse);
   rpc moveEntry(EntryTransfer)returns (StringResponse);
 }
@@ -114,4 +116,18 @@ message TrashItem {
 
 message TrashResponse {
   repeated TrashItem items = 1;
+}
+
+message VersionId {
+  string id = 1;
+}
+
+message FileVersion {
+  string id = 1;
+  int64 size = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
+message VersionsResponse {
+  repeated FileVersion versions = 1;
 }

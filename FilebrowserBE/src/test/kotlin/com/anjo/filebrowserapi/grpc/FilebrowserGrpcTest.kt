@@ -9,11 +9,13 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.model.DuplicateGroup
 import com.anjo.filebrowserapi.model.Entry
+import com.anjo.filebrowserapi.model.FileVersion
 import com.anjo.filebrowserapi.model.TrashItem
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
 import com.anjo.filebrowserapi.service.TrashManager
+import com.anjo.filebrowserapi.service.VersionManager
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
 import io.grpc.Status
@@ -42,8 +44,16 @@ class FilebrowserGrpcTest {
     private val fileManager = mockk<FileManager>()
     private val entryManager = mockk<EntryManager>()
     private val trashManager = mockk<TrashManager>()
+    private val versionManager = mockk<VersionManager>()
     private val service =
-        FilebrowserGrpc(directoryManager, fileManager, entryManager, trashManager, AppConfiguration(maxUploadSize = DataSize.ofBytes(16)))
+        FilebrowserGrpc(
+            directoryManager,
+            fileManager,
+            entryManager,
+            trashManager,
+            versionManager,
+            AppConfiguration(maxUploadSize = DataSize.ofBytes(16)),
+        )
 
     @TempDir
     private lateinit var workDir: Path
@@ -361,6 +371,29 @@ class FilebrowserGrpcTest {
             restored.path shouldBe "/a"
             verify(exactly = 1) { trashManager.purge(id.toString()) }
             verify(exactly = 1) { trashManager.empty() }
+        }
+
+    @Test
+    fun `should list and restore versions`() =
+        runTest {
+            // given
+            val id = java.util.UUID.randomUUID()
+            every { versionManager.list(FIRST_NAME) } returns listOf(FileVersion(id, "/a", 3, Instant.ofEpochSecond(7)))
+            every { versionManager.restore(id.toString()) } returns "/a"
+
+            // when
+            val versions = service.listVersions(pathRequest(FIRST_NAME)).versionsList
+            val restored =
+                service.restoreVersion(
+                    Filebrowser.VersionId
+                        .newBuilder()
+                        .setId(id.toString())
+                        .build(),
+                )
+
+            // then
+            versions.map { it.id to it.createdAt.seconds } shouldBe listOf(id.toString() to 7L)
+            restored.path shouldBe "/a"
         }
 
     private fun pathRequest(path: String) =

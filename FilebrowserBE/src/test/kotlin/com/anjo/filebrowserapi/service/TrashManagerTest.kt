@@ -33,7 +33,8 @@ class TrashManagerTest {
 
     private val metadata = mockk<MetadataRepository>(relaxed = true)
     private val repository = mockk<TrashRepository>(relaxed = true)
-    private val service by lazy { TrashManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata, repository) }
+    private val versions = mockk<VersionManager>(relaxed = true)
+    private val service by lazy { TrashManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata, repository, versions) }
     private val item = TrashItem(UUID.randomUUID(), "/docs/a.txt", false, 11, Instant.EPOCH)
     private val trashed: File get() = File("$workDir/filebrowser-trash/$USER/${item.id}")
 
@@ -109,6 +110,7 @@ class TrashManagerTest {
 
         // then
         trashed.exists() shouldBe false
+        verify(exactly = 1) { versions.deleteFiles(USER, "trash:${item.id}") }
         verify(exactly = 1) { metadata.forget(USER, "trash:${item.id}") }
         verify(exactly = 1) { repository.delete(USER, item.id) }
     }

@@ -7,8 +7,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 
-private val PATH_TABLES = listOf("entry_meta", "file_hash")
-private const val UNDER = "owner = :owner and (path = :path or path like :prefix escape '\\')"
+private val PATH_TABLES = listOf("entry_meta", "file_hash", "file_version")
 
 @Repository
 class MetadataRepository(
@@ -131,7 +130,5 @@ class MetadataRepository(
         .sql(sql)
         .param("owner", owner)
         .param("path", path)
-        .param("prefix", escapeLike(path.trimEnd('/')) + "/%")
-
-    private fun escapeLike(value: String) = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        .param("prefix", likePrefix(path))
 }

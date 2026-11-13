@@ -194,6 +194,7 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.GET, ENTRIES),
                 Arguments.of(HttpMethod.GET, "$ENTRIES/duplicates"),
                 Arguments.of(HttpMethod.GET, TRASH),
+                Arguments.of(HttpMethod.GET, "/api/v1/versions"),
             )
 
         @JvmStatic
@@ -211,6 +212,7 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.POST, "$TRASH/x/restore"),
                 Arguments.of(HttpMethod.DELETE, "$TRASH/x"),
                 Arguments.of(HttpMethod.DELETE, TRASH),
+                Arguments.of(HttpMethod.POST, "/api/v1/versions/x/restore"),
                 Arguments.of(HttpMethod.POST, "$ENTRIES/copy"),
                 Arguments.of(HttpMethod.POST, "$ENTRIES/move"),
             )

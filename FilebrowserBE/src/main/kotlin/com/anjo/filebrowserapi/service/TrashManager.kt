@@ -26,6 +26,7 @@ class TrashManager(
     private val modifierUtils: PathModifierUtils,
     private val metadata: MetadataRepository,
     private val trashRepository: TrashRepository,
+    private val versions: VersionManager,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -82,6 +83,7 @@ class TrashManager(
         id: UUID,
     ) {
         trashPath(owner, id).toFile().deleteRecursively()
+        versions.deleteFiles(owner, key(id))
         metadata.forget(owner, key(id))
         trashRepository.delete(owner, id)
     }
