@@ -8,9 +8,11 @@ import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.model.Entry
+import com.anjo.filebrowserapi.model.Share
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
+import com.anjo.filebrowserapi.service.ShareManager
 import com.anjo.filebrowserapi.service.TrashManager
 import com.anjo.filebrowserapi.service.VersionManager
 import com.google.protobuf.Empty
@@ -38,6 +40,7 @@ class FilebrowserGrpc(
     private val entryManager: EntryManager,
     private val trashManager: TrashManager,
     private val versionManager: VersionManager,
+    private val shareManager: ShareManager,
     private val properties: AppConfiguration,
 ) : FilebrowserApiCoroutineImplBase() {
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
@@ -226,6 +229,26 @@ class FilebrowserGrpc(
             .setPath(versionManager.restore(request.id))
             .build()
 
+    override suspend fun createShare(request: Filebrowser.ShareRequest): Filebrowser.CreatedShare {
+        val created = shareManager.create(request.path, request.takeIf { it.hasDays() }?.days)
+        return Filebrowser.CreatedShare
+            .newBuilder()
+            .setShare(created.share.toProto())
+            .setToken(created.token)
+            .build()
+    }
+
+    override suspend fun listShares(request: Empty): Filebrowser.SharesResponse =
+        Filebrowser.SharesResponse
+            .newBuilder()
+            .addAllShares(shareManager.list().map { it.toProto() })
+            .build()
+
+    override suspend fun revokeShare(request: Filebrowser.ShareId): Empty {
+        shareManager.revoke(request.id)
+        return Empty.getDefaultInstance()
+    }
+
     override suspend fun copyEntry(request: Filebrowser.EntryTransfer): StringResponse =
         StringResponse
             .newBuilder()
@@ -248,6 +271,15 @@ class FilebrowserGrpc(
             .setContentType(contentType.orEmpty())
             .setDescription(description.orEmpty())
             .addAllTags(tags)
+            .build()
+
+    private fun Share.toProto(): Filebrowser.Share =
+        Filebrowser.Share
+            .newBuilder()
+            .setId(id.toString())
+            .setPath(path)
+            .setCreatedAt(createdAt.toProto())
+            .setExpiresAt(expiresAt.toProto())
             .build()
 
     private fun Instant.toProto(): Timestamp =

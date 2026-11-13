@@ -20,11 +20,13 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.mock.web.MockHttpServletResponse
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.multipart
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request
 import java.nio.file.Files
@@ -169,6 +171,35 @@ class RestSecurityTest(
         output.all shouldNotContain token
     }
 
+    @Test
+    fun `should serve shared file without token and never log the share token`(output: CapturedOutput) {
+        // given
+        val owner = TestTokens.token(WRITER, subject = "carol")
+        mockMvc.multipart(FILES) {
+            file(MockMultipartFile("uploadFile", "shared.txt", "text/plain", "shared".toByteArray()))
+            header(HttpHeaders.AUTHORIZATION, "Bearer $owner")
+        }
+        val created =
+            mockMvc
+                .post(SHARES) {
+                    param("path", "shared.txt")
+                    header(HttpHeaders.AUTHORIZATION, "Bearer $owner")
+                }.andReturn()
+                .response
+        val shareToken = Regex("\"token\":\"([^\"]+)\"").find(created.contentAsString)!!.groupValues[1]
+
+        // when
+        val shared = call(HttpMethod.GET, "/share/$shareToken", null)
+        val unknown = call(HttpMethod.GET, "/share/unknown", null)
+
+        // then
+        created.status shouldBe 201
+        shared.status shouldBe 200
+        shared.contentAsString shouldBe "shared"
+        unknown.status shouldBe 404
+        output.all shouldNotContain shareToken
+    }
+
     private fun call(
         method: HttpMethod,
         uri: String,
@@ -184,6 +215,7 @@ class RestSecurityTest(
         private const val DIRECTORIES = "/api/v1/directories"
         private const val ENTRIES = "/api/v1/entries"
         private const val TRASH = "/api/v1/trash"
+        private const val SHARES = "/api/v1/shares"
 
         @JvmStatic
         fun readRoutes() =
@@ -195,6 +227,7 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.GET, "$ENTRIES/duplicates"),
                 Arguments.of(HttpMethod.GET, TRASH),
                 Arguments.of(HttpMethod.GET, "/api/v1/versions"),
+                Arguments.of(HttpMethod.GET, SHARES),
             )
 
         @JvmStatic
@@ -213,6 +246,8 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.DELETE, "$TRASH/x"),
                 Arguments.of(HttpMethod.DELETE, TRASH),
                 Arguments.of(HttpMethod.POST, "/api/v1/versions/x/restore"),
+                Arguments.of(HttpMethod.POST, SHARES),
+                Arguments.of(HttpMethod.DELETE, "$SHARES/x"),
                 Arguments.of(HttpMethod.POST, "$ENTRIES/copy"),
                 Arguments.of(HttpMethod.POST, "$ENTRIES/move"),
             )

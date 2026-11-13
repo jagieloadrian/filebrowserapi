@@ -7,13 +7,16 @@ import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
+import com.anjo.filebrowserapi.model.CreatedShare
 import com.anjo.filebrowserapi.model.DuplicateGroup
 import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.model.FileVersion
+import com.anjo.filebrowserapi.model.Share
 import com.anjo.filebrowserapi.model.TrashItem
 import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
+import com.anjo.filebrowserapi.service.ShareManager
 import com.anjo.filebrowserapi.service.TrashManager
 import com.anjo.filebrowserapi.service.VersionManager
 import com.google.protobuf.Empty
@@ -45,6 +48,7 @@ class FilebrowserGrpcTest {
     private val entryManager = mockk<EntryManager>()
     private val trashManager = mockk<TrashManager>()
     private val versionManager = mockk<VersionManager>()
+    private val shareManager = mockk<ShareManager>()
     private val service =
         FilebrowserGrpc(
             directoryManager,
@@ -52,6 +56,7 @@ class FilebrowserGrpcTest {
             entryManager,
             trashManager,
             versionManager,
+            shareManager,
             AppConfiguration(maxUploadSize = DataSize.ofBytes(16)),
         )
 
@@ -395,6 +400,37 @@ class FilebrowserGrpcTest {
             versions.map { it.id to it.createdAt.seconds } shouldBe listOf(id.toString() to 7L)
             restored.path shouldBe "/a"
         }
+
+    @Test
+    fun `should create list and revoke shares`() =
+        runTest {
+            // given
+            val share = Share(java.util.UUID.randomUUID(), "/a", Instant.ofEpochSecond(1), Instant.ofEpochSecond(9))
+            every { shareManager.create(FIRST_NAME, null) } returns CreatedShare(share, "tok")
+            every { shareManager.create(FIRST_NAME, 3) } returns CreatedShare(share, "tok3")
+            every { shareManager.list() } returns listOf(share)
+            every { shareManager.revoke(share.id.toString()) } just Runs
+
+            // when
+            val created = service.createShare(shareRequest().build())
+            val createdForDays = service.createShare(shareRequest().setDays(3).build())
+            val listed = service.listShares(Empty.getDefaultInstance()).sharesList
+            service.revokeShare(
+                Filebrowser.ShareId
+                    .newBuilder()
+                    .setId(share.id.toString())
+                    .build(),
+            )
+
+            // then
+            created.token shouldBe "tok"
+            createdForDays.token shouldBe "tok3"
+            created.share.expiresAt.seconds shouldBe 9
+            listed.map { it.path } shouldBe listOf("/a")
+            verify(exactly = 1) { shareManager.revoke(share.id.toString()) }
+        }
+
+    private fun shareRequest() = Filebrowser.ShareRequest.newBuilder().setPath(FIRST_NAME)
 
     private fun pathRequest(path: String) =
         Filebrowser.PathRequest

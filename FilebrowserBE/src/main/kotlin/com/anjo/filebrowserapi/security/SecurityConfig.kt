@@ -41,6 +41,7 @@ private val GRPC_READS =
         FilebrowserApiGrpc.getFindDuplicatesMethod(),
         FilebrowserApiGrpc.getListTrashMethod(),
         FilebrowserApiGrpc.getListVersionsMethod(),
+        FilebrowserApiGrpc.getListSharesMethod(),
     ).map { it.fullMethodName }
 
 private val GRPC_WRITES = FilebrowserApiGrpc.getServiceDescriptor().methods.map { it.fullMethodName } - GRPC_READS.toSet()
@@ -83,6 +84,7 @@ class SecurityConfig {
                 authorize("/swagger-ui/**", permitAll)
                 authorize("/v3/api-docs/**", permitAll)
                 authorize("/error", permitAll)
+                authorize(HttpMethod.GET, "/share/*", permitAll)
                 authorize(HttpMethod.GET, "/api/v1/**", hasAnyRole(READER, WRITER))
                 authorize("/api/v1/**", hasRole(WRITER))
                 authorize(anyRequest, denyAll)

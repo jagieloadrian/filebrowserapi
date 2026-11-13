@@ -168,6 +168,7 @@ class GrpcSecurityTest(
                 FilebrowserApiGrpc.getFindDuplicatesMethod(),
                 FilebrowserApiGrpc.getListTrashMethod(),
                 FilebrowserApiGrpc.getListVersionsMethod(),
+                FilebrowserApiGrpc.getListSharesMethod(),
             ).map { it.fullMethodName }
 
         @JvmStatic

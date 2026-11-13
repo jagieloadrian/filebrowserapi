@@ -7,7 +7,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 
-private val PATH_TABLES = listOf("entry_meta", "file_hash", "file_version")
+private val PATH_TABLES = listOf("entry_meta", "file_hash", "file_version", "share_link")
 
 @Repository
 class MetadataRepository(

@@ -38,6 +38,11 @@ class PathModifierUtils(
         return target
     }
 
+    fun resolveOwned(
+        owner: String,
+        path: String,
+    ): File = resolveIn(rootDirectory.resolve(owner), arrayOf(path))
+
     private fun resolveIn(
         base: Path,
         segments: Array<out String?>,

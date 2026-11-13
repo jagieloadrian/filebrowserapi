@@ -58,3 +58,15 @@ data class FileVersion(
     val size: Long,
     val createdAt: Instant,
 )
+
+data class Share(
+    val id: UUID,
+    val path: String,
+    val createdAt: Instant,
+    val expiresAt: Instant,
+)
+
+data class CreatedShare(
+    val share: Share,
+    val token: String,
+)
