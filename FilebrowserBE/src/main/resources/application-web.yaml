@@ -41,4 +41,4 @@ management:
         live:
           include: livenessState
         ready:
-          include: readinessState
+          include: readinessState, db

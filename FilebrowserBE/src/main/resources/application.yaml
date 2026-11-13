@@ -1,2 +1,6 @@
 application:
   max-upload-size: 1GB
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 5

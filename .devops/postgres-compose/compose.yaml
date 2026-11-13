@@ -1,0 +1,10 @@
+name: filebrowser-postgres
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: filebrowser
+      POSTGRES_USER: filebrowser
+      POSTGRES_PASSWORD: filebrowser
+    ports:
+      - "5432"

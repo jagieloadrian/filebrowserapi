@@ -19,6 +19,7 @@ spec:
         name: flux-system
         namespace: flux-system
   values:
+    secrets: true
     image: ghcr.io/jagieloadrian/filebrowserapi:main-20261113214612-8183131
     port: 8080
     tmpSize: 2Gi
@@ -37,6 +38,8 @@ spec:
       SPRING_PROFILES_ACTIVE: web
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://issuer.invalid
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES: filebrowser
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres.apps.svc.cluster.local:5432/filebrowser?connectTimeout=2&socketTimeout=60
+      SPRING_DATASOURCE_USERNAME: filebrowser
   postRenderers:
     - kustomize:
         patches:
@@ -76,6 +79,7 @@ spec:
         name: flux-system
         namespace: flux-system
   values:
+    secrets: true
     image: ghcr.io/jagieloadrian/filebrowserapi:main-20261113214612-8183131
     port: 9090
     tmpSize: 2Gi
@@ -94,6 +98,8 @@ spec:
       SPRING_PROFILES_ACTIVE: server
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://issuer.invalid
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES: filebrowser
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres.apps.svc.cluster.local:5432/filebrowser?connectTimeout=2&socketTimeout=60
+      SPRING_DATASOURCE_USERNAME: filebrowser
   postRenderers:
     - kustomize:
         patches:
