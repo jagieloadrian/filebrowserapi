@@ -57,8 +57,6 @@ dependencies {
     testImplementation(libs.kotest.property)
     testImplementation(libs.kotest.runner)
     testImplementation(libs.kotest.spring)
-    testImplementation(libs.coroutines.test)
-    testImplementation(kotlin("test"))
 }
 
 protobuf {

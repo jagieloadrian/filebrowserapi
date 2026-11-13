@@ -17,287 +17,266 @@ import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.model.EntryMeta
 import com.anjo.filebrowserapi.model.FileHash
 import com.anjo.filebrowserapi.repository.MetadataRepository
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.IsolationMode
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.datatest.withTests
+import io.kotest.engine.spec.tempdir
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.assertThrows
-import org.junit.jupiter.api.io.TempDir
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.security.core.context.SecurityContextHolder
 import java.io.File
-import java.nio.file.Path
 import java.time.Instant
-import kotlin.test.Test
 
-class EntryManagerTest {
-    @TempDir
-    private lateinit var workDir: Path
+class EntryManagerTest :
+    FunSpec({
+        isolationMode = IsolationMode.InstancePerRoot
 
-    private val baseFolder: File get() = File("$workDir/$BASE_FOLDER")
+        val workDir = tempdir()
+        val baseFolder = File("${workDir.path}/$BASE_FOLDER")
 
-    private val metadata = mockk<MetadataRepository>(relaxed = true)
-    private val quota = mockk<QuotaManager>(relaxed = true)
+        val metadata = mockk<MetadataRepository>(relaxed = true)
+        val quota = mockk<QuotaManager>(relaxed = true)
 
-    private val service by lazy { EntryManager(PathModifierUtils(AppConfiguration(workDir.toString())), metadata, quota) }
+        val service = EntryManager(PathModifierUtils(AppConfiguration(workDir.path)), metadata, quota)
 
-    @BeforeEach
-    fun signInUser() {
-        signIn()
-        every { metadata.findUnder(any(), any()) } returns emptyMap()
-        every { metadata.findHashes(any(), any()) } returns emptyMap()
-        File(baseFolder, FIRST_NAME).mkdirs()
-        File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").writeText(TEST_MESSAGE)
-        File(baseFolder, "$SECOND_NAME.pdf").writeText(TEST_MESSAGE)
-    }
+        fun transfer(
+            copy: Boolean,
+            source: String,
+            target: String,
+        ) = if (copy) service.copyEntry(source, target) else service.moveEntry(source, target)
 
-    @AfterEach
-    fun signOut() {
-        SecurityContextHolder.clearContext()
-    }
+        beforeEach {
+            signIn()
+            every { metadata.findUnder(any(), any()) } returns emptyMap()
+            every { metadata.findHashes(any(), any()) } returns emptyMap()
+            File(baseFolder, FIRST_NAME).mkdirs()
+            File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").writeText(TEST_MESSAGE)
+            File(baseFolder, "$SECOND_NAME.pdf").writeText(TEST_MESSAGE)
+        }
 
-    @Test
-    fun `should return files and directories with metadata when path is null`() {
-        // given
-        val file = File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME")
+        afterEach { SecurityContextHolder.clearContext() }
 
-        // when
-        val result = service.listEntries(null, null, null)
+        test("should return files and directories with metadata when path is null") {
+            // given
+            val file = File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME")
 
-        // then
-        result.map { it.path } shouldContainExactly listOf("/$FIRST_NAME", "/$FIRST_NAME/$FIRST_FILE_NAME", "/$SECOND_NAME.pdf")
-        result[0].directory shouldBe true
-        result[0].contentType shouldBe null
-        result[1] shouldBe
-            Entry(
-                path = "/$FIRST_NAME/$FIRST_FILE_NAME",
-                directory = false,
-                size = TEST_MESSAGE.length.toLong(),
-                modified = Instant.ofEpochMilli(file.lastModified()),
-                contentType = "text/plain",
-            )
-    }
+            // when
+            val result = service.listEntries(null, null, null)
 
-    @Test
-    fun `should return entries below path when path is set`() {
-        // when
-        val result = service.listEntries(FIRST_NAME, null, null)
+            // then
+            result.map { it.path } shouldContainExactly listOf("/$FIRST_NAME", "/$FIRST_NAME/$FIRST_FILE_NAME", "/$SECOND_NAME.pdf")
+            result[0].directory shouldBe true
+            result[0].contentType shouldBe null
+            result[1] shouldBe
+                Entry(
+                    path = "/$FIRST_NAME/$FIRST_FILE_NAME",
+                    directory = false,
+                    size = TEST_MESSAGE.length.toLong(),
+                    modified = Instant.ofEpochMilli(file.lastModified()),
+                    contentType = "text/plain",
+                )
+        }
 
-        // then
-        result.map { it.path } shouldContainExactly listOf("/$FIRST_NAME/$FIRST_FILE_NAME")
-    }
+        test("should return entries below path when path is set") {
+            // when
+            val result = service.listEntries(FIRST_NAME, null, null)
 
-    @Test
-    fun `should return entries whose name contains the query ignoring case when name is set`() {
-        // when
-        val result = service.listEntries(null, "FIRSTname", null)
+            // then
+            result.map { it.path } shouldContainExactly listOf("/$FIRST_NAME/$FIRST_FILE_NAME")
+        }
 
-        // then
-        result.map { it.path } shouldContainExactly listOf("/$FIRST_NAME", "/$FIRST_NAME/$FIRST_FILE_NAME")
-    }
+        test("should return entries whose name contains the query ignoring case when name is set") {
+            // when
+            val result = service.listEntries(null, "FIRSTname", null)
 
-    @ParameterizedTest
-    @ValueSource(strings = ["pdf", ".PDF"])
-    fun `should return only files with the extension when extension is set`(extension: String) {
-        // when
-        val result = service.listEntries(null, null, extension)
+            // then
+            result.map { it.path } shouldContainExactly listOf("/$FIRST_NAME", "/$FIRST_NAME/$FIRST_FILE_NAME")
+        }
 
-        // then
-        result.map { it.path } shouldContainExactly listOf("/$SECOND_NAME.pdf")
-    }
+        context("should return only files with the extension when extension is set") {
+            withTests("pdf", ".PDF") { extension ->
+                // when
+                val result = service.listEntries(null, null, extension)
 
-    @Test
-    fun `should throw NotFoundException when directory does not exist`() {
-        // when & then
-        assertThrows<NotFoundException> { service.listEntries(SECOND_FILE_NAME, null, null) }
-    }
+                // then
+                result.map { it.path } shouldContainExactly listOf("/$SECOND_NAME.pdf")
+            }
+        }
 
-    @Test
-    fun `should copy file and keep source when copyEntry is called with file`() {
-        // when
-        val result = service.copyEntry("$FIRST_NAME/$FIRST_FILE_NAME", "/$SECOND_FILE_NAME")
+        test("should throw NotFoundException when directory does not exist") {
+            // when & then
+            shouldThrow<NotFoundException> { service.listEntries(SECOND_FILE_NAME, null, null) }
+        }
 
-        // then
-        result shouldBe "/$SECOND_FILE_NAME"
-        File(baseFolder, SECOND_FILE_NAME).readText() shouldBe TEST_MESSAGE
-        File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").exists() shouldBe true
-    }
+        test("should copy file and keep source when copyEntry is called with file") {
+            // when
+            val result = service.copyEntry("$FIRST_NAME/$FIRST_FILE_NAME", "/$SECOND_FILE_NAME")
 
-    @Test
-    fun `should copy directory with its content when copyEntry is called with directory`() {
-        // when
-        val result = service.copyEntry(FIRST_NAME, THIRD_NAME)
+            // then
+            result shouldBe "/$SECOND_FILE_NAME"
+            File(baseFolder, SECOND_FILE_NAME).readText() shouldBe TEST_MESSAGE
+            File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").exists() shouldBe true
+        }
 
-        // then
-        result shouldBe "/$THIRD_NAME"
-        File(baseFolder, "$THIRD_NAME/$FIRST_FILE_NAME").readText() shouldBe TEST_MESSAGE
-        File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").exists() shouldBe true
-    }
+        test("should copy directory with its content when copyEntry is called with directory") {
+            // when
+            val result = service.copyEntry(FIRST_NAME, THIRD_NAME)
 
-    @Test
-    fun `should move directory with its content when moveEntry is called`() {
-        // when
-        val result = service.moveEntry(FIRST_NAME, "$THIRD_NAME.moved")
+            // then
+            result shouldBe "/$THIRD_NAME"
+            File(baseFolder, "$THIRD_NAME/$FIRST_FILE_NAME").readText() shouldBe TEST_MESSAGE
+            File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME").exists() shouldBe true
+        }
 
-        // then
-        result shouldBe "/$THIRD_NAME.moved"
-        File(baseFolder, "$THIRD_NAME.moved/$FIRST_FILE_NAME").readText() shouldBe TEST_MESSAGE
-        File(baseFolder, FIRST_NAME).exists() shouldBe false
-    }
+        test("should move directory with its content when moveEntry is called") {
+            // when
+            val result = service.moveEntry(FIRST_NAME, "$THIRD_NAME.moved")
 
-    @Test
-    fun `should move file into directory when moveEntry is called with file`() {
-        // when
-        val result = service.moveEntry("$SECOND_NAME.pdf", "$FIRST_NAME/$SECOND_NAME.pdf")
+            // then
+            result shouldBe "/$THIRD_NAME.moved"
+            File(baseFolder, "$THIRD_NAME.moved/$FIRST_FILE_NAME").readText() shouldBe TEST_MESSAGE
+            File(baseFolder, FIRST_NAME).exists() shouldBe false
+        }
 
-        // then
-        result shouldBe "/$FIRST_NAME/$SECOND_NAME.pdf"
-        File(baseFolder, "$SECOND_NAME.pdf").exists() shouldBe false
-    }
+        test("should move file into directory when moveEntry is called with file") {
+            // when
+            val result = service.moveEntry("$SECOND_NAME.pdf", "$FIRST_NAME/$SECOND_NAME.pdf")
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `should throw AlreadyExistsException when target exists`(copy: Boolean) {
-        // when & then
-        assertThrows<AlreadyExistsException> { transfer(copy, "$SECOND_NAME.pdf", FIRST_NAME) }
-    }
+            // then
+            result shouldBe "/$FIRST_NAME/$SECOND_NAME.pdf"
+            File(baseFolder, "$SECOND_NAME.pdf").exists() shouldBe false
+        }
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `should throw NotFoundException when source does not exist`(copy: Boolean) {
-        // when & then
-        assertThrows<NotFoundException> { transfer(copy, SECOND_FILE_NAME, THIRD_NAME) }
-    }
+        context("should throw AlreadyExistsException when target exists") {
+            withTests(true, false) { copy ->
+                // when & then
+                shouldThrow<AlreadyExistsException> { transfer(copy, "$SECOND_NAME.pdf", FIRST_NAME) }
+            }
+        }
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `should throw NotFoundException when target directory does not exist`(copy: Boolean) {
-        // when & then
-        assertThrows<NotFoundException> { transfer(copy, "$SECOND_NAME.pdf", "$THIRD_NAME/$SECOND_NAME.pdf") }
-    }
+        context("should throw NotFoundException when source does not exist") {
+            withTests(true, false) { copy ->
+                // when & then
+                shouldThrow<NotFoundException> { transfer(copy, SECOND_FILE_NAME, THIRD_NAME) }
+            }
+        }
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `should throw BadInputException when directory is put inside itself`(copy: Boolean) {
-        // when & then
-        assertThrows<BadInputException> { transfer(copy, FIRST_NAME, "$FIRST_NAME/$THIRD_NAME") }
-    }
+        context("should throw NotFoundException when target directory does not exist") {
+            withTests(true, false) { copy ->
+                // when & then
+                shouldThrow<NotFoundException> { transfer(copy, "$SECOND_NAME.pdf", "$THIRD_NAME/$SECOND_NAME.pdf") }
+            }
+        }
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `should throw BadInputException when base directory is source`(copy: Boolean) {
-        // when & then
-        assertThrows<BadInputException> { transfer(copy, "/", THIRD_NAME) }
-    }
+        context("should throw BadInputException when directory is put inside itself") {
+            withTests(true, false) { copy ->
+                // when & then
+                shouldThrow<BadInputException> { transfer(copy, FIRST_NAME, "$FIRST_NAME/$THIRD_NAME") }
+            }
+        }
 
-    @Test
-    fun `should return description and tags and filter by tag when metadata exists`() {
-        // given
-        val key = "/$FIRST_NAME/$FIRST_FILE_NAME"
-        every { metadata.findUnder("user-1", "") } returns mapOf(key to EntryMeta(key, "notes", listOf("work")))
+        context("should throw BadInputException when base directory is source") {
+            withTests(true, false) { copy ->
+                // when & then
+                shouldThrow<BadInputException> { transfer(copy, "/", THIRD_NAME) }
+            }
+        }
 
-        // when
-        val result = service.listEntries(null, null, null, "WORK")
+        test("should return description and tags and filter by tag when metadata exists") {
+            // given
+            val key = "/$FIRST_NAME/$FIRST_FILE_NAME"
+            every { metadata.findUnder("user-1", "") } returns mapOf(key to EntryMeta(key, "notes", listOf("work")))
 
-        // then
-        result.map { it.path } shouldContainExactly listOf(key)
-        result[0].description shouldBe "notes"
-        result[0].tags shouldBe listOf("work")
-    }
+            // when
+            val result = service.listEntries(null, null, null, "WORK")
 
-    @Test
-    fun `should save normalized description and tags when updateMeta is called`() {
-        // when
-        val result = service.updateMeta(FIRST_NAME, "  notes  ", listOf("Work", "work", "Draft"))
+            // then
+            result.map { it.path } shouldContainExactly listOf(key)
+            result[0].description shouldBe "notes"
+            result[0].tags shouldBe listOf("work")
+        }
 
-        // then
-        result.description shouldBe "notes"
-        result.tags shouldBe listOf("draft", "work")
-        verify(exactly = 1) { metadata.save("user-1", "/$FIRST_NAME", "notes", listOf("draft", "work")) }
-    }
+        test("should save normalized description and tags when updateMeta is called") {
+            // when
+            val result = service.updateMeta(FIRST_NAME, "  notes  ", listOf("Work", "work", "Draft"))
 
-    @ParameterizedTest
-    @ValueSource(strings = [" lead", "a,b", ""])
-    fun `should throw BadInputException when a tag breaks the rule`(tag: String) {
-        // when & then
-        assertThrows<BadInputException> { service.updateMeta(FIRST_NAME, null, listOf(tag)) }
-    }
+            // then
+            result.description shouldBe "notes"
+            result.tags shouldBe listOf("draft", "work")
+            verify(exactly = 1) { metadata.save("user-1", "/$FIRST_NAME", "notes", listOf("draft", "work")) }
+        }
 
-    @Test
-    fun `should throw NotFoundException when updateMeta gets missing entry`() {
-        // when & then
-        assertThrows<NotFoundException> { service.updateMeta(THIRD_NAME, "notes", emptyList()) }
-    }
+        context("should throw BadInputException when a tag breaks the rule") {
+            withTests(mapOf(" lead" to " lead", "a,b" to "a,b", "empty" to "")) { tag ->
+                // when & then
+                shouldThrow<BadInputException> { service.updateMeta(FIRST_NAME, null, listOf(tag)) }
+            }
+        }
 
-    @Test
-    fun `should copy and relocate metadata when entries are copied and moved`() {
-        // when
-        service.copyEntry(FIRST_NAME, THIRD_NAME)
-        service.moveEntry(THIRD_NAME, "$THIRD_NAME.moved")
+        test("should throw NotFoundException when updateMeta gets missing entry") {
+            // when & then
+            shouldThrow<NotFoundException> { service.updateMeta(THIRD_NAME, "notes", emptyList()) }
+        }
 
-        // then
-        verify(exactly = 1) { metadata.copy("user-1", "/$FIRST_NAME", "/$THIRD_NAME") }
-        verify(exactly = 1) { metadata.relocate("user-1", "/$THIRD_NAME", "/$THIRD_NAME.moved") }
-    }
+        test("should copy and relocate metadata when entries are copied and moved") {
+            // when
+            service.copyEntry(FIRST_NAME, THIRD_NAME)
+            service.moveEntry(THIRD_NAME, "$THIRD_NAME.moved")
 
-    @Test
-    fun `should group files with equal content and hash only files of a shared size`() {
-        // given
-        File(baseFolder, "copy.txt").writeText(TEST_MESSAGE)
-        File(baseFolder, "same-size.txt").writeText(TEST_MESSAGE.reversed())
-        File(baseFolder, "unique.txt").writeText("x")
+            // then
+            verify(exactly = 1) { metadata.copy("user-1", "/$FIRST_NAME", "/$THIRD_NAME") }
+            verify(exactly = 1) { metadata.relocate("user-1", "/$THIRD_NAME", "/$THIRD_NAME.moved") }
+        }
 
-        // when
-        val result = service.findDuplicates(null)
+        test("should group files with equal content and hash only files of a shared size") {
+            // given
+            File(baseFolder, "copy.txt").writeText(TEST_MESSAGE)
+            File(baseFolder, "same-size.txt").writeText(TEST_MESSAGE.reversed())
+            File(baseFolder, "unique.txt").writeText("x")
 
-        // then
-        result.map { it.paths } shouldContainExactly listOf(listOf("/copy.txt", "/$FIRST_NAME/$FIRST_FILE_NAME", "/$SECOND_NAME.pdf"))
-        result[0].size shouldBe TEST_MESSAGE.length.toLong()
-        verify(exactly = 1) { metadata.saveHashes("user-1", match { hashes -> hashes.size == 4 }) }
-    }
+            // when
+            val result = service.findDuplicates(null)
 
-    @Test
-    fun `should reuse cached hash when size and modification time are unchanged`() {
-        // given
-        val first = File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME")
-        val second = File(baseFolder, "$SECOND_NAME.pdf")
-        every { metadata.findHashes("user-1", "") } returns
-            mapOf(
-                "/$FIRST_NAME/$FIRST_FILE_NAME" to
-                    FileHash(
-                        "/$FIRST_NAME/$FIRST_FILE_NAME",
-                        first.length(),
-                        first.lastModified(),
-                        "cached",
-                    ),
-                "/$SECOND_NAME.pdf" to FileHash("/$SECOND_NAME.pdf", second.length(), second.lastModified() - 1, "stale"),
-            )
+            // then
+            result.map { it.paths } shouldContainExactly listOf(listOf("/copy.txt", "/$FIRST_NAME/$FIRST_FILE_NAME", "/$SECOND_NAME.pdf"))
+            result[0].size shouldBe TEST_MESSAGE.length.toLong()
+            verify(exactly = 1) { metadata.saveHashes("user-1", match { hashes -> hashes.size == 4 }) }
+        }
 
-        // when
-        val result = service.findDuplicates(null)
+        test("should reuse cached hash when size and modification time are unchanged") {
+            // given
+            val first = File(baseFolder, "$FIRST_NAME/$FIRST_FILE_NAME")
+            val second = File(baseFolder, "$SECOND_NAME.pdf")
+            every { metadata.findHashes("user-1", "") } returns
+                mapOf(
+                    "/$FIRST_NAME/$FIRST_FILE_NAME" to
+                        FileHash(
+                            "/$FIRST_NAME/$FIRST_FILE_NAME",
+                            first.length(),
+                            first.lastModified(),
+                            "cached",
+                        ),
+                    "/$SECOND_NAME.pdf" to FileHash("/$SECOND_NAME.pdf", second.length(), second.lastModified() - 1, "stale"),
+                )
 
-        // then
-        result shouldBe emptyList()
-        verify(exactly = 1) { metadata.saveHashes("user-1", match { hashes -> hashes.map { it.path } == listOf("/$SECOND_NAME.pdf") }) }
-    }
+            // when
+            val result = service.findDuplicates(null)
 
-    @Test
-    fun `should reserve the copied size and copy nothing when the quota is exceeded`() {
-        // given
-        every { quota.reserve(TEST_MESSAGE.length.toLong()) } throws QuotaExceededException("full")
+            // then
+            result shouldBe emptyList()
+            verify(exactly = 1) { metadata.saveHashes("user-1", match { hashes -> hashes.map { it.path } == listOf("/$SECOND_NAME.pdf") }) }
+        }
 
-        // when & then
-        assertThrows<QuotaExceededException> { service.copyEntry(FIRST_NAME, THIRD_NAME) }
-        File(baseFolder, THIRD_NAME).exists() shouldBe false
-    }
+        test("should reserve the copied size and copy nothing when the quota is exceeded") {
+            // given
+            every { quota.reserve(TEST_MESSAGE.length.toLong()) } throws QuotaExceededException("full")
 
-    private fun transfer(
-        copy: Boolean,
-        source: String,
-        target: String,
-    ) = if (copy) service.copyEntry(source, target) else service.moveEntry(source, target)
-}
+            // when & then
+            shouldThrow<QuotaExceededException> { service.copyEntry(FIRST_NAME, THIRD_NAME) }
+            File(baseFolder, THIRD_NAME).exists() shouldBe false
+        }
+    })

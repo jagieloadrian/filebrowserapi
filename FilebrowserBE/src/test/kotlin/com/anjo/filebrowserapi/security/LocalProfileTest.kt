@@ -1,5 +1,8 @@
 package com.anjo.filebrowserapi.security
 
+import io.kotest.core.extensions.ApplyExtension
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,26 +17,28 @@ import org.springframework.test.web.servlet.post
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.isDirectory
-import kotlin.test.Test
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("web", "local")
-class LocalProfileTest(
-    @Autowired private val mockMvc: MockMvc,
-) {
-    @Test
-    fun `should serve API without token when local profile is active`() {
-        // given
-        mockMvc.post(DIRECTORIES) { param("directoryName", "notes") }
+@ApplyExtension(SpringExtension::class)
+class LocalProfileTest : FunSpec() {
+    @Autowired
+    private lateinit var mockMvc: MockMvc
 
-        // when
-        val response = mockMvc.get(DIRECTORIES).andReturn().response
+    init {
+        test("should serve API without token when local profile is active") {
+            // given
+            mockMvc.post(DIRECTORIES) { param("directoryName", "notes") }
 
-        // then
-        response.status shouldBe 200
-        response.contentAsString shouldContain "/notes"
-        root.resolve("filebrowser/local/notes").isDirectory() shouldBe true
+            // when
+            val response = mockMvc.get(DIRECTORIES).andReturn().response
+
+            // then
+            response.status shouldBe 200
+            response.contentAsString shouldContain "/notes"
+            root.resolve("filebrowser/local/notes").isDirectory() shouldBe true
+        }
     }
 
     companion object {

@@ -5,6 +5,7 @@ import com.anjo.filebrowser.FilebrowserApiGrpc
 import com.anjo.filebrowser.FilebrowserApiGrpcKt
 import com.anjo.filebrowserapi.TestObjects.FIRST_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
+import com.anjo.filebrowserapi.TestObjects.captureOutput
 import com.anjo.filebrowserapi.TestTokens
 import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
@@ -24,109 +25,102 @@ import io.grpc.health.v1.HealthCheckResponse
 import io.grpc.health.v1.HealthGrpc
 import io.grpc.stub.MetadataUtils
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.extensions.ApplyExtension
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.datatest.withTests
+import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.extension.ExtendWith
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.Arguments
-import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.boot.grpc.test.autoconfigure.LocalGrpcServerPort
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.system.CapturedOutput
-import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import java.io.InputStream
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
-import kotlin.test.AfterTest
-import kotlin.test.Test
 
 private const val TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736"
 
 @SpringBootTest(properties = ["spring.grpc.server.port=0"])
 @ActiveProfiles("server")
-@ExtendWith(OutputCaptureExtension::class)
-class GrpcServerTest(
-    @LocalGrpcServerPort private val port: Int,
-) {
+@ApplyExtension(SpringExtension::class)
+class GrpcServerTest : FunSpec() {
+    @LocalGrpcServerPort
+    private var port: Int = 0
+
     @MockkBean
     private lateinit var fileManager: FileManager
 
-    private val channel = ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build()
-    private val writer =
-        MetadataUtils.newAttachHeadersInterceptor(
-            Metadata().apply {
-                put(Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER), "Bearer ${TestTokens.token(TestTokens.WRITER)}")
-            },
-        )
-    private val stub =
-        FilebrowserApiGrpc
-            .newBlockingStub(channel)
-            .withInterceptors(writer)
-            .withDeadlineAfter(5, TimeUnit.SECONDS)
+    // ponytail: one channel per spec; the port is injected after construction, so it is built on first use
+    private val channel by lazy { ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build() }
 
-    @AfterTest
-    fun stop() {
-        channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)
-    }
+    // getters, so every test gets a fresh token and a fresh 5 s deadline
+    private val writer
+        get() =
+            MetadataUtils.newAttachHeadersInterceptor(
+                Metadata().apply {
+                    put(Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER), "Bearer ${TestTokens.token(TestTokens.WRITER)}")
+                },
+            )
+    private val stub
+        get() =
+            FilebrowserApiGrpc
+                .newBlockingStub(channel)
+                .withInterceptors(writer)
+                .withDeadlineAfter(5, TimeUnit.SECONDS)
 
-    @Test
-    fun `should serve files tree when server is started`() {
-        // given
-        every { fileManager.showFilesTree(FIRST_NAME) } returns listOf("/$FIRST_NAME")
+    init {
+        afterSpec {
+            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)
+        }
 
-        // when
-        val result = stub.showFilesTree(pathRequest())
+        test("should serve files tree when server is started") {
+            // given
+            every { fileManager.showFilesTree(FIRST_NAME) } returns listOf("/$FIRST_NAME")
 
-        // then
-        result.directoriesList shouldBe listOf("/$FIRST_NAME")
-    }
+            // when
+            val result = stub.showFilesTree(pathRequest())
 
-    @ParameterizedTest
-    @MethodSource("errors")
-    fun `should map exception to status when service throws`(
-        exception: Exception,
-        expected: Status.Code,
-        expectedDescription: String,
-    ) {
-        // given
-        every { fileManager.showFilesTree(FIRST_NAME) } throws exception
+            // then
+            result.directoriesList shouldBe listOf("/$FIRST_NAME")
+        }
 
-        // when
-        val result = shouldThrow<StatusRuntimeException> { stub.showFilesTree(pathRequest()) }
+        context("should map exception to status when service throws") {
+            withTests(nameFn = { it.first::class.simpleName!! }, errors()) { (exception, expected, expectedDescription) ->
+                // given
+                every { fileManager.showFilesTree(FIRST_NAME) } throws exception
 
-        // then
-        result.status.code shouldBe expected
-        result.status.description shouldBe expectedDescription
-    }
+                // when
+                val result = shouldThrow<StatusRuntimeException> { stub.showFilesTree(pathRequest()) }
 
-    @Test
-    fun `should map exception to status when streaming getFile fails`() {
-        // given
-        every { fileManager.getFile(FIRST_NAME, FIRST_NAME) } throws NotFoundException(TEST_MESSAGE)
-        val request =
-            Filebrowser.FileOperation
-                .newBuilder()
-                .setName(FIRST_NAME)
-                .setPath(FIRST_NAME)
-                .build()
+                // then
+                result.status.code shouldBe expected
+                result.status.description shouldBe expectedDescription
+            }
+        }
 
-        // when
-        val result = shouldThrow<StatusRuntimeException> { stub.getFile(request).next() }
+        test("should map exception to status when streaming getFile fails") {
+            // given
+            every { fileManager.getFile(FIRST_NAME, FIRST_NAME) } throws NotFoundException(TEST_MESSAGE)
+            val request =
+                Filebrowser.FileOperation
+                    .newBuilder()
+                    .setName(FIRST_NAME)
+                    .setPath(FIRST_NAME)
+                    .build()
 
-        // then
-        result.status.code shouldBe Status.Code.NOT_FOUND
-        result.status.description shouldBe TEST_MESSAGE
-    }
+            // when
+            val result = shouldThrow<StatusRuntimeException> { stub.getFile(request).next() }
 
-    @Test
-    fun `should upload chunks over the wire when client streams file`() =
-        runTest {
+            // then
+            result.status.code shouldBe Status.Code.NOT_FOUND
+            result.status.description shouldBe TEST_MESSAGE
+        }
+
+        test("should upload chunks over the wire when client streams file") {
             // given
             var received = ""
             every { fileManager.uploadFile(FIRST_NAME, any(), any(), "", false) } answers {
@@ -150,33 +144,35 @@ class GrpcServerTest(
             received shouldBe TEST_MESSAGE
         }
 
-    @Test
-    fun `should report SERVING when health is checked`() {
-        // when
-        val result =
-            HealthGrpc
-                .newBlockingStub(channel)
-                .withDeadlineAfter(5, TimeUnit.SECONDS)
-                .check(HealthCheckRequest.getDefaultInstance())
+        test("should report SERVING when health is checked") {
+            // when
+            val result =
+                HealthGrpc
+                    .newBlockingStub(channel)
+                    .withDeadlineAfter(5, TimeUnit.SECONDS)
+                    .check(HealthCheckRequest.getDefaultInstance())
 
-        // then
-        result.status shouldBe HealthCheckResponse.ServingStatus.SERVING
-    }
+            // then
+            result.status shouldBe HealthCheckResponse.ServingStatus.SERVING
+        }
 
-    @Test
-    fun `should log trace id from traceparent when call is received`(output: CapturedOutput) {
-        // given
-        every { fileManager.showFilesTree(FIRST_NAME) } returns emptyList()
-        val headers =
-            Metadata().apply {
-                put(Metadata.Key.of("traceparent", Metadata.ASCII_STRING_MARSHALLER), "00-$TRACE_ID-00f067aa0ba902b7-01")
-            }
+        test("should log trace id from traceparent when call is received") {
+            // given
+            every { fileManager.showFilesTree(FIRST_NAME) } returns emptyList()
+            val headers =
+                Metadata().apply {
+                    put(Metadata.Key.of("traceparent", Metadata.ASCII_STRING_MARSHALLER), "00-$TRACE_ID-00f067aa0ba902b7-01")
+                }
 
-        // when
-        stub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers)).showFilesTree(pathRequest())
+            // when
+            val output =
+                captureOutput {
+                    stub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers)).showFilesTree(pathRequest())
+                }
 
-        // then
-        output.out shouldContain TRACE_ID
+            // then
+            output shouldContain TRACE_ID
+        }
     }
 
     private fun pathRequest() =
@@ -186,18 +182,17 @@ class GrpcServerTest(
             .build()
 
     companion object {
-        @JvmStatic
-        fun errors() =
+        private fun errors() =
             listOf(
-                Arguments.of(NotFoundException(TEST_MESSAGE), Status.Code.NOT_FOUND, TEST_MESSAGE),
-                Arguments.of(AlreadyExistsException(TEST_MESSAGE), Status.Code.ALREADY_EXISTS, TEST_MESSAGE),
-                Arguments.of(NotEmptyException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),
-                Arguments.of(QuotaExceededException(TEST_MESSAGE), Status.Code.RESOURCE_EXHAUSTED, TEST_MESSAGE),
-                Arguments.of(BadInputException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
-                Arguments.of(IllegalArgumentException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
-                Arguments.of(IllegalStateException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),
-                Arguments.of(RuntimeException(TEST_MESSAGE), Status.Code.UNKNOWN, "Unexpected error occurred"),
-                Arguments.of(
+                Triple(NotFoundException(TEST_MESSAGE), Status.Code.NOT_FOUND, TEST_MESSAGE),
+                Triple(AlreadyExistsException(TEST_MESSAGE), Status.Code.ALREADY_EXISTS, TEST_MESSAGE),
+                Triple(NotEmptyException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),
+                Triple(QuotaExceededException(TEST_MESSAGE), Status.Code.RESOURCE_EXHAUSTED, TEST_MESSAGE),
+                Triple(BadInputException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
+                Triple(IllegalArgumentException(TEST_MESSAGE), Status.Code.INVALID_ARGUMENT, TEST_MESSAGE),
+                Triple(IllegalStateException(TEST_MESSAGE), Status.Code.FAILED_PRECONDITION, TEST_MESSAGE),
+                Triple(RuntimeException(TEST_MESSAGE), Status.Code.UNKNOWN, "Unexpected error occurred"),
+                Triple(
                     StatusException(Status.NOT_FOUND.withDescription(TEST_MESSAGE)),
                     Status.Code.NOT_FOUND,
                     TEST_MESSAGE,
