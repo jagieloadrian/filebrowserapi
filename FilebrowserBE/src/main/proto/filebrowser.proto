@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 package com.anjo.filebrowser;
 
@@ -15,6 +16,7 @@ service FilebrowserApi {
   rpc addDirectoriesRecursively(PathRequest)returns (StringResponse);
   rpc renameDirectory(FileOperation)returns (StringResponse);
   rpc deleteDirectory(PathRequest)returns (google.protobuf.Empty);
+  rpc listEntries(EntriesRequest)returns (EntriesResponse);
 }
 
 message PathRequest {
@@ -45,4 +47,22 @@ message UploadFile {
 
 message FileResponse {
   bytes data = 1;
+}
+
+message EntriesRequest {
+  string path = 1;
+  string name = 2;
+  string extension = 3;
+}
+
+message Entry {
+  string path = 1;
+  bool directory = 2;
+  int64 size = 3;
+  google.protobuf.Timestamp modified = 4;
+  string content_type = 5;
+}
+
+message EntriesResponse {
+  repeated Entry entries = 1;
 }

@@ -164,6 +164,7 @@ class GrpcSecurityTest(
                 FilebrowserApiGrpc.getShowFilesTreeMethod(),
                 FilebrowserApiGrpc.getGetFileMethod(),
                 FilebrowserApiGrpc.getShowDirectoriesTreeMethod(),
+                FilebrowserApiGrpc.getListEntriesMethod(),
             ).map { it.fullMethodName }
 
         @JvmStatic

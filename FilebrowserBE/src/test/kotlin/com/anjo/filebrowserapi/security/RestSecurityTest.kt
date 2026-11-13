@@ -182,6 +182,7 @@ class RestSecurityTest(
     companion object {
         private const val FILES = "/api/v1/files"
         private const val DIRECTORIES = "/api/v1/directories"
+        private const val ENTRIES = "/api/v1/entries"
 
         @JvmStatic
         fun readRoutes() =
@@ -189,6 +190,7 @@ class RestSecurityTest(
                 Arguments.of(HttpMethod.GET, FILES),
                 Arguments.of(HttpMethod.GET, "$FILES/missing.txt"),
                 Arguments.of(HttpMethod.GET, DIRECTORIES),
+                Arguments.of(HttpMethod.GET, ENTRIES),
             )
 
         @JvmStatic

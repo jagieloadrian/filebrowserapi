@@ -8,8 +8,10 @@ import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.service.DirectoryManager
+import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
 import com.google.protobuf.Empty
+import com.google.protobuf.Timestamp
 import com.google.protobuf.kotlin.toByteString
 import io.grpc.Status
 import io.grpc.StatusException
@@ -29,6 +31,7 @@ internal const val CHUNK_SIZE = 64 * 1024
 class FilebrowserGrpc(
     private val directoryManager: DirectoryManager,
     private val fileManager: FileManager,
+    private val entryManager: EntryManager,
     private val properties: AppConfiguration,
 ) : FilebrowserApiCoroutineImplBase() {
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
@@ -136,4 +139,24 @@ class FilebrowserGrpc(
             .newBuilder()
             .build()
     }
+
+    override suspend fun listEntries(request: Filebrowser.EntriesRequest): Filebrowser.EntriesResponse =
+        Filebrowser.EntriesResponse
+            .newBuilder()
+            .addAllEntries(
+                entryManager.listEntries(request.path, request.name, request.extension).map { entry ->
+                    Filebrowser.Entry
+                        .newBuilder()
+                        .setPath(entry.path)
+                        .setDirectory(entry.directory)
+                        .setSize(entry.size)
+                        .setModified(
+                            Timestamp
+                                .newBuilder()
+                                .setSeconds(entry.modified.epochSecond)
+                                .setNanos(entry.modified.nano),
+                        ).setContentType(entry.contentType.orEmpty())
+                        .build()
+                },
+            ).build()
 }

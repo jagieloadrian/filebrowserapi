@@ -7,7 +7,9 @@ import com.anjo.filebrowserapi.TestObjects.SECOND_NAME
 import com.anjo.filebrowserapi.TestObjects.TEST_MESSAGE
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
+import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.service.DirectoryManager
+import com.anjo.filebrowserapi.service.EntryManager
 import com.anjo.filebrowserapi.service.FileManager
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteString
@@ -28,13 +30,16 @@ import org.junit.jupiter.api.io.TempDir
 import org.springframework.util.unit.DataSize
 import java.io.InputStream
 import java.nio.file.Path
+import java.time.Instant
 import kotlin.random.Random
 import kotlin.test.Test
 
 class FilebrowserGrpcTest {
     private val directoryManager = mockk<DirectoryManager>()
     private val fileManager = mockk<FileManager>()
-    private val service = FilebrowserGrpc(directoryManager, fileManager, AppConfiguration(maxUploadSize = DataSize.ofBytes(16)))
+    private val entryManager = mockk<EntryManager>()
+    private val service =
+        FilebrowserGrpc(directoryManager, fileManager, entryManager, AppConfiguration(maxUploadSize = DataSize.ofBytes(16)))
 
     @TempDir
     private lateinit var workDir: Path
@@ -224,6 +229,37 @@ class FilebrowserGrpcTest {
             // then
             result shouldBe Empty.getDefaultInstance()
             verify(exactly = 1) { directoryManager.deleteDirectory(FIRST_NAME) }
+        }
+
+    @Test
+    fun `should return entries with metadata when listEntries is called`() =
+        runTest {
+            // given
+            val modified = Instant.parse("2026-11-13T10:00:00.5Z")
+            val request =
+                Filebrowser.EntriesRequest
+                    .newBuilder()
+                    .setPath(FIRST_NAME)
+                    .setName("first")
+                    .setExtension("txt")
+                    .build()
+            every { entryManager.listEntries(FIRST_NAME, "first", "txt") } returns
+                listOf(
+                    Entry("/$FIRST_NAME", true, 0, modified, null),
+                    Entry("/$FIRST_NAME/$FIRST_FILE_NAME", false, 4, modified, "text/plain"),
+                )
+
+            // when
+            val result = service.listEntries(request).entriesList
+
+            // then
+            result.map { it.path } shouldBe listOf("/$FIRST_NAME", "/$FIRST_NAME/$FIRST_FILE_NAME")
+            result[0].directory shouldBe true
+            result[0].contentType shouldBe ""
+            result[1].size shouldBe 4
+            result[1].contentType shouldBe "text/plain"
+            result[1].modified.seconds shouldBe modified.epochSecond
+            result[1].modified.nanos shouldBe modified.nano
         }
 
     private fun pathRequest(path: String) =

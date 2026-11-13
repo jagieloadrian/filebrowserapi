@@ -37,6 +37,7 @@ private val GRPC_READS =
         FilebrowserApiGrpc.getShowFilesTreeMethod(),
         FilebrowserApiGrpc.getGetFileMethod(),
         FilebrowserApiGrpc.getShowDirectoriesTreeMethod(),
+        FilebrowserApiGrpc.getListEntriesMethod(),
     ).map { it.fullMethodName }
 
 private val GRPC_WRITES = FilebrowserApiGrpc.getServiceDescriptor().methods.map { it.fullMethodName } - GRPC_READS.toSet()
