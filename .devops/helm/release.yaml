@@ -19,7 +19,7 @@ spec:
         name: flux-system
         namespace: flux-system
   values:
-    image: ghcr.io/jagieloadrian/filebrowserapi:main-placeholder
+    image: ghcr.io/jagieloadrian/filebrowserapi:main-20261113214612-8183131
     port: 8080
     tmpSize: 2Gi
     nodeSelector:
@@ -76,7 +76,7 @@ spec:
         name: flux-system
         namespace: flux-system
   values:
-    image: ghcr.io/jagieloadrian/filebrowserapi:main-placeholder
+    image: ghcr.io/jagieloadrian/filebrowserapi:main-20261113214612-8183131
     port: 9090
     tmpSize: 2Gi
     nodeSelector:
