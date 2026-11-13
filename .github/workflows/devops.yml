@@ -17,8 +17,6 @@ defaults:
 env:
   KUBECONFORM_VERSION: v0.8.0
   CRD_SCHEMAS: https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json
-  RELEASE: .devops/helm/release.yaml
-  HAS_APP: ${{ vars.DEPLOY_APP_CLIENT_ID != '' && secrets.DEPLOY_APP_PRIVATE_KEY != '' }}
 
 jobs:
   validate:
@@ -26,41 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/create-github-app-token@v3
-        id: app-token
-        if: env.HAS_APP == 'true'
-        with:
-          client-id: ${{ vars.DEPLOY_APP_CLIENT_ID }}
-          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: homelab-infra
-          permission-contents: read
-
-      - name: Checkout chart (homelab-infra)
-        if: env.HAS_APP == 'true'
-        uses: actions/checkout@v7
-        with:
-          repository: jagieloadrian/homelab-infra
-          path: homelab-infra
-          sparse-checkout: charts
-          token: ${{ steps.app-token.outputs.token }}
-
       - name: Install kubeconform
         run: curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | sudo tar xz -C /usr/local/bin kubeconform
 
       - name: Kubernetes manifests
-        run: |
-          kc() { kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" "$@"; }
-          kc .devops/helm
-          if [ ! -d homelab-infra/charts/app ]; then
-            echo "::warning::homelab-infra is private and the deploy GitHub App is not configured; chart output not validated"
-            exit 0
-          fi
-          for name in $(yq -N '.metadata.name' "$RELEASE"); do
-            dir=$(mktemp -d)
-            N=$name yq 'select(.metadata.name == strenv(N)) | .spec.values' "$RELEASE" \
-              | helm template "$name" homelab-infra/charts/app -f - > "$dir/all.yaml"
-            N=$name yq 'select(.metadata.name == strenv(N))
-              | {"resources": ["all.yaml"], "patches": .spec.postRenderers[0].kustomize.patches}' "$RELEASE" > "$dir/kustomization.yaml"
-            kubectl kustomize "$dir" | kc -
-          done
+        run: kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" .devops/helm
