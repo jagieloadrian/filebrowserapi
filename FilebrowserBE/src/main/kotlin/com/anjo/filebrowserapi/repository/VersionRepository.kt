@@ -1,82 +1,82 @@
 package com.anjo.filebrowserapi.repository
 
 import com.anjo.filebrowserapi.model.FileVersion
-import org.springframework.jdbc.core.simple.JdbcClient
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.springframework.stereotype.Repository
-import java.sql.ResultSet
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 
 @Repository
 class VersionRepository(
-    private val jdbc: JdbcClient,
+    private val db: Database,
 ) {
     fun insert(
         owner: String,
         version: FileVersion,
     ) {
-        jdbc
-            .sql("insert into file_version (id, owner, path, size, created_at) values (:id, :owner, :path, :size, :createdAt)")
-            .param("id", version.id)
-            .param("owner", owner)
-            .param("path", version.path)
-            .param("size", version.size)
-            .param("createdAt", OffsetDateTime.ofInstant(version.createdAt, ZoneOffset.UTC))
-            .update()
+        transaction(db) {
+            FileVersionTable.insert {
+                it[id] = version.id
+                it[this.owner] = owner
+                it[path] = version.path
+                it[size] = version.size
+                it[createdAt] = version.createdAt.utc()
+            }
+        }
     }
 
     fun list(
         owner: String,
         path: String,
     ): List<FileVersion> =
-        jdbc
-            .sql("select id, path, size, created_at from file_version where owner = :owner and path = :path order by created_at desc, id")
-            .param("owner", owner)
-            .param("path", path)
-            .query { rs, _ -> rs.toVersion() }
-            .list()
+        transaction(db) {
+            FileVersionTable
+                .selectAll()
+                .where { (FileVersionTable.owner eq owner) and (FileVersionTable.path eq path) }
+                .orderBy(FileVersionTable.createdAt to SortOrder.DESC, FileVersionTable.id to SortOrder.ASC)
+                .map { it.toVersion() }
+        }
 
     fun find(
         owner: String,
         id: UUID,
     ): FileVersion? =
-        jdbc
-            .sql("select id, path, size, created_at from file_version where owner = :owner and id = :id")
-            .param("owner", owner)
-            .param("id", id)
-            .query { rs, _ -> rs.toVersion() }
-            .optional()
-            .orElse(null)
+        transaction(db) {
+            FileVersionTable
+                .selectAll()
+                .where { (FileVersionTable.owner eq owner) and (FileVersionTable.id eq id) }
+                .singleOrNull()
+                ?.toVersion()
+        }
 
     fun idsUnder(
         owner: String,
         path: String,
     ): List<UUID> =
-        jdbc
-            .sql("select id from file_version where $UNDER")
-            .param("owner", owner)
-            .param("path", path)
-            .param("prefix", likePrefix(path))
-            .query { rs, _ -> rs.getObject("id", UUID::class.java) }
-            .list()
+        transaction(db) {
+            FileVersionTable.select(FileVersionTable.id).where { FileVersionTable.under(owner, path) }.map { it[FileVersionTable.id] }
+        }
 
     fun delete(
         owner: String,
         id: UUID,
     ) {
-        jdbc
-            .sql("delete from file_version where owner = :owner and id = :id")
-            .param("owner", owner)
-            .param("id", id)
-            .update()
+        transaction(db) { FileVersionTable.deleteWhere { (this.owner eq owner) and (this.id eq id) } }
     }
 
-    private fun ResultSet.toVersion() =
+    private fun ResultRow.toVersion() =
         FileVersion(
-            getObject("id", UUID::class.java),
-            getString("path"),
-            getLong("size"),
-            getObject("created_at", OffsetDateTime::class.java).toInstant(),
+            this[FileVersionTable.id],
+            this[FileVersionTable.path],
+            this[FileVersionTable.size],
+            this[FileVersionTable.createdAt].toInstant(),
         )
 }

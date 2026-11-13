@@ -2,27 +2,41 @@ package com.anjo.filebrowserapi.repository
 
 import com.anjo.filebrowserapi.model.EntryMeta
 import com.anjo.filebrowserapi.model.FileHash
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
-import org.springframework.jdbc.core.simple.JdbcClient
+import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.plus
+import org.jetbrains.exposed.v1.core.stringLiteral
+import org.jetbrains.exposed.v1.core.substring
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import org.springframework.stereotype.Repository
 
-private val PATH_TABLES = listOf("entry_meta", "file_hash", "file_version", "share_link")
+private val PATH_TABLES = listOf(EntryMetaTable, FileHashTable, FileVersionTable, ShareLinkTable)
 
 @Repository
 class MetadataRepository(
-    private val jdbc: JdbcClient,
-    private val batch: NamedParameterJdbcTemplate,
+    private val db: Database,
 ) {
     fun findUnder(
         owner: String,
         path: String,
     ): Map<String, EntryMeta> =
-        under("select path, description, tags from entry_meta where $UNDER", owner, path)
-            .query { rs, _ ->
-                EntryMeta(rs.getString("path"), rs.getString("description"), (rs.getArray("tags").array as Array<*>).map { it as String })
-            }.list()
-            .associateBy { it.path }
+        transaction(db) {
+            EntryMetaTable
+                .selectAll()
+                .where { EntryMetaTable.under(owner, path) }
+                .map { it.toEntryMeta() }
+                .associateBy { it.path }
+        }
 
     fun save(
         owner: String,
@@ -30,26 +44,18 @@ class MetadataRepository(
         description: String?,
         tags: List<String>,
     ) {
-        if (description == null && tags.isEmpty()) {
-            jdbc
-                .sql("delete from entry_meta where owner = :owner and path = :path")
-                .param("owner", owner)
-                .param("path", path)
-                .update()
-            return
+        transaction(db) {
+            if (description == null && tags.isEmpty()) {
+                EntryMetaTable.deleteWhere { (this.owner eq owner) and (this.path eq path) }
+            } else {
+                EntryMetaTable.upsert {
+                    it[this.owner] = owner
+                    it[this.path] = path
+                    it[this.description] = description
+                    it[this.tags] = tags
+                }
+            }
         }
-        jdbc
-            .sql(
-                """
-                insert into entry_meta (owner, path, description, tags)
-                values (:owner, :path, :description, string_to_array(:tags, ','))
-                on conflict (owner, path) do update set description = excluded.description, tags = excluded.tags
-                """.trimIndent(),
-            ).param("owner", owner)
-            .param("path", path)
-            .param("description", description)
-            .param("tags", tags.joinToString(","))
-            .update()
     }
 
     fun relocate(
@@ -57,12 +63,11 @@ class MetadataRepository(
         from: String,
         to: String,
     ) {
-        forget(owner, to)
-        PATH_TABLES.forEach { table ->
-            under("update $table set path = :to || substr(path, :cut) where $UNDER", owner, from)
-                .param("to", to)
-                .param("cut", from.length + 1)
-                .update()
+        transaction(db) {
+            forgetRows(owner, to)
+            PATH_TABLES.forEach { table ->
+                table.update({ table.under(owner, from) }) { it[table.path] = table.moved(from, to) }
+            }
         }
     }
 
@@ -71,64 +76,65 @@ class MetadataRepository(
         from: String,
         to: String,
     ) {
-        forget(owner, to)
-        under(
-            """
-            insert into entry_meta (owner, path, description, tags)
-            select owner, :to || substr(path, :cut), description, tags from entry_meta where $UNDER
-            """.trimIndent(),
-            owner,
-            from,
-        ).param("to", to)
-            .param("cut", from.length + 1)
-            .update()
+        transaction(db) {
+            forgetRows(owner, to)
+            val table = EntryMetaTable
+            table.insert(
+                table.select(table.owner, table.moved(from, to), table.description, table.tags).where { table.under(owner, from) },
+                listOf(table.owner, table.path, table.description, table.tags),
+            )
+        }
     }
 
     fun findHashes(
         owner: String,
         path: String,
     ): Map<String, FileHash> =
-        under("select path, size, modified_ms, sha256 from file_hash where $UNDER", owner, path)
-            .query { rs, _ -> FileHash(rs.getString("path"), rs.getLong("size"), rs.getLong("modified_ms"), rs.getString("sha256")) }
-            .list()
-            .associateBy { it.path }
+        transaction(db) {
+            FileHashTable
+                .selectAll()
+                .where { FileHashTable.under(owner, path) }
+                .map { it.toFileHash() }
+                .associateBy { it.path }
+        }
 
     fun saveHashes(
         owner: String,
         hashes: List<FileHash>,
     ) {
         if (hashes.isEmpty()) return
-        batch.batchUpdate(
-            """
-            insert into file_hash (owner, path, size, modified_ms, sha256) values (:owner, :path, :size, :modified, :sha256)
-            on conflict (owner, path) do update set size = excluded.size, modified_ms = excluded.modified_ms, sha256 = excluded.sha256
-            """.trimIndent(),
-            hashes
-                .map {
-                    MapSqlParameterSource()
-                        .addValue("owner", owner)
-                        .addValue("path", it.path)
-                        .addValue("size", it.size)
-                        .addValue("modified", it.modifiedMs)
-                        .addValue("sha256", it.sha256)
-                }.toTypedArray(),
-        )
+        transaction(db) {
+            FileHashTable.batchUpsert(hashes, shouldReturnGeneratedValues = false) { hash ->
+                this[FileHashTable.owner] = owner
+                this[FileHashTable.path] = hash.path
+                this[FileHashTable.size] = hash.size
+                this[FileHashTable.modifiedMs] = hash.modifiedMs
+                this[FileHashTable.sha256] = hash.sha256
+            }
+        }
     }
 
     fun forget(
         owner: String,
         path: String,
     ) {
-        PATH_TABLES.forEach { table -> under("delete from $table where $UNDER", owner, path).update() }
+        transaction(db) { forgetRows(owner, path) }
     }
 
-    private fun under(
-        sql: String,
+    private fun forgetRows(
         owner: String,
         path: String,
-    ) = jdbc
-        .sql(sql)
-        .param("owner", owner)
-        .param("path", path)
-        .param("prefix", likePrefix(path))
+    ) {
+        PATH_TABLES.forEach { table -> table.deleteWhere { table.under(owner, path) } }
+    }
+
+    private fun OwnedPathTable.moved(
+        from: String,
+        to: String,
+    ): Expression<String> = stringLiteral(to) + path.substring(from.length + 1, Int.MAX_VALUE)
+
+    private fun ResultRow.toEntryMeta() = EntryMeta(this[EntryMetaTable.path], this[EntryMetaTable.description], this[EntryMetaTable.tags])
+
+    private fun ResultRow.toFileHash() =
+        FileHash(this[FileHashTable.path], this[FileHashTable.size], this[FileHashTable.modifiedMs], this[FileHashTable.sha256])
 }
