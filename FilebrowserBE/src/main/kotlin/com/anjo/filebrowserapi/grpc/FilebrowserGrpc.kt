@@ -140,6 +140,11 @@ class FilebrowserGrpc(
             .build()
     }
 
+    override suspend fun deleteDirectoryRecursively(request: Filebrowser.PathRequest): Empty {
+        directoryManager.deleteDirectoryRecursively(request.path)
+        return Empty.getDefaultInstance()
+    }
+
     override suspend fun listEntries(request: Filebrowser.EntriesRequest): Filebrowser.EntriesResponse =
         Filebrowser.EntriesResponse
             .newBuilder()

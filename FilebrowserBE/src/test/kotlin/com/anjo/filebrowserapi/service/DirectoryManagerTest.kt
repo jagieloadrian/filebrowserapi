@@ -258,4 +258,40 @@ class DirectoryManagerTest {
         // when & then
         shouldThrow<BadInputException> { service.deleteDirectory("") }
     }
+
+    @Test
+    fun `should delete directory with its content when deleteDirectoryRecursively is called`() {
+        // given
+        File("$baseFolder/$FIRST_NAME/$SECOND_NAME").mkdirs()
+        File("$baseFolder/$FIRST_NAME/$SECOND_NAME/file.txt").writeText("data")
+
+        // when
+        service.deleteDirectoryRecursively(FIRST_NAME)
+
+        // then
+        File("$baseFolder/$FIRST_NAME").exists() shouldBe false
+        File(baseFolder).exists() shouldBe true
+    }
+
+    @Test
+    fun `should throw NotFoundException when deleteDirectoryRecursively gets missing directory`() {
+        // when & then
+        shouldThrow<NotFoundException> { service.deleteDirectoryRecursively(FIRST_NAME) }
+    }
+
+    @Test
+    fun `should throw BadInputException when deleteDirectoryRecursively gets a file`() {
+        // given
+        File("$baseFolder/file.txt").writeText("data")
+
+        // when & then
+        shouldThrow<BadInputException> { service.deleteDirectoryRecursively("file.txt") }
+    }
+
+    @Test
+    fun `should throw BadInputException when deleteDirectoryRecursively targets base directory`() {
+        // when & then
+        shouldThrow<BadInputException> { service.deleteDirectoryRecursively("/") }
+        File(baseFolder).exists() shouldBe true
+    }
 }

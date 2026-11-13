@@ -133,6 +133,19 @@ class DirectoryManagerControllerTest(
         verify(exactly = 1) { service.deleteDirectory(FIRST_NAME) }
     }
 
+    @Test
+    fun `should return 204 when directory is deleted recursively`() {
+        // given
+        every { service.deleteDirectoryRecursively(FIRST_NAME) } just Runs
+
+        // when
+        val response = mockMvc.delete("$DIRECTORIES/recursively") { param("path", FIRST_NAME) }.andReturn().response
+
+        // then
+        response.status shouldBe 204
+        verify(exactly = 1) { service.deleteDirectoryRecursively(FIRST_NAME) }
+    }
+
     private companion object {
         const val DIRECTORIES = "/api/v1/directories"
     }

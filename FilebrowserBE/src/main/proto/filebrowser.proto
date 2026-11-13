@@ -16,6 +16,7 @@ service FilebrowserApi {
   rpc addDirectoriesRecursively(PathRequest)returns (StringResponse);
   rpc renameDirectory(FileOperation)returns (StringResponse);
   rpc deleteDirectory(PathRequest)returns (google.protobuf.Empty);
+  rpc deleteDirectoryRecursively(PathRequest)returns (google.protobuf.Empty);
   rpc listEntries(EntriesRequest)returns (EntriesResponse);
   rpc copyEntry(EntryTransfer)returns (StringResponse);
   rpc moveEntry(EntryTransfer)returns (StringResponse);

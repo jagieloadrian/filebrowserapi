@@ -82,6 +82,12 @@ class DirectoryManager(
         Files.delete(directory.toPath())
     }
 
+    fun deleteDirectoryRecursively(path: String) {
+        val directory = modifierUtils.resolveEntry(path)
+        requireDirectory(directory, "Directory $path does not exist")
+        check(directory.deleteRecursively()) { "Directory $path was only partly deleted" }
+    }
+
     private fun requireDirectory(
         directory: File,
         missingMessage: String,

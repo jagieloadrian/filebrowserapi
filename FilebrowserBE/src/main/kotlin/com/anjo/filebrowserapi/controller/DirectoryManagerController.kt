@@ -49,4 +49,9 @@ class DirectoryManagerController(
     fun deleteDirectory(
         @RequestParam("path") path: String,
     ): ResponseEntity<Unit> = ResponseEntity(directoryManager.deleteDirectory(path), HttpStatus.NO_CONTENT)
+
+    @DeleteMapping("/recursively")
+    fun deleteDirectoryRecursively(
+        @RequestParam("path") path: String,
+    ): ResponseEntity<Unit> = ResponseEntity(directoryManager.deleteDirectoryRecursively(path), HttpStatus.NO_CONTENT)
 }

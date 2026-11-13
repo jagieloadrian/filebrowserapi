@@ -280,6 +280,20 @@ class FilebrowserGrpcTest {
             service.moveEntry(request).path shouldBe "/$SECOND_NAME"
         }
 
+    @Test
+    fun `should delete directory with content when deleteDirectoryRecursively is called`() =
+        runTest {
+            // given
+            every { directoryManager.deleteDirectoryRecursively(FIRST_NAME) } just Runs
+
+            // when
+            val result = service.deleteDirectoryRecursively(pathRequest(FIRST_NAME))
+
+            // then
+            result shouldBe Empty.getDefaultInstance()
+            verify(exactly = 1) { directoryManager.deleteDirectoryRecursively(FIRST_NAME) }
+        }
+
     private fun pathRequest(path: String) =
         Filebrowser.PathRequest
             .newBuilder()
