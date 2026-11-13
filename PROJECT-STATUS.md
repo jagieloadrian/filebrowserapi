@@ -1,6 +1,6 @@
 # Project Status
 
-Last update: 2026-11-13, branch `feature-11/file-operations`.
+Last update: 2026-11-13, branch `feature-12/file-metadata`.
 
 ## Completed
 
@@ -69,6 +69,14 @@ Project aligned with the coding standards from the `standards` MCP server:
 - Fix: a REST upload without the `uploadFile` part answered 500, now 400.
 - 302 tests, gate green; all new endpoints smoke-tested with `runLocal`.
 
+### 2026-11-13, `feature-12/file-metadata` (from `feature-11`): metadata features
+- PostgreSQL 17 + Flyway (V1 to V5), `JdbcClient`; Testcontainers in tests, Docker Compose in `runLocal`.
+- Tags and descriptions (`PUT /api/v1/entries/meta`, `?tag=` filter), duplicates by SHA-256
+  (`/api/v1/entries/duplicates`), trash with 30-day purge, last 10 versions on overwrite, expiring public share links.
+- REST and gRPC parity for every feature; `listTrash`, `listVersions`, `listShares`, `findDuplicates` are reads.
+- Fix found by a test: request logs printed the share token in the URL; now masked as `/share/***`.
+- 447 tests, gate green.
+
 ## Decisions
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
@@ -108,9 +116,17 @@ Project aligned with the coding standards from the `standards` MCP server:
 
 - 2026-11-13: phase 5 only adds endpoints and RPCs; nothing in `/api/v1` or the proto changed shape, so no `v2`.
   The explicit `/recursively` endpoint is the delete confirmation.
-- No database (phase 5.4): nothing needs storage beyond the file system.
+- 2026-11-13: PostgreSQL for metadata only; files stay on disk. Rows are keyed by owner and path ("/docs/a.txt") and
+  follow rename, move and copy by prefix; a stale row is harmless. Trashed items use the key `trash:<id>`, which no
+  user path matches, so their tags, versions and links come back on restore and vanish on purge.
+- DELETE moves to the trash (breaking behaviour, `feat!`); defaults chosen without a design round (owner's request):
+  30 days trash, 10 versions, links 7 days (max 30), files only.
+- Share tokens: 32 random bytes, base64url, stored as SHA-256 hex; the public download is REST only.
 
 ## Next steps and risks
+- Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password in Vault under
+  `secret/apps/filebrowser` and `secret/apps/filebrowser-grpc` (`SPRING_DATASOURCE_PASSWORD`).
+- Trash and versions use disk until purged; no quota yet.
 - Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.
 - Existing deployments: move files from `filebrowser/` to `filebrowser/<sub>/` before upgrading.
 - Phase 4 rollout: set the issuer once Authelia runs, register `.devops/helm` in the cluster's Flux, deploy GitHub

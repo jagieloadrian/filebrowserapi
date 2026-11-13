@@ -76,7 +76,11 @@ Done when: a push to `main` rolls the new image out to the cluster.
 2. Done: `GET /api/v1/entries` returns size, modification date and type. New endpoint instead of changing the
    path-only trees, so `/api/v1` stays compatible.
 3. Done: search by part of the name or by extension (filters on `/api/v1/entries`).
-4. Not needed yet: no data exists that the file system cannot hold (sharing, tags, permissions).
+4. Done 2026-11-13: PostgreSQL with Flyway holds what the file system cannot: tags and descriptions, the trash
+   (30 days), file versions (last 10), public share links (hashed tokens, max 30 days) and cached content hashes for
+   duplicate detection. Only additive endpoints and RPCs, except DELETE, which now moves to the trash.
+
+Open: a user quota, since the trash and versions keep disk space until they are purged.
 
 ## Phase 6: FilebrowserUI
 1. Decide: build a client (Compose Multiplatform or web SPA) or delete the stub module.
