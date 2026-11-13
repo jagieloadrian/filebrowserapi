@@ -1,0 +1,137 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: filebrowser
+spec:
+  interval: 10m
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./charts/app
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  values:
+    image: ghcr.io/jagieloadrian/filebrowserapi:main-placeholder
+    port: 8080
+    tmpSize: 2Gi
+    nodeSelector:
+      homelab/node: rpi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 512Mi
+    route:
+      hostname: filebrowser.home.arpa
+      pathPrefix: /
+    env:
+      SPRING_PROFILES_ACTIVE: web
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://issuer.invalid
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES: filebrowser
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+            patch: |
+              - op: add
+                path: /spec/template/spec/volumes/-
+                value:
+                  name: data
+                  persistentVolumeClaim:
+                    claimName: filebrowser-data
+              - op: add
+                path: /spec/template/spec/containers/0/volumeMounts/-
+                value:
+                  name: data
+                  mountPath: /data
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: filebrowser-grpc
+spec:
+  interval: 10m
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./charts/app
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  values:
+    image: ghcr.io/jagieloadrian/filebrowserapi:main-placeholder
+    port: 9090
+    tmpSize: 2Gi
+    nodeSelector:
+      homelab/node: rpi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+      limits:
+        memory: 384Mi
+    route:
+      hostname: filebrowser-grpc.home.arpa
+      pathPrefix: /
+    env:
+      SPRING_PROFILES_ACTIVE: server
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://issuer.invalid
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES: filebrowser
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+            patch: |
+              - op: add
+                path: /spec/template/spec/volumes/-
+                value:
+                  name: data
+                  persistentVolumeClaim:
+                    claimName: filebrowser-data
+              - op: add
+                path: /spec/template/spec/containers/0/volumeMounts/-
+                value:
+                  name: data
+                  mountPath: /data
+              - op: remove
+                path: /spec/template/spec/containers/0/startupProbe/httpGet
+              - op: add
+                path: /spec/template/spec/containers/0/startupProbe/grpc
+                value:
+                  port: 9090
+              - op: remove
+                path: /spec/template/spec/containers/0/livenessProbe/httpGet
+              - op: add
+                path: /spec/template/spec/containers/0/livenessProbe/grpc
+                value:
+                  port: 9090
+              - op: remove
+                path: /spec/template/spec/containers/0/readinessProbe/httpGet
+              - op: add
+                path: /spec/template/spec/containers/0/readinessProbe/grpc
+                value:
+                  port: 9090
+          - target:
+              kind: Service
+            patch: |
+              - op: replace
+                path: /spec/ports/0/appProtocol
+                value: grpc

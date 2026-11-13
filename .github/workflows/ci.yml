@@ -25,11 +25,22 @@ jobs:
     needs: test
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    concurrency:
+      group: image-${{ github.ref }}
     permissions:
       contents: read
       packages: write
     steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        if: github.ref == 'refs/heads/main' && vars.DEPLOY_APP_CLIENT_ID != ''
+        with:
+          client-id: ${{ vars.DEPLOY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+          permission-contents: write
       - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -51,3 +62,13 @@ jobs:
             echo "value=main-$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           fi
       - run: ./gradlew :FilebrowserBE:jib -PimageTag=${{ steps.tag.outputs.value }} --console=plain
+      - name: Deploy (bump image tag)
+        if: steps.app-token.outputs.token != ''
+        env:
+          TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          sed -i -E "s#(image: ghcr.io/jagieloadrian/filebrowserapi):[^[:space:]]+#\1:$TAG#" .devops/helm/release.yaml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "chore(deploy): $TAG [skip ci]" .devops/helm/release.yaml
+          git pull --rebase && git push
