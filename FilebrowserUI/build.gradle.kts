@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.koin.compiler)
     alias(libs.plugins.buildkonfig)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.wire)
 }
 
 group = "com.anjo"
@@ -24,9 +25,6 @@ val transport = providers.gradleProperty("transport").getOrElse("http")
 require(transport in setOf("http", "grpc")) { "Unknown transport '$transport': use -Ptransport=http or -Ptransport=grpc." }
 val backendUrl =
     providers.gradleProperty("backendUrl").getOrElse(if (transport == "grpc") "http://localhost:9090" else "http://localhost:8080")
-val grpcOnWeb =
-    "The gRPC transport works only on desktop: browsers cannot speak native gRPC without a gRPC-Web proxy. " +
-        "Build the web app with -Ptransport=http."
 
 kotlin {
     jvmToolchain(21)
@@ -86,6 +84,11 @@ kotlin {
     }
 }
 
+wire {
+    sourcePath { srcDir(rootProject.file("FilebrowserProto/src/main/proto")) }
+    kotlin { rpcRole = "none" }
+}
+
 koinCompiler {
     versionCheckSeverity = "info"
 }
@@ -113,15 +116,6 @@ ktlint {
         exclude { it.file.path.contains("/build/") }
     }
 }
-
-val checkWebTransport =
-    tasks.register("checkWebTransport") {
-        val requested = transport
-        val message = grpcOnWeb
-        doLast { check(requested == "http") { message } }
-    }
-
-tasks.named("compileKotlinWasmJs") { dependsOn(checkWebTransport) }
 
 tasks.named<Test>("desktopTest") {
     useJUnitPlatform()
