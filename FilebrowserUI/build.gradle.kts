@@ -20,7 +20,13 @@ repositories {
     mavenCentral()
 }
 
-val backendUrl = providers.gradleProperty("backendUrl").getOrElse("http://localhost:8080")
+val transport = providers.gradleProperty("transport").getOrElse("http")
+require(transport in setOf("http", "grpc")) { "Unknown transport '$transport': use -Ptransport=http or -Ptransport=grpc." }
+val backendUrl =
+    providers.gradleProperty("backendUrl").getOrElse(if (transport == "grpc") "http://localhost:9090" else "http://localhost:8080")
+val grpcOnWeb =
+    "The gRPC transport works only on desktop: browsers cannot speak native gRPC without a gRPC-Web proxy. " +
+        "Build the web app with -Ptransport=http."
 
 kotlin {
     jvmToolchain(21)
@@ -59,6 +65,9 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.coroutines.swing)
                 implementation(libs.ktor.client.cio)
+                implementation(project(":FilebrowserProto"))
+                implementation(project.dependencies.platform(libs.grpc.bom))
+                implementation(libs.grpc.okhttp)
             }
         }
         named("desktopTest") {
@@ -67,6 +76,7 @@ kotlin {
                 implementation(libs.kotest.assertions)
                 implementation(libs.ktor.client.mock)
                 implementation(libs.coroutines.test)
+                implementation(libs.grpc.inprocess)
             }
         }
         wasmJsMain.dependencies {
@@ -83,6 +93,7 @@ koinCompiler {
 buildkonfig {
     packageName = "com.anjo.filebrowser.ui"
     defaultConfigs {
+        buildConfigField(STRING, "transport", transport)
         buildConfigField(STRING, "backendUrl", backendUrl)
     }
 }
@@ -99,6 +110,15 @@ ktlint {
         exclude { it.file.path.contains("/build/") }
     }
 }
+
+val checkWebTransport =
+    tasks.register("checkWebTransport") {
+        val requested = transport
+        val message = grpcOnWeb
+        doLast { check(requested == "http") { message } }
+    }
+
+tasks.named("compileKotlinWasmJs") { dependsOn(checkWebTransport) }
 
 tasks.named<Test>("desktopTest") {
     useJUnitPlatform()
