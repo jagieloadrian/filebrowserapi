@@ -141,3 +141,108 @@ spec:
               - op: replace
                 path: /spec/ports/0/appProtocol
                 value: grpc
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: filebrowser-ui
+spec:
+  interval: 10m
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./charts/app
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  values:
+    image: ghcr.io/jagieloadrian/filebrowserapi-ui:main-20261113214612-8183131
+    port: 8080
+    tmpSize: 64Mi
+    nodeSelector:
+      homelab/node: rpi
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 64Mi
+    route:
+      hostname: filebrowser-ui.home.arpa
+      pathPrefix: /
+    env:
+      BACKEND_URL: http://filebrowser.apps.svc.cluster.local:8080
+      GRPC_WEB_URL: http://filebrowser-grpc-web.apps.svc.cluster.local:8080
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: filebrowser-grpc-web
+spec:
+  interval: 10m
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./charts/app
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  values:
+    image: envoyproxy/envoy:distroless-v1.40.2
+    port: 8080
+    tmpSize: 16Mi
+    nodeSelector:
+      homelab/node: rpi
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 64Mi
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+            patch: |
+              - op: add
+                path: /spec/template/spec/volumes/-
+                value:
+                  name: envoy
+                  configMap:
+                    name: filebrowser-grpc-web-envoy
+              - op: add
+                path: /spec/template/spec/containers/0/volumeMounts/-
+                value:
+                  name: envoy
+                  mountPath: /etc/envoy
+                  readOnly: true
+              - op: replace
+                path: /spec/template/spec/containers/0/startupProbe/httpGet
+                value:
+                  path: /ready
+                  port: 9901
+              - op: replace
+                path: /spec/template/spec/containers/0/livenessProbe/httpGet
+                value:
+                  path: /ready
+                  port: 9901
+              - op: replace
+                path: /spec/template/spec/containers/0/readinessProbe/httpGet
+                value:
+                  path: /ready
+                  port: 9901
