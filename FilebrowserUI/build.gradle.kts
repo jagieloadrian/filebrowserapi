@@ -101,6 +101,9 @@ buildkonfig {
 compose.desktop {
     application {
         mainClass = "com.anjo.filebrowser.ui.MainKt"
+        nativeDistributions {
+            modules("java.instrument", "java.management", "jdk.unsupported")
+        }
     }
 }
 
