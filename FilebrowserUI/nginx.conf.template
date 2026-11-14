@@ -1,0 +1,65 @@
+worker_processes auto;
+worker_shutdown_timeout 20s;
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    client_body_temp_path /tmp/client_temp;
+    proxy_temp_path /tmp/proxy_temp;
+    fastcgi_temp_path /tmp/fastcgi_temp;
+    uwsgi_temp_path /tmp/uwsgi_temp;
+    scgi_temp_path /tmp/scgi_temp;
+
+    log_format json escape=json '{"time":"$time_iso8601","remote_addr":"$remote_addr","method":"$request_method",'
+        '"uri":"$request_uri","status":$status,"bytes":$body_bytes_sent,"duration":$request_time,'
+        '"upstream_duration":"$upstream_response_time","user_agent":"$http_user_agent"}';
+    access_log /dev/stdout json;
+
+    server_tokens off;
+    sendfile on;
+    proxy_http_version 1.1;
+
+    server {
+        listen 8080;
+        root /usr/share/nginx/html;
+
+        location = /health/live {
+            access_log off;
+            return 200;
+        }
+
+        location = /health/ready {
+            access_log off;
+            return 200;
+        }
+
+        location /api/ {
+            client_max_body_size 1g;
+            proxy_request_buffering off;
+            proxy_buffering off;
+            proxy_pass ${BACKEND_URL};
+        }
+
+        location /share/ {
+            proxy_buffering off;
+            proxy_pass ${BACKEND_URL};
+        }
+
+        location /com.anjo.filebrowser.FilebrowserApi/ {
+            proxy_buffering off;
+            proxy_pass ${GRPC_WEB_URL};
+        }
+
+        location / {
+            add_header Cache-Control no-cache;
+            try_files $uri /index.html;
+        }
+    }
+}
