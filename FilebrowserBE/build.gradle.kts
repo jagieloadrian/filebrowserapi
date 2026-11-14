@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
-    alias(libs.plugins.protobuf)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.jib)
     jacoco
@@ -41,9 +40,7 @@ dependencies {
     implementation(libs.kotlin.reflect)
     implementation(platform(libs.grpc.bom))
     implementation(libs.spring.boot.starter.grpc.server)
-    implementation(libs.grpc.protobuf)
-    implementation(libs.grpc.kotlin.stub)
-    implementation(libs.protobuf.kotlin)
+    implementation(project(":FilebrowserProto"))
     implementation(libs.kotlin.logging)
     implementation(libs.springdoc.openapi)
 
@@ -59,37 +56,6 @@ dependencies {
     testImplementation(libs.kotest.spring)
 }
 
-protobuf {
-    protoc {
-        artifact =
-            libs.protobuf.protoc
-                .get()
-                .toString()
-    }
-    plugins {
-        maybeCreate("grpc").apply {
-            artifact =
-                libs.grpc.protoc.gen.java
-                    .get()
-                    .toString()
-        }
-        maybeCreate("grpckt").apply {
-            artifact = "${libs.grpc.protoc.gen.kotlin.get()}:jdk8@jar"
-        }
-    }
-    generateProtoTasks {
-        all().forEach {
-            it.plugins {
-                maybeCreate("grpc")
-                maybeCreate("grpckt")
-            }
-            it.builtins {
-                maybeCreate("kotlin")
-            }
-        }
-    }
-}
-
 kotlin {
     jvmToolchain(21)
     compilerOptions {
@@ -99,9 +65,6 @@ kotlin {
 
 ktlint {
     version.set(libs.versions.ktlint.engine)
-    filter {
-        exclude { it.file.path.contains("/build/generated/") }
-    }
 }
 
 jacoco {
@@ -113,14 +76,7 @@ tasks.test {
     finalizedBy(tasks.jacocoTestReport)
 }
 
-val generatedProtoClasses = "com/anjo/filebrowser/*"
-
-tasks.jacocoTestReport {
-    classDirectories.setFrom(classDirectories.files.map { fileTree(it) { exclude(generatedProtoClasses) } })
-}
-
 tasks.jacocoTestCoverageVerification {
-    classDirectories.setFrom(classDirectories.files.map { fileTree(it) { exclude(generatedProtoClasses) } })
     violationRules {
         rule {
             limit {
