@@ -1,0 +1,10 @@
+name: filebrowser-grpc-web
+services:
+  envoy:
+    image: envoyproxy/envoy:v1.40.2
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml:ro
+    extra_hosts:
+      - host.docker.internal:host-gateway
