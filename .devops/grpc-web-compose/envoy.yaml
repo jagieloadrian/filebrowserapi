@@ -28,14 +28,17 @@ static_resources:
                             prefix: /com.anjo.filebrowser.FilebrowserApi/
                           route:
                             cluster: grpc
+                            timeout: 0s
                         - match:
                             prefix: /api/
                           route:
                             cluster: rest
+                            timeout: 0s
                         - match:
                             prefix: /share/
                           route:
                             cluster: rest
+                            timeout: 0s
                 http_filters:
                   - name: envoy.filters.http.grpc_web
                     typed_config:
