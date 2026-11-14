@@ -103,6 +103,17 @@ tasks.register<BootRun>("runLocal") {
     args("--spring.config.additional-location=file:${rootProject.file(".devops/application-local.yaml")}")
 }
 
+tasks.register<BootRun>("runLocalGrpc") {
+    group = "application"
+    description = "Runs the gRPC API without OIDC as user local: .devops/application-local.yaml over application.yaml"
+    mainClass = tasks.bootRun.flatMap { it.mainClass }
+    classpath = tasks.bootRun.get().classpath
+    args(
+        "--spring.config.additional-location=file:${rootProject.file(".devops/application-local.yaml")}",
+        "--spring.profiles.active=server,local",
+    )
+}
+
 tasks.bootJar {
     archiveFileName.set("filebrowserapi.jar")
 }

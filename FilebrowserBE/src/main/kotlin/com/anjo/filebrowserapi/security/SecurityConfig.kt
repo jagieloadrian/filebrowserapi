@@ -19,9 +19,11 @@ import org.springframework.grpc.server.security.GrpcSecurity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
+import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.core.authority.AuthorityUtils
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint
@@ -144,6 +146,17 @@ class SecurityConfig {
         }
         return http.build()
     }
+
+    @Bean
+    @Profile("server & local")
+    @GlobalServerInterceptor
+    fun localGrpcSecurity(grpc: GrpcSecurity): AuthenticationProcessInterceptor =
+        grpc
+            .authenticationExtractor { _, _, _ ->
+                AnonymousAuthenticationToken(LOCAL_USER, LOCAL_USER, AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS"))
+            }.authenticationManager { it }
+            .authorizeRequests { it.allRequests().permitAll() }
+            .build()
 
     @Bean
     @Profile("web")
