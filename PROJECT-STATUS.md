@@ -1,8 +1,20 @@
 # Project Status
 
-Last update: 2026-11-15, branch `feature-14/kmp-ui`.
+Last update: 2026-11-16, branch `feature-14/kmp-ui`.
 
 ## Completed
+
+### 2026-11-16, `feature-14/kmp-ui`: narrow windows, color themes, full width, UI review
+- Narrow windows: the bottom bar below 600 dp already worked; the desktop window had no minimum size (now 320 × 480
+  dp), and a long account name pushed the top bar title out at 320 dp. The account menu is an icon button now.
+- Color themes Blue (default), Green, Purple, Orange, Rose, each light and dark, plus System, Light or Dark mode, in
+  the top bar menu (settings icon when sign-in is off). Stored per user, applied before the first frame.
+- Lists use the full width; from 840 dp (scaled with text size) rows show type, size and date columns. Search field,
+  quota bar and long text keep a 720 dp cap.
+- UI review fixes: the last file row clears the upload button, rows stack their details at large text, row taps
+  have screen reader labels, empty and error titles are headings.
+- Tests: offscreen Compose UI tests (`ui-test`, `runComposeUiTest` v2) in `AppTest` and `AppMenuTest`, settings
+  round trip on a throwaway Preferences node, fallback cases, 4.5:1 text contrast for every theme and mode.
 
 ### 2026-11-15, `feature-14/kmp-ui`: content ETags, one HelmRelease per deployable unit
 - UI files served by the backend carry a strong ETag (MD5 of the content, hashed once per file and process);
@@ -185,8 +197,18 @@ Project aligned with the coding standards from the `standards` MCP server:
 - OIDC: empty `oidcIssuer` means no sign-in (local runs). Tokens stay in memory; the PKCE verifier and state sit
   in `sessionStorage` only for the browser redirect. SHA-256 from Ktor, randomness from `Uuid.random()`, no new
   dependency. Any failed refresh signs the user out.
+- 2026-11-16: color schemes come from MaterialKolor's `material-color-utilities` (tonal spot, standard contrast),
+  mapped to `ColorScheme` in one function. `material-kolor` itself would raise material3 to an alpha; hand-written
+  schemes would be about 480 hex values. Settings sit behind `SettingsStorage` (`expect fun`, like `authBrowser()`):
+  Java Preferences on the desktop, `localStorage` in the browser, where read or write errors are printed and fall
+  back to the defaults.
+- 2026-11-16, not changed in the UI review: the red "Empty trash" and dialog buttons (a warning on an action that
+  cannot be undone, not decoration), adjacent 48 dp top bar targets (Material 3 default), focus shown as the
+  Material state layer instead of an outline, the 14 sp trash note, and the 48 dp state icon outside `Spacing`.
 
 ## Next steps and risks
+- Not checked in a real browser or desktop window: the theme menu, `localStorage` persistence and its fallback, the
+  320 dp window minimum (offscreen Compose tests only; no Wasm test target).
 - Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password (`SPRING_DATASOURCE_PASSWORD`)
   in Vault under `secret/apps/<release>` for each listed backend release: `filebrowser-app`, `filebrowser-api`,
   `filebrowser-grpc`.
@@ -194,7 +216,7 @@ Project aligned with the coding standards from the `standards` MCP server:
 - Authelia client: register it as in README "UI sign-in" (public, PKCE, `RS256`, `aud` = client ID, `groups` in the
   access token), then set the backend issuer and the CI variables `OIDC_ISSUER` and `OIDC_CLIENT_ID`.
 - UI sign-in is untested against Authelia: check the loopback redirect with a random port, CORS on the discovery
-  and token endpoints, and that the name shows in the top bar. Sign out does not end the Authelia session.
+  and token endpoints, and that the name shows in the account menu. Sign out does not end the Authelia session.
 - UI rollout: register `https://filebrowser.home.arpa/` (and the desktop loopback URI) in Authelia, then open it.
   Istio AuthorizationPolicies: the gateway to `filebrowser-app`, `filebrowser-api`, `filebrowser-ui` and
   `filebrowser-grpc`; `filebrowser-ui` to `filebrowser-api:8080` for the split. nginx restarts until the upstream

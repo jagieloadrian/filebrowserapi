@@ -109,6 +109,11 @@ always talks REST. Gradle properties set its configuration at build time:
 * `-PoidcIssuer=`, `-PoidcClientId=` (default `filebrowser`), `-PoidcScopes=`: see [UI sign-in](#ui-sign-in). An empty
   issuer (the default) turns sign-in off.
 
+The top bar menu (settings, or the account menu when signed in) picks a color theme (Blue, Green, Purple, Orange, Rose)
+and System, Light or Dark mode. The choice is kept per user under the keys `filebrowser.theme` and `filebrowser.mode`:
+on the desktop in Java Preferences (user node `com/anjo/filebrowser`), in the browser in `localStorage`. Unknown or
+unreadable values fall back to Blue and System. The desktop window is at least 320 × 480 dp.
+
 Local runs, without Authelia (the backend runs with the `local` profile):
 
     ./gradlew :FilebrowserBE:runLocal                         # REST on 8080
