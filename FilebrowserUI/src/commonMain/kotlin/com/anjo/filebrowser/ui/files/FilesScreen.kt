@@ -5,6 +5,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,6 +62,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.anjo.filebrowser.ui.common.AppMenu
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
@@ -81,6 +83,8 @@ import com.anjo.filebrowser.ui.common.formatTime
 import com.anjo.filebrowser.ui.model.Entry
 import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
+
+private val UPLOAD_BUTTON_CLEARANCE = 88.dp
 
 private sealed interface NameRequest {
     data object NewFolder : NameRequest
@@ -244,7 +248,7 @@ private fun EntryList(
 ) {
     BoxWithConstraints {
         val wide = maxWidth >= Spacing.expanded
-        LazyColumn(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
             items(entries, key = { it.path }) { entry ->
                 EntryRow(
                     entry = entry,

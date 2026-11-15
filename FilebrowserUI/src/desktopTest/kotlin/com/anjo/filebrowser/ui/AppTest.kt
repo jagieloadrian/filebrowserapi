@@ -8,13 +8,18 @@ import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import com.anjo.filebrowser.ui.api.FilebrowserApi
@@ -27,6 +32,7 @@ import com.anjo.filebrowser.ui.theme.AppearanceSettings
 import com.anjo.filebrowser.ui.trash.TrashViewModel
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
+import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -124,6 +130,31 @@ class AppTest :
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2.0 KB", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+
+        test("should keep the last file row clear of the upload button when the list is scrolled to the end") {
+            // given
+            val session = signedIn()
+            api.entries += (10..29).map { file("/file-$it.txt") }
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+
+                // when
+                onNode(hasScrollToIndexAction()).performScrollToIndex(19)
+
+                // then
+                val lastActions = onNodeWithContentDescription("Actions for file-29.txt").getUnclippedBoundsInRoot()
+                val upload =
+                    onNode(
+                        hasClickAction() and hasAnyDescendant(hasText("Upload file")),
+                        useUnmergedTree = true,
+                    ).getUnclippedBoundsInRoot()
+                lastActions.bottom shouldBeLessThanOrEqualTo upload.top
             }
         }
 
