@@ -1,0 +1,60 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: filebrowser-app
+spec:
+  interval: 10m
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./charts/app
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  values:
+    secrets: true
+    image: ghcr.io/jagieloadrian/filebrowserapi:main-20261113214612-8183131
+    port: 8080
+    tmpSize: 2Gi
+    nodeSelector:
+      homelab/node: rpi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 512Mi
+    route:
+      hostname: filebrowser.home.arpa
+      pathPrefix: /
+    env:
+      SPRING_PROFILES_ACTIVE: web
+      SPRING_WEB_RESOURCES_STATIC_LOCATIONS: file:/app/ui/
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://issuer.invalid
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES: filebrowser
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres.apps.svc.cluster.local:5432/filebrowser?connectTimeout=2&socketTimeout=60
+      SPRING_DATASOURCE_USERNAME: filebrowser
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+            patch: |
+              - op: add
+                path: /spec/template/spec/volumes/-
+                value:
+                  name: data
+                  persistentVolumeClaim:
+                    claimName: filebrowser-data
+              - op: add
+                path: /spec/template/spec/containers/0/volumeMounts/-
+                value:
+                  name: data
+                  mountPath: /data

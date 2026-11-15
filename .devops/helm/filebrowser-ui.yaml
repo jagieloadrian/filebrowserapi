@@ -31,7 +31,7 @@ spec:
       limits:
         memory: 64Mi
     route:
-      hostname: filebrowser-ui.home.arpa
+      hostname: filebrowser.home.arpa
       pathPrefix: /
     env:
-      BACKEND_URL: http://filebrowser.apps.svc.cluster.local:8080
+      BACKEND_URL: http://filebrowser-api.apps.svc.cluster.local:8080
