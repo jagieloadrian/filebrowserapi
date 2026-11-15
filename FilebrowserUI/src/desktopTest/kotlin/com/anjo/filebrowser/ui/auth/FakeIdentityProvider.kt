@@ -17,12 +17,14 @@ const val SCOPES = "openid profile groups offline_access"
 const val TOKEN_ENDPOINT = "$ISSUER/api/oidc/token"
 const val END_SESSION_ENDPOINT = "$ISSUER/logout"
 const val EXPIRES_IN = 3600L
-val ID_TOKEN = "eyJhbGciOiJub25lIn0.${BASE64_URL.encode(
-    """{"sub":"42","preferred_username":"alice","name":"Alice"}""".encodeToByteArray(),
-)}.sig"
+val ID_TOKEN = idToken("alice")
+
+fun idToken(user: String) =
+    "eyJhbGciOiJub25lIn0.${BASE64_URL.encode("""{"sub":"42","preferred_username":"$user","name":"Alice"}""".encodeToByteArray())}.sig"
 
 class FakeIdentityProvider(
     endSession: Boolean = false,
+    user: String = "alice",
 ) {
     val requests = mutableListOf<HttpRequestData>()
     var tokenStatus = HttpStatusCode.OK
@@ -37,7 +39,7 @@ class FakeIdentityProvider(
                 val json = headersOf(HttpHeaders.ContentType, "application/json")
                 if (request.url.toString() == TOKEN_ENDPOINT) {
                     issued++
-                    val idToken = if (request.form()["grant_type"] == "authorization_code") ""","id_token":"$ID_TOKEN"""" else ""
+                    val idToken = if (request.form()["grant_type"] == "authorization_code") ""","id_token":"${idToken(user)}"""" else ""
                     respond(
                         """{"access_token":"access-$issued","refresh_token":"refresh-$issued","expires_in":$EXPIRES_IN$idToken}""",
                         tokenStatus,

@@ -78,6 +78,7 @@ kotlin {
                 implementation(libs.ktor.client.mock)
                 implementation(libs.coroutines.test)
                 implementation(libs.grpc.inprocess)
+                implementation(libs.compose.ui.test)
             }
         }
         wasmJsMain.dependencies {

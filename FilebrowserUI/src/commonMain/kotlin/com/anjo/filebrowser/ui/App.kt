@@ -66,7 +66,7 @@ fun App() {
 }
 
 @Composable
-private fun Browser() {
+internal fun Browser() {
     var destination by remember { mutableStateOf(Destination.FILES) }
     BoxWithConstraints {
         if (maxWidth >= Spacing.wide) {
