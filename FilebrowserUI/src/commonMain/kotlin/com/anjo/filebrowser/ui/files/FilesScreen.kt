@@ -335,7 +335,15 @@ private fun EntryRow(
                 }
             }
         },
-        modifier = Modifier.clickable { if (entry.directory) onOpen() else menu = true },
+        modifier =
+            Modifier.clickable(onClickLabel = if (entry.directory) "Open folder" else "Show actions") {
+                if (entry.directory) {
+                    onOpen()
+                } else {
+                    menu =
+                        true
+                }
+            },
     )
 }
 

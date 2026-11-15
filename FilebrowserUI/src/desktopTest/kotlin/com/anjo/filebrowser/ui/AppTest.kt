@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertIsDisplayed
@@ -36,6 +37,7 @@ import com.anjo.filebrowser.ui.trash.TrashViewModel
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
 import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
+import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -155,6 +157,47 @@ class AppTest :
                 // then
                 onNodeWithText("PDF file", useUnmergedTree = true).assertDoesNotExist()
                 onNodeWithText("2.0 KB · Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+
+        context("should tell screen readers what tapping a row does") {
+            withTests(
+                nameFn = { it.first },
+                "Documents" to "Open folder",
+                "notes.txt" to "Show actions",
+            ) { (name, expected) ->
+                // given
+                val session = signedIn()
+                api.entries += listOf(folder("/Documents"), file("/notes.txt"))
+
+                runComposeUiTest {
+                    // when
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // then
+                    onNodeWithText(name).fetchSemanticsNode().config[SemanticsActions.OnClick].label shouldBe expected
+                }
+            }
+        }
+
+        test("should mark the empty folder title as a heading") {
+            // given
+            val session = signedIn()
+
+            runComposeUiTest {
+                // when
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+
+                // then
+                onNode(isHeading() and hasText("This folder is empty")).assertIsDisplayed()
             }
         }
 
