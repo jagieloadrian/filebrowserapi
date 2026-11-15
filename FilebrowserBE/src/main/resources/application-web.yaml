@@ -12,12 +12,6 @@ spring:
     multipart:
       max-file-size: ${application.max-upload-size}
       max-request-size: ${application.max-upload-size}
-  web:
-    resources:
-      cache:
-        use-last-modified: false
-        cachecontrol:
-          no-cache: true
 
 server:
   port: 8080

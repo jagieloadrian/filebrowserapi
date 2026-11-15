@@ -5,7 +5,10 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
 import io.kotest.extensions.spring.SpringExtension
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldNotStartWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient
 import org.springframework.boot.test.context.SpringBootTest
@@ -25,12 +28,15 @@ import kotlin.io.path.writeText
 private const val INDEX = "<!DOCTYPE html><title>Filebrowser</title>"
 private val WASM = byteArrayOf(0, 0x61, 0x73, 0x6D, 1, 0, 0, 0)
 
-private fun RestTestClient.page(uri: String) =
-    get()
-        .uri(uri)
-        .accept(MediaType.TEXT_HTML)
-        .exchange()
-        .returnResult(String::class.java)
+private fun RestTestClient.page(
+    uri: String,
+    etag: String? = null,
+) = get()
+    .uri(uri)
+    .accept(MediaType.TEXT_HTML)
+    .headers { headers -> etag?.let { headers.setIfNoneMatch(it) } }
+    .exchange()
+    .returnResult(String::class.java)
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureRestTestClient
@@ -68,6 +74,34 @@ class WebClientTest : FunSpec() {
             result.status.value() shouldBe 200
             result.responseHeaders.contentType shouldBe MediaType.parseMediaType("application/wasm")
             result.responseBody shouldBe WASM
+        }
+
+        context("should answer 304 without body when If-None-Match carries the content ETag") {
+            withTests("/", "/index.html", "/app.wasm") { uri ->
+                // given
+                val etag = client.page(uri).responseHeaders.eTag
+
+                // when
+                val result = client.page(uri, etag)
+
+                // then
+                etag.shouldNotBeNull().shouldNotStartWith("W/")
+                result.status.value() shouldBe 304
+                result.responseBody.shouldBeNull()
+                result.responseHeaders.eTag shouldBe etag
+                result.responseHeaders.cacheControl shouldBe CacheControl.noCache().headerValue
+            }
+        }
+
+        test("should send the same ETag for the same file and a different one when content differs") {
+            // when
+            val welcome = client.page("/").responseHeaders.eTag
+            val index = client.page("/index.html").responseHeaders.eTag
+            val wasm = client.page("/app.wasm").responseHeaders.eTag
+
+            // then
+            index.shouldNotBeNull() shouldBe welcome
+            wasm.shouldNotBeNull() shouldNotBe index
         }
 
         test("should return 404 when a missing web client file is requested") {
