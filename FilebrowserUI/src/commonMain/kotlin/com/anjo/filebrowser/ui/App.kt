@@ -19,6 +19,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,11 +27,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.anjo.filebrowser.ui.auth.AuthSession
+import com.anjo.filebrowser.ui.auth.AuthState
+import com.anjo.filebrowser.ui.auth.SignInScreen
+import com.anjo.filebrowser.ui.auth.SigningIn
 import com.anjo.filebrowser.ui.files.FilesScreen
 import com.anjo.filebrowser.ui.theme.FilebrowserTheme
 import com.anjo.filebrowser.ui.theme.Spacing
 import com.anjo.filebrowser.ui.trash.TrashScreen
 import org.koin.compose.KoinApplication
+import org.koin.compose.koinInject
 import org.koin.dsl.koinConfiguration
 import org.koin.plugin.module.dsl.module
 
@@ -48,36 +54,46 @@ fun App() {
     KoinApplication(configuration = koinConfiguration { module<AppModule>() }) {
         FilebrowserTheme {
             Surface(Modifier.fillMaxSize()) {
-                var destination by remember { mutableStateOf(Destination.FILES) }
-                BoxWithConstraints {
-                    if (maxWidth >= Spacing.wide) {
-                        Row {
-                            NavigationRail {
-                                Destination.entries.forEach {
-                                    NavigationRailItem(
-                                        selected = it == destination,
-                                        onClick = { destination = it },
-                                        icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
-                                        label = { Text(it.label) },
-                                    )
-                                }
-                            }
-                            Screen(destination)
-                        }
-                    } else {
-                        Column {
-                            Column(Modifier.weight(1f)) { Screen(destination) }
-                            NavigationBar {
-                                Destination.entries.forEach {
-                                    NavigationBarItem(
-                                        selected = it == destination,
-                                        onClick = { destination = it },
-                                        icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
-                                        label = { Text(it.label) },
-                                    )
-                                }
-                            }
-                        }
+                val session = koinInject<AuthSession>()
+                when (val auth = session.state.collectAsState().value) {
+                    AuthState.Off, is AuthState.SignedIn -> Browser()
+                    AuthState.Working -> SigningIn(session::cancel)
+                    is AuthState.SignedOut -> SignInScreen(auth.error, session::signIn)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Browser() {
+    var destination by remember { mutableStateOf(Destination.FILES) }
+    BoxWithConstraints {
+        if (maxWidth >= Spacing.wide) {
+            Row {
+                NavigationRail {
+                    Destination.entries.forEach {
+                        NavigationRailItem(
+                            selected = it == destination,
+                            onClick = { destination = it },
+                            icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
+                            label = { Text(it.label) },
+                        )
+                    }
+                }
+                Screen(destination)
+            }
+        } else {
+            Column {
+                Column(Modifier.weight(1f)) { Screen(destination) }
+                NavigationBar {
+                    Destination.entries.forEach {
+                        NavigationBarItem(
+                            selected = it == destination,
+                            onClick = { destination = it },
+                            icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
+                            label = { Text(it.label) },
+                        )
                     }
                 }
             }

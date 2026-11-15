@@ -1,3 +1,8 @@
 package com.anjo.filebrowser.ui.api
 
-expect fun grpcFilebrowserApi(backendUrl: String): FilebrowserApi
+import com.anjo.filebrowser.ui.auth.AccessTokens
+
+expect fun grpcFilebrowserApi(
+    backendUrl: String,
+    tokens: AccessTokens,
+): FilebrowserApi

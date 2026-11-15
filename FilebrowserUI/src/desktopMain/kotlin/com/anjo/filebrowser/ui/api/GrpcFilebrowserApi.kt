@@ -6,6 +6,7 @@ import com.anjo.filebrowser.entriesRequest
 import com.anjo.filebrowser.fileOperation
 import com.anjo.filebrowser.pathRequest
 import com.anjo.filebrowser.trashId
+import com.anjo.filebrowser.ui.auth.AccessTokens
 import com.anjo.filebrowser.ui.model.Entry
 import com.anjo.filebrowser.ui.model.PickedFile
 import com.anjo.filebrowser.ui.model.Quota
@@ -14,7 +15,10 @@ import com.anjo.filebrowser.uploadFile
 import com.google.protobuf.ByteString
 import com.google.protobuf.Empty
 import com.google.protobuf.Timestamp
+import io.grpc.Metadata
 import io.grpc.Status
+import io.grpc.StatusException
+import io.grpc.stub.MetadataUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
@@ -22,16 +26,18 @@ import java.io.ByteArrayOutputStream
 import kotlin.time.Instant
 
 private const val CHUNK_SIZE = 64 * 1024
+private val AUTHORIZATION = Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER)
 
 class GrpcFilebrowserApi(
     private val stub: FilebrowserApiCoroutineStub,
+    private val tokens: AccessTokens,
 ) : FilebrowserApi {
     override suspend fun listEntries(
         path: String,
         name: String?,
     ): List<Entry> =
         call {
-            stub
+            it
                 .listEntries(
                     entriesRequest {
                         this.path = path
@@ -44,7 +50,7 @@ class GrpcFilebrowserApi(
     override suspend fun download(entry: Entry): ByteArray =
         call {
             val content = ByteArrayOutputStream()
-            stub.getFile(operation(entry.name, entry.parent)).collect { it.data.writeTo(content) }
+            it.getFile(operation(entry.name, entry.parent)).collect { it.data.writeTo(content) }
             content.toByteArray()
         }
 
@@ -63,7 +69,7 @@ class GrpcFilebrowserApi(
                         this.overwrite = overwrite
                     }
                 }
-            stub.uploadFile(chunks)
+            it.uploadFile(chunks)
         }
     }
 
@@ -71,7 +77,7 @@ class GrpcFilebrowserApi(
         parent: String,
         name: String,
     ) {
-        call { stub.addDirectory(operation(name, parent)) }
+        call { it.addDirectory(operation(name, parent)) }
     }
 
     override suspend fun rename(
@@ -80,44 +86,50 @@ class GrpcFilebrowserApi(
     ) {
         call {
             val request = operation(newName, entry.path)
-            if (entry.directory) stub.renameDirectory(request) else stub.renameFile(request)
+            if (entry.directory) it.renameDirectory(request) else it.renameFile(request)
         }
     }
 
     override suspend fun delete(entry: Entry) {
         call {
             if (entry.directory) {
-                stub.deleteDirectoryRecursively(pathRequest { path = entry.path })
+                it.deleteDirectoryRecursively(pathRequest { path = entry.path })
             } else {
-                stub.deleteFile(operation(entry.name, entry.parent))
+                it.deleteFile(operation(entry.name, entry.parent))
             }
         }
     }
 
     override suspend fun trash(): List<TrashItem> =
         call {
-            stub.listTrash(Empty.getDefaultInstance()).itemsList.map {
+            it.listTrash(Empty.getDefaultInstance()).itemsList.map {
                 TrashItem(it.id, it.path, it.directory, it.size, it.deletedAt.toInstant())
             }
         }
 
     override suspend fun restore(item: TrashItem) {
-        call { stub.restoreTrash(trashId { id = item.id }) }
+        call { it.restoreTrash(trashId { id = item.id }) }
     }
 
     override suspend fun deleteForever(item: TrashItem) {
-        call { stub.purgeTrash(trashId { id = item.id }) }
+        call { it.purgeTrash(trashId { id = item.id }) }
     }
 
     override suspend fun emptyTrash() {
-        call { stub.emptyTrash(Empty.getDefaultInstance()) }
+        call { it.emptyTrash(Empty.getDefaultInstance()) }
     }
 
-    override suspend fun quota(): Quota = call { stub.getQuota(Empty.getDefaultInstance()).let { Quota(it.used, it.limit) } }
+    override suspend fun quota(): Quota = call { it.getQuota(Empty.getDefaultInstance()).let { Quota(it.used, it.limit) } }
 
-    private suspend fun <T> call(block: suspend () -> T): T =
+    private suspend fun <T> call(block: suspend (FilebrowserApiCoroutineStub) -> T): T =
         try {
-            block()
+            val token = tokens.current()
+            try {
+                block(stub.bearer(token))
+            } catch (e: StatusException) {
+                val renewed = token?.takeIf { e.status.code == Status.Code.UNAUTHENTICATED }?.let { tokens.rejected(it) } ?: throw e
+                block(stub.bearer(renewed))
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -133,6 +145,10 @@ class GrpcFilebrowserApi(
             this.name = name
             this.path = path
         }
+
+    private fun FilebrowserApiCoroutineStub.bearer(token: String?): FilebrowserApiCoroutineStub =
+        token?.let { withInterceptors(MetadataUtils.newAttachHeadersInterceptor(Metadata().apply { put(AUTHORIZATION, "Bearer $it") })) }
+            ?: this
 
     private fun Timestamp.toInstant() = Instant.fromEpochSeconds(seconds, nanos)
 }

@@ -5,7 +5,11 @@ enum class ApiStatus(
     val showsServerMessage: Boolean = true,
 ) {
     INVALID("The server did not accept the request. Check the name and try again."),
-    UNAUTHORIZED("The server asks for sign-in, which this app does not support yet.", showsServerMessage = false),
+    SIGNED_OUT("The server did not accept your sign-in. Sign in again to continue.", showsServerMessage = false),
+    FORBIDDEN(
+        "Your account has no access to files. Ask an administrator for the filebrowser-reader or filebrowser-writer group.",
+        showsServerMessage = false,
+    ),
     NOT_FOUND("This item no longer exists. Refresh and try again."),
     CONFLICT("An item with this name already exists."),
     TOO_LARGE("The file is larger than the upload limit."),

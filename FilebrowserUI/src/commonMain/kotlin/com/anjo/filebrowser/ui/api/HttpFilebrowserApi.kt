@@ -158,7 +158,8 @@ class HttpFilebrowserApi(
     private fun statusOf(status: HttpStatusCode): ApiStatus =
         when (status) {
             HttpStatusCode.BadRequest -> ApiStatus.INVALID
-            HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> ApiStatus.UNAUTHORIZED
+            HttpStatusCode.Unauthorized -> ApiStatus.SIGNED_OUT
+            HttpStatusCode.Forbidden -> ApiStatus.FORBIDDEN
             HttpStatusCode.NotFound -> ApiStatus.NOT_FOUND
             HttpStatusCode.Conflict -> ApiStatus.CONFLICT
             HttpStatusCode.PayloadTooLarge -> ApiStatus.TOO_LARGE

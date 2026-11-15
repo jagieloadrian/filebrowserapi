@@ -25,6 +25,9 @@ val transport = providers.gradleProperty("transport").getOrElse("http")
 require(transport in setOf("http", "grpc")) { "Unknown transport '$transport': use -Ptransport=http or -Ptransport=grpc." }
 val backendUrl =
     providers.gradleProperty("backendUrl").getOrElse(if (transport == "grpc") "http://localhost:9090" else "http://localhost:8080")
+val oidcIssuer = providers.gradleProperty("oidcIssuer").getOrElse("")
+val oidcClientId = providers.gradleProperty("oidcClientId").getOrElse("filebrowser")
+val oidcScopes = providers.gradleProperty("oidcScopes").getOrElse("openid profile groups offline_access")
 
 kotlin {
     jvmToolchain(21)
@@ -98,6 +101,9 @@ buildkonfig {
     defaultConfigs {
         buildConfigField(STRING, "transport", transport)
         buildConfigField(STRING, "backendUrl", backendUrl)
+        buildConfigField(STRING, "oidcIssuer", oidcIssuer)
+        buildConfigField(STRING, "oidcClientId", oidcClientId)
+        buildConfigField(STRING, "oidcScopes", oidcScopes)
     }
 }
 
@@ -105,7 +111,7 @@ compose.desktop {
     application {
         mainClass = "com.anjo.filebrowser.ui.MainKt"
         nativeDistributions {
-            modules("java.instrument", "java.management", "jdk.unsupported")
+            modules("java.instrument", "java.management", "jdk.unsupported", "jdk.httpserver")
         }
     }
 }

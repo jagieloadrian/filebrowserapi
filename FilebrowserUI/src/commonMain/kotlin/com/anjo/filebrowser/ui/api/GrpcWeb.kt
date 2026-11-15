@@ -7,7 +7,7 @@ import io.ktor.http.decodeURLPart
 private const val FRAME_HEADER = 5
 private const val TRAILER_FLAG = 0x80
 private const val BYTE_MASK = 0xFF
-private const val GRPC_STATUS = "grpc-status"
+internal const val GRPC_STATUS = "grpc-status"
 private const val GRPC_MESSAGE = "grpc-message"
 
 internal fun grpcWebFrame(message: ByteArray): ByteArray =
@@ -47,7 +47,9 @@ private fun trailersOf(payload: ByteArray): Map<String, String> =
 
 private fun apiStatusOfHttp(status: HttpStatusCode): ApiStatus =
     when (status) {
-        HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> ApiStatus.UNAUTHORIZED
+        HttpStatusCode.Unauthorized -> ApiStatus.SIGNED_OUT
+
+        HttpStatusCode.Forbidden -> ApiStatus.FORBIDDEN
 
         HttpStatusCode.TooManyRequests,
         HttpStatusCode.BadGateway,

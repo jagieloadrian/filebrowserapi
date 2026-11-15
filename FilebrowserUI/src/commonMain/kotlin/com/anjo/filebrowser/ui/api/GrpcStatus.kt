@@ -9,12 +9,13 @@ private const val PERMISSION_DENIED = 7
 private const val RESOURCE_EXHAUSTED = 8
 private const val FAILED_PRECONDITION = 9
 private const val UNAVAILABLE = 14
-private const val UNAUTHENTICATED = 16
+internal const val UNAUTHENTICATED = 16
 
 internal fun apiStatusOfGrpc(code: Int): ApiStatus =
     when (code) {
         INVALID_ARGUMENT -> ApiStatus.INVALID
-        UNAUTHENTICATED, PERMISSION_DENIED -> ApiStatus.UNAUTHORIZED
+        UNAUTHENTICATED -> ApiStatus.SIGNED_OUT
+        PERMISSION_DENIED -> ApiStatus.FORBIDDEN
         NOT_FOUND -> ApiStatus.NOT_FOUND
         ALREADY_EXISTS, FAILED_PRECONDITION -> ApiStatus.CONFLICT
         RESOURCE_EXHAUSTED -> ApiStatus.NO_SPACE

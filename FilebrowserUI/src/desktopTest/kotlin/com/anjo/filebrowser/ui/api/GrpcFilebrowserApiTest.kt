@@ -5,11 +5,17 @@ import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
 import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineStub
 import com.anjo.filebrowser.entriesResponse
 import com.anjo.filebrowser.entry
+import com.anjo.filebrowser.ui.FakeAccessTokens
 import com.anjo.filebrowser.ui.file
 import com.anjo.filebrowser.ui.folder
 import com.anjo.filebrowser.ui.model.PickedFile
 import com.google.protobuf.Empty
 import com.google.protobuf.timestamp
+import io.grpc.Metadata
+import io.grpc.ServerCall
+import io.grpc.ServerCallHandler
+import io.grpc.ServerInterceptor
+import io.grpc.ServerInterceptors
 import io.grpc.Status
 import io.grpc.StatusException
 import io.grpc.inprocess.InProcessChannelBuilder
@@ -22,6 +28,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.toList
 import kotlin.time.Instant
 
+private val AUTHORIZATION = Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER)
+
 private data class CodeCase(
     val code: Status.Code,
     val expected: ApiStatus,
@@ -32,6 +40,22 @@ class GrpcFilebrowserApiTest :
         val received = mutableListOf<Any>()
         val uploaded = mutableListOf<Filebrowser.UploadFile>()
         var failure = Status.OK
+        val authorizations = mutableListOf<String?>()
+        val tokens = FakeAccessTokens()
+        val authorization =
+            object : ServerInterceptor {
+                override fun <ReqT, RespT> interceptCall(
+                    call: ServerCall<ReqT, RespT>,
+                    headers: Metadata,
+                    next: ServerCallHandler<ReqT, RespT>,
+                ): ServerCall.Listener<ReqT> {
+                    val sent = headers[AUTHORIZATION]
+                    authorizations += sent
+                    if (sent != "Bearer expired") return next.startCall(call, headers)
+                    call.close(Status.UNAUTHENTICATED, Metadata())
+                    return object : ServerCall.Listener<ReqT>() {}
+                }
+            }
         val service =
             object : FilebrowserApiCoroutineImplBase() {
                 override suspend fun listEntries(request: Filebrowser.EntriesRequest): Filebrowser.EntriesResponse {
@@ -72,15 +96,18 @@ class GrpcFilebrowserApiTest :
             InProcessServerBuilder
                 .forName(name)
                 .directExecutor()
-                .addService(service)
+                .addService(ServerInterceptors.intercept(service, authorization))
                 .build()
                 .start()
         val channel = InProcessChannelBuilder.forName(name).directExecutor().build()
-        val api = GrpcFilebrowserApi(FilebrowserApiCoroutineStub(channel))
+        val api = GrpcFilebrowserApi(FilebrowserApiCoroutineStub(channel), tokens)
 
         beforeTest {
             received.clear()
             uploaded.clear()
+            authorizations.clear()
+            tokens.token = "t1"
+            tokens.rejectedTokens.clear()
         }
 
         afterSpec {
@@ -123,11 +150,45 @@ class GrpcFilebrowserApiTest :
             (received[1] as Filebrowser.PathRequest).path shouldBe "/Docs"
         }
 
+        context("tokens") {
+            test("should send the bearer token in the call metadata") {
+                // when
+                api.listEntries("/", null)
+
+                // then
+                authorizations shouldBe listOf("Bearer t1")
+            }
+
+            test("should retry once with a renewed token after UNAUTHENTICATED") {
+                // given
+                tokens.token = "expired"
+
+                // when
+                api.listEntries("/", null)
+
+                // then
+                authorizations shouldBe listOf("Bearer expired", "Bearer t2")
+                tokens.rejectedTokens shouldBe listOf("expired")
+            }
+
+            test("should send no metadata without a token") {
+                // given
+                tokens.token = null
+
+                // when
+                api.listEntries("/", null)
+
+                // then
+                authorizations shouldBe listOf(null)
+            }
+        }
+
         context("errors") {
             withTests(
                 nameFn = { "should map ${it.code} to ${it.expected}" },
                 CodeCase(Status.Code.INVALID_ARGUMENT, ApiStatus.INVALID),
-                CodeCase(Status.Code.UNAUTHENTICATED, ApiStatus.UNAUTHORIZED),
+                CodeCase(Status.Code.UNAUTHENTICATED, ApiStatus.SIGNED_OUT),
+                CodeCase(Status.Code.PERMISSION_DENIED, ApiStatus.FORBIDDEN),
                 CodeCase(Status.Code.NOT_FOUND, ApiStatus.NOT_FOUND),
                 CodeCase(Status.Code.ALREADY_EXISTS, ApiStatus.CONFLICT),
                 CodeCase(Status.Code.FAILED_PRECONDITION, ApiStatus.CONFLICT),
@@ -160,7 +221,7 @@ class GrpcFilebrowserApiTest :
                 val missing = InProcessChannelBuilder.forName("missing").build()
 
                 // when
-                val error = shouldThrow<ApiException> { GrpcFilebrowserApi(FilebrowserApiCoroutineStub(missing)).quota() }
+                val error = shouldThrow<ApiException> { GrpcFilebrowserApi(FilebrowserApiCoroutineStub(missing), tokens).quota() }
 
                 // then
                 error.status shouldBe ApiStatus.OFFLINE

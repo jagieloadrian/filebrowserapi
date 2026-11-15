@@ -195,8 +195,8 @@ class HttpFilebrowserApiTest :
             withTests(
                 nameFn = { "should map ${it.status.value} to ${it.expected}" },
                 StatusCase(HttpStatusCode.BadRequest, ApiStatus.INVALID),
-                StatusCase(HttpStatusCode.Unauthorized, ApiStatus.UNAUTHORIZED),
-                StatusCase(HttpStatusCode.Forbidden, ApiStatus.UNAUTHORIZED),
+                StatusCase(HttpStatusCode.Unauthorized, ApiStatus.SIGNED_OUT),
+                StatusCase(HttpStatusCode.Forbidden, ApiStatus.FORBIDDEN),
                 StatusCase(HttpStatusCode.NotFound, ApiStatus.NOT_FOUND),
                 StatusCase(HttpStatusCode.Conflict, ApiStatus.CONFLICT),
                 StatusCase(HttpStatusCode.PayloadTooLarge, ApiStatus.TOO_LARGE),

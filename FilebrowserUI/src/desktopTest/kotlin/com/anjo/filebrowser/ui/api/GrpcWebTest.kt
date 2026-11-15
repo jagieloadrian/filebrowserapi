@@ -74,7 +74,8 @@ class GrpcWebTest :
                 nameFn = { "should map HTTP ${it.status.value} to ${it.expected}" },
                 HttpCase(HttpStatusCode.ServiceUnavailable, ApiStatus.OFFLINE),
                 HttpCase(HttpStatusCode.BadGateway, ApiStatus.OFFLINE),
-                HttpCase(HttpStatusCode.Unauthorized, ApiStatus.UNAUTHORIZED),
+                HttpCase(HttpStatusCode.Unauthorized, ApiStatus.SIGNED_OUT),
+                HttpCase(HttpStatusCode.Forbidden, ApiStatus.FORBIDDEN),
                 HttpCase(HttpStatusCode.NotFound, ApiStatus.FAILED),
                 HttpCase(HttpStatusCode.OK, ApiStatus.FAILED),
             ) { case ->

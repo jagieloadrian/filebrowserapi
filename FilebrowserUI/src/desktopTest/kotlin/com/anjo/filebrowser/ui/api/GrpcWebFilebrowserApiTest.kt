@@ -190,8 +190,8 @@ class GrpcWebFilebrowserApiTest :
             withTests(
                 nameFn = { "should map gRPC status ${it.code} to ${it.expected}" },
                 GrpcCodeCase(3, ApiStatus.INVALID),
-                GrpcCodeCase(16, ApiStatus.UNAUTHORIZED),
-                GrpcCodeCase(7, ApiStatus.UNAUTHORIZED),
+                GrpcCodeCase(16, ApiStatus.SIGNED_OUT),
+                GrpcCodeCase(7, ApiStatus.FORBIDDEN),
                 GrpcCodeCase(5, ApiStatus.NOT_FOUND),
                 GrpcCodeCase(6, ApiStatus.CONFLICT),
                 GrpcCodeCase(9, ApiStatus.CONFLICT),
