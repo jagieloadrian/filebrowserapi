@@ -119,6 +119,7 @@ tasks.bootJar {
 }
 
 val jibExtraDirectory = layout.buildDirectory.dir("jib-extra")
+val webClientDirectory = rootProject.layout.projectDirectory.dir("FilebrowserUI/build/dist/wasmJs/productionExecutable")
 
 val prepareJibDataDirectory by tasks.registering {
     val dataDirectory = jibExtraDirectory.map { it.dir("data").asFile }
@@ -127,7 +128,7 @@ val prepareJibDataDirectory by tasks.registering {
 }
 
 tasks.matching { it.name.startsWith("jib") }.configureEach {
-    dependsOn(prepareJibDataDirectory)
+    dependsOn(prepareJibDataDirectory, ":FilebrowserUI:wasmJsBrowserDistribution")
 }
 
 jib {
@@ -163,6 +164,10 @@ jib {
             path {
                 setFrom(jibExtraDirectory.get().asFile)
                 into = "/"
+            }
+            path {
+                setFrom(webClientDirectory.asFile)
+                into = "/app/ui"
             }
         }
         permissions.set(mapOf("/data" to "777"))
