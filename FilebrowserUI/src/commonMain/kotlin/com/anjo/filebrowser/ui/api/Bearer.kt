@@ -22,4 +22,4 @@ fun HttpClient.bearer(tokens: AccessTokens): HttpClient =
 
 private fun HttpRequestBuilder.authorized(token: String) = apply { headers[HttpHeaders.Authorization] = "Bearer $token" }
 
-private fun HttpResponse.rejectsToken() = status == HttpStatusCode.Unauthorized || headers[GRPC_STATUS] == "$UNAUTHENTICATED"
+private fun HttpResponse.rejectsToken() = status == HttpStatusCode.Unauthorized

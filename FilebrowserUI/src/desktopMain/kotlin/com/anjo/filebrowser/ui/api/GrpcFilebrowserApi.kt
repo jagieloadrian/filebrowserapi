@@ -134,7 +134,7 @@ class GrpcFilebrowserApi(
             throw e
         } catch (e: Exception) {
             val status = Status.fromThrowable(e)
-            throw ApiException(apiStatusOfGrpc(status.code.value()), status.description, e)
+            throw ApiException(status.code.apiStatus(), status.description, e)
         }
 
     private fun operation(
@@ -151,4 +151,16 @@ class GrpcFilebrowserApi(
             ?: this
 
     private fun Timestamp.toInstant() = Instant.fromEpochSeconds(seconds, nanos)
+
+    private fun Status.Code.apiStatus(): ApiStatus =
+        when (this) {
+            Status.Code.INVALID_ARGUMENT -> ApiStatus.INVALID
+            Status.Code.UNAUTHENTICATED -> ApiStatus.SIGNED_OUT
+            Status.Code.PERMISSION_DENIED -> ApiStatus.FORBIDDEN
+            Status.Code.NOT_FOUND -> ApiStatus.NOT_FOUND
+            Status.Code.ALREADY_EXISTS, Status.Code.FAILED_PRECONDITION -> ApiStatus.CONFLICT
+            Status.Code.RESOURCE_EXHAUSTED -> ApiStatus.NO_SPACE
+            Status.Code.UNAVAILABLE, Status.Code.DEADLINE_EXCEEDED -> ApiStatus.OFFLINE
+            else -> ApiStatus.FAILED
+        }
 }

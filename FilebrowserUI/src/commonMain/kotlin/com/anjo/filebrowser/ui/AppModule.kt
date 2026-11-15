@@ -1,9 +1,7 @@
 package com.anjo.filebrowser.ui
 
 import com.anjo.filebrowser.ui.api.FilebrowserApi
-import com.anjo.filebrowser.ui.api.HttpFilebrowserApi
-import com.anjo.filebrowser.ui.api.bearer
-import com.anjo.filebrowser.ui.api.grpcFilebrowserApi
+import com.anjo.filebrowser.ui.api.transportApi
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.Oidc
 import com.anjo.filebrowser.ui.auth.authBrowser
@@ -12,8 +10,6 @@ import kotlinx.coroutines.MainScope
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Singleton
-
-private const val GRPC = "grpc"
 
 @Module
 @ComponentScan("com.anjo.filebrowser.ui")
@@ -31,9 +27,4 @@ fun authSession(): AuthSession =
     )
 
 @Singleton
-fun filebrowserApi(session: AuthSession): FilebrowserApi =
-    if (BuildKonfig.transport == GRPC) {
-        grpcFilebrowserApi(BuildKonfig.backendUrl, session)
-    } else {
-        HttpFilebrowserApi(HttpClient().bearer(session), BuildKonfig.backendUrl)
-    }
+fun filebrowserApi(session: AuthSession): FilebrowserApi = transportApi(BuildKonfig.backendUrl, session)

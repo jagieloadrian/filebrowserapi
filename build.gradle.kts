@@ -11,5 +11,4 @@ plugins {
     alias(libs.plugins.compose.multiplatform) apply false
     alias(libs.plugins.koin.compiler) apply false
     alias(libs.plugins.buildkonfig) apply false
-    alias(libs.plugins.wire) apply false
 }

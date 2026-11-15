@@ -10,7 +10,6 @@ plugins {
     alias(libs.plugins.koin.compiler)
     alias(libs.plugins.buildkonfig)
     alias(libs.plugins.ktlint)
-    alias(libs.plugins.wire)
 }
 
 group = "com.anjo"
@@ -23,8 +22,8 @@ repositories {
 
 val transport = providers.gradleProperty("transport").getOrElse("http")
 require(transport in setOf("http", "grpc")) { "Unknown transport '$transport': use -Ptransport=http or -Ptransport=grpc." }
-val backendUrl =
-    providers.gradleProperty("backendUrl").getOrElse(if (transport == "grpc") "http://localhost:9090" else "http://localhost:8080")
+val backendUrl = providers.gradleProperty("backendUrl")
+val desktopBackendUrl = backendUrl.getOrElse(if (transport == "grpc") "http://localhost:9090" else "http://localhost:8080")
 val oidcIssuer = providers.gradleProperty("oidcIssuer").getOrElse("")
 val oidcClientId = providers.gradleProperty("oidcClientId").getOrElse("filebrowser")
 val oidcScopes = providers.gradleProperty("oidcScopes").getOrElse("openid profile groups offline_access")
@@ -87,11 +86,6 @@ kotlin {
     }
 }
 
-wire {
-    sourcePath { srcDir(rootProject.file("FilebrowserProto/src/main/proto")) }
-    kotlin { rpcRole = "none" }
-}
-
 koinCompiler {
     versionCheckSeverity = "info"
 }
@@ -99,11 +93,16 @@ koinCompiler {
 buildkonfig {
     packageName = "com.anjo.filebrowser.ui"
     defaultConfigs {
-        buildConfigField(STRING, "transport", transport)
-        buildConfigField(STRING, "backendUrl", backendUrl)
+        buildConfigField(STRING, "backendUrl", backendUrl.getOrElse("http://localhost:8080"))
         buildConfigField(STRING, "oidcIssuer", oidcIssuer)
         buildConfigField(STRING, "oidcClientId", oidcClientId)
         buildConfigField(STRING, "oidcScopes", oidcScopes)
+    }
+    targetConfigs {
+        create("desktop") {
+            buildConfigField(STRING, "transport", transport)
+            buildConfigField(STRING, "backendUrl", desktopBackendUrl)
+        }
     }
 }
 

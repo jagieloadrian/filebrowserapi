@@ -3,10 +3,8 @@ package com.anjo.filebrowser.ui.api
 import com.anjo.filebrowser.ui.FakeAccessTokens
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.LoopbackBrowser
-import com.anjo.filebrowser.ui.model.PickedFile
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.datatest.withTests
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
@@ -20,7 +18,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import com.anjo.filebrowser.Quota as QuotaMessage
 
 private const val BASE = "http://localhost:8080"
 private const val QUOTA_JSON = """{"used":5,"limit":10}"""
@@ -43,34 +40,17 @@ private class TokenServer(
 private fun MockRequestHandleScope.json(status: HttpStatusCode = HttpStatusCode.OK) =
     respond(QUOTA_JSON, status, headersOf(HttpHeaders.ContentType, "application/json"))
 
-private fun MockRequestHandleScope.grpcWebQuota() = respond(grpcWebFrame(QuotaMessage(used = 5, limit = 10).encode()) + OK_TRAILER)
-
-private data class TransportCase(
-    val name: String,
-    val answer: MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
-    val call: suspend (HttpClient) -> Unit,
-)
-
 class BearerTest :
     FunSpec({
-        context("attaching the token") {
-            withTests(
-                nameFn = { "should send the bearer token over ${it.name}" },
-                TransportCase("HTTP", { json() }, { HttpFilebrowserApi(it, BASE).quota() }),
-                TransportCase("gRPC-Web", { grpcWebQuota() }, { GrpcWebFilebrowserApi(it, BASE).quota() }),
-                TransportCase("the REST upload of gRPC-Web", { json() }, {
-                    GrpcWebFilebrowserApi(it, BASE).upload("/", PickedFile("a.txt", byteArrayOf(1)), overwrite = false)
-                }),
-            ) { case ->
-                // given
-                val server = TokenServer(answer = case.answer)
+        test("should send the bearer token when signed in") {
+            // given
+            val server = TokenServer { json() }
 
-                // when
-                case.call(server.client)
+            // when
+            HttpFilebrowserApi(server.client, BASE).quota()
 
-                // then
-                server.authorizations shouldBe listOf("Bearer t1")
-            }
+            // then
+            server.authorizations shouldBe listOf("Bearer t1")
         }
 
         test("should send no token when sign-in is off") {
@@ -111,24 +91,6 @@ class BearerTest :
             // then
             server.authorizations shouldBe listOf("Bearer t1", "Bearer t2")
             server.tokens.rejectedTokens shouldBe listOf("t1")
-        }
-
-        test("should retry once with a renewed token after a trailers-only UNAUTHENTICATED") {
-            // given
-            val server =
-                TokenServer {
-                    if (it.headers[HttpHeaders.Authorization] == "Bearer t1") {
-                        respond(byteArrayOf(), HttpStatusCode.OK, headersOf(GRPC_STATUS, "$UNAUTHENTICATED"))
-                    } else {
-                        grpcWebQuota()
-                    }
-                }
-
-            // when
-            GrpcWebFilebrowserApi(server.client, BASE).quota()
-
-            // then
-            server.authorizations shouldBe listOf("Bearer t1", "Bearer t2")
         }
 
         test("should report signed out when no renewed token is available") {

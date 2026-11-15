@@ -1,17 +1,30 @@
 package com.anjo.filebrowser.ui.api
 
 import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineStub
+import com.anjo.filebrowser.ui.BuildKonfig
 import com.anjo.filebrowser.ui.auth.AccessTokens
 import io.grpc.Grpc
 import io.grpc.InsecureChannelCredentials
 import io.grpc.TlsChannelCredentials
+import io.ktor.client.HttpClient
 import java.net.URI
 
+private const val GRPC = "grpc"
 private const val HTTPS = "https"
 private const val HTTP_PORT = 80
 private const val HTTPS_PORT = 443
 
-actual fun grpcFilebrowserApi(
+actual fun transportApi(
+    backendUrl: String,
+    tokens: AccessTokens,
+): FilebrowserApi =
+    if (BuildKonfig.transport == GRPC) {
+        grpcFilebrowserApi(backendUrl, tokens)
+    } else {
+        HttpFilebrowserApi(HttpClient().bearer(tokens), backendUrl)
+    }
+
+private fun grpcFilebrowserApi(
     backendUrl: String,
     tokens: AccessTokens,
 ): FilebrowserApi {
