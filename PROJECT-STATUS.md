@@ -1,8 +1,20 @@
 # Project Status
 
-Last update: 2026-11-13, branch `feature-12/file-metadata`.
+Last update: 2026-11-15, branch `feature-14/kmp-ui`.
 
 ## Completed
+
+### 2026-11-15, `feature-14/kmp-ui` (from `main`): roadmap phase 6 done
+- `FilebrowserProto` module owns `filebrowser.proto`; backend and UI depend on it.
+- `FilebrowserUI`: Compose Multiplatform 1.12.2, desktop (`jvm("desktop")`) and `wasmJs`, Ktor, Koin, BuildKonfig.
+  `-Ptransport=http|grpc`, `-PbackendUrl=`; HTTP, native gRPC (desktop) and gRPC-Web (Wire, browser) clients.
+- Backend: CORS origins from configuration, `runLocalGrpc` (profiles `server,local`, user `local`).
+- Local Envoy compose for gRPC-Web on 8090 (no route timeout, so long transfers survive).
+- nginx web image `ghcr.io/jagieloadrian/filebrowserapi-ui`, HelmReleases `filebrowser-ui` and `filebrowser-grpc-web`,
+  CI builds the Wasm bundle and pushes the image with the backend's tag.
+- OIDC sign-in in the UI (authorization code + PKCE S256, public client), token on all three transports, refresh
+  and one retry on 401; 403 names the needed groups. Tested against fakes only.
+- Code comments removed (standard general/01); gate green.
 
 ### 2026-11-04, `feature/5-implement-docker-image` (merged as PR #1)
 - gRPC profile no longer blocks startup; `main()` forwards CLI args.
@@ -86,7 +98,7 @@ Project aligned with the coding standards from the `standards` MCP server:
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
 - REST error `error` field is the exception's simple name (e.g. `NotFoundException`).
 - `/data` in the image is mode 777: Jib cannot set ownership, and UID 10001 must write to the volume.
-- `FilebrowserUI` stub kept with toolchain 21; deleting it is the owner's call (roadmap phase 6).
+- `FilebrowserUI` stub kept with toolchain 21; phase 6 turned it into the Compose Multiplatform client.
 - Not applied, needs input or later phases: Helm/Flux deploy (`.devops/helm`), `runLocal` task, OIDC, Testcontainers
   (no database), gRPC health/tracing.
 - Earlier commits on `main` carry `Co-Authored-By` trailers; history was not rewritten.
@@ -137,11 +149,26 @@ Project aligned with the coding standards from the `standards` MCP server:
 - Quota usage is computed by walking the user's files, trash and versions on each write (fine for a homelab; keep a
   running total in the DB if it gets slow). Concurrent writes can overshoot the quota by one upload.
 
+- 2026-11-15: UI targets desktop and Wasm only; transport and backend URL are build-time settings (BuildKonfig).
+- gRPC-Web has no client streaming, so browser uploads use REST on the same origin; Envoy translates the rest.
+- The web image proxies `/api/`, `/share/` and gRPC-Web on its own origin, so the cluster needs no CORS.
+- OIDC: empty `oidcIssuer` means no sign-in (local runs). Tokens stay in memory; the PKCE verifier and state sit
+  in `sessionStorage` only for the browser redirect. SHA-256 from Ktor, randomness from `Uuid.random()`, no new
+  dependency. Any failed refresh signs the user out.
+
 ## Next steps and risks
 - Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password in Vault under
   `secret/apps/filebrowser` and `secret/apps/filebrowser-grpc` (`SPRING_DATASOURCE_PASSWORD`).
 - Trash and versions count against the quota until purged; users free space by emptying the trash.
-- Authelia client: JWT access tokens (`RS256`), `aud` = client ID, `groups` in the access token.
+- Authelia client: register it as in README "UI sign-in" (public, PKCE, `RS256`, `aud` = client ID, `groups` in the
+  access token), then set the backend issuer and the CI variables `OIDC_ISSUER` and `OIDC_CLIENT_ID`.
+- UI sign-in is untested against Authelia: check the loopback redirect with a random port, CORS on the discovery
+  and token endpoints, and that the name shows in the top bar. Sign out does not end the Authelia session.
+- UI rollout: run the devops workflow (kubeconform), check that the shared chart renders a release without
+  `route` and its Service names, and add Istio AuthorizationPolicies for ui to filebrowser:8080, ui to
+  grpc-web:8080 and grpc-web to filebrowser-grpc:9090. nginx restarts until the upstream Services exist; restart
+  Envoy after ConfigMap changes. The UI image tag is a placeholder until the first `main` build.
+- Wire 7.2.1 is very new; a gRPC web build needs an explicit `-PbackendUrl` (empty in the image).
 - Existing deployments: move files from `filebrowser/` to `filebrowser/<sub>/` before upgrading.
 - Phase 4 rollout: set the issuer once Authelia runs, register `.devops/helm` in the cluster's Flux, deploy GitHub
   App variables. The first `main` build then replaces the `main-placeholder` image tag.

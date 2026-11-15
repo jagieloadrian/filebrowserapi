@@ -7,7 +7,7 @@
 
  Most free solutions and apps don't meet with my expectations.<br>
  I wanted to create an app to manage folders and files, supporting most extensions.<br>
- The application is lightweight, doesn't have UI, it's served only via http request.<br>
+ The application is lightweight and serves REST and gRPC; `FilebrowserUI` is a client for the desktop and the browser.<br>
 
  I use in this project: 
  * Kotlin 2.4.21
@@ -15,6 +15,7 @@
  * Gradle 9.9.1
  * gRPC 1.85.1 + Protobuf 4.36.2
  * Kotest 6 (`FunSpec` specs), MockK, Testcontainers
+ * Compose Multiplatform 1.12.2, Ktor 3.6.1, Koin 4.2.2 and Wire 7.2.1 for the UI; Envoy for gRPC-Web
  * PostgreSQL 17 with Exposed 1.6.1 and Flyway for metadata (tags, descriptions, trash, versions, share links, content hashes); the
    file system stays the source of truth for files
 
@@ -99,6 +100,80 @@ In Swagger, click "Authorize" and paste an access token to try the API.
   chunks. REST downloads carry the file's `Content-Type` and an attachment `Content-Disposition`.
 
 
+## UI
+`FilebrowserUI` is a Compose Multiplatform client for the desktop (JVM) and the browser (Kotlin/Wasm). Gradle
+properties set its configuration at build time:
+* `-Ptransport=http|grpc` (default `http`): REST or gRPC. In the browser, gRPC is gRPC-Web through Envoy; uploads still
+  go over REST there, because gRPC-Web has no client streaming.
+* `-PbackendUrl=`: the server, by default `http://localhost:8080` (REST) or `http://localhost:9090` (gRPC). An empty value
+  means the page's own origin (the web image).
+* `-PoidcIssuer=`, `-PoidcClientId=` (default `filebrowser`), `-PoidcScopes=`: see [UI sign-in](#ui-sign-in). An empty
+  issuer (the default) turns sign-in off.
+
+Local runs, without Authelia (the backend runs with the `local` profile):
+
+    ./gradlew :FilebrowserBE:runLocal                         # REST on 8080
+    ./gradlew :FilebrowserUI:wasmJsBrowserDevelopmentRun      # browser on http://localhost:8081
+
+    ./gradlew :FilebrowserBE:runLocalGrpc                     # gRPC on 9090; keep runLocal up for uploads
+    docker compose -f .devops/grpc-web-compose/compose.yaml up # gRPC-Web proxy on 8090
+    ./gradlew -Ptransport=grpc -PbackendUrl=http://localhost:8090 :FilebrowserUI:wasmJsBrowserDevelopmentRun
+
+The desktop app is packaged with `./gradlew [-Ptransport=grpc] :FilebrowserUI:createDistributable`
+(`FilebrowserUI/build/compose/binaries/main/app`). `.devops/application-local.yaml` allows CORS from
+`http://localhost:8081`; other origins go to `application.cors.allowed-origins`.
+
+### Web image
+`ghcr.io/jagieloadrian/filebrowserapi-ui` serves the Wasm bundle from `nginxinc/nginx-unprivileged` on port 8080 and
+proxies, on the same origin, `/api/` and `/share/` to `BACKEND_URL` and gRPC-Web calls to `GRPC_WEB_URL`. Build it
+locally:
+
+    ./gradlew :FilebrowserUI:wasmJsBrowserDistribution -PbackendUrl=
+    docker build -t filebrowserapi-ui:local FilebrowserUI
+
+### UI sign-in
+With `-PoidcIssuer` set, the UI signs in with the authorization code flow and PKCE (S256) as a public client and
+sends the access token to REST, gRPC and gRPC-Web. Endpoints come from the issuer's discovery document. The browser
+redirects in the same window back to the page's origin (`/`). The desktop app opens the system browser and receives the
+code on `http://127.0.0.1:<random port>/callback` (RFC 8252). Tokens live only in memory. The app refreshes them once
+after a 401 and shows the sign-in screen again when the refresh fails. 403 means the account lacks the
+`filebrowser-reader` or `filebrowser-writer` group. CI passes the repository variables `OIDC_ISSUER` and
+`OIDC_CLIENT_ID` to the web image.
+
+Authelia client (untested until Authelia runs):
+
+```yaml
+identity_providers:
+  oidc:
+    claims_policies:
+      filebrowser:
+        access_token: ['groups']
+        id_token: ['preferred_username', 'name']
+    cors:
+      endpoints: ['authorization', 'token', 'revocation', 'introspection', 'userinfo']
+      allowed_origins_from_client_redirect_uris: true
+    clients:
+      - client_id: 'filebrowser'
+        client_name: 'Filebrowser'
+        public: true
+        token_endpoint_auth_method: 'none'
+        require_pkce: true
+        pkce_challenge_method: 'S256'
+        redirect_uris:
+          - 'https://filebrowser-ui.home.arpa/'
+          - 'http://127.0.0.1/callback'
+        scopes: ['openid', 'profile', 'groups', 'offline_access']
+        grant_types: ['authorization_code', 'refresh_token']
+        response_types: ['code']
+        access_token_signed_response_alg: 'RS256'
+        audience: ['filebrowser']
+        requested_audience_mode: 'implicit'
+        claims_policy: 'filebrowser'
+```
+
+The backend's `audiences` must contain the same client ID. Authelia has no `end_session_endpoint`, so "Sign out" only
+drops the tokens in the app.
+
 ## Container image
 The image is built with Jib (`eclipse-temurin:21-jre`, `linux/amd64` and `linux/arm64`, UID 10001).
 Build it into the local Docker daemon:
@@ -121,10 +196,13 @@ The container logs JSON with `timestamp`, `level`, `message`, `logger` and `trac
 The REST profile serves `/health/live`, `/health/ready` and Prometheus metrics at `/metrics`.
 
 ## Deployment
-`.devops/helm/release.yaml` holds two HelmReleases of the cluster's shared chart `charts/app` (Flux source
+`.devops/helm/release.yaml` holds four HelmReleases of the cluster's shared chart `charts/app` (Flux source
 `flux-system`), on node `homelab/node: rpi`:
 * `filebrowser`: REST (`web`), `filebrowser.home.arpa`, HTTP probes on `/health/live` and `/health/ready`.
 * `filebrowser-grpc`: gRPC (`server`), `filebrowser-grpc.home.arpa`, native Kubernetes `grpc` probes on 9090.
+* `filebrowser-ui`: the web image, `filebrowser-ui.home.arpa`, proxying to `filebrowser` and `filebrowser-grpc-web`.
+* `filebrowser-grpc-web`: Envoy translating gRPC-Web to `filebrowser-grpc`, cluster-internal, config in the ConfigMap
+  `filebrowser-grpc-web-envoy` (`.devops/helm/envoy.yaml`); restart it after changing the ConfigMap.
 
 Both mount the PVC `filebrowser-data` (`.devops/helm/pvc.yaml`, `local-path`, kept when the release is removed) at
 `/data`. The chart has no volumes or gRPC probes, so Flux `postRenderers` patch them in. `/tmp` is 2Gi because uploads
@@ -141,6 +219,8 @@ Before the first rollout:
 * Register `.devops/helm` of this repo in the cluster's Flux (GitRepository and Kustomization).
 * Add the deploy GitHub App (on the `main` ruleset bypass list): variable `DEPLOY_APP_CLIENT_ID`, secret
   `DEPLOY_APP_PRIVATE_KEY`. CI then writes each new `main` image tag into `release.yaml`; without them no tag is bumped.
+* For the web image, set the repository variables `OIDC_ISSUER` (and `OIDC_CLIENT_ID` if not `filebrowser`); set
+  `WEB_TRANSPORT=grpc` only if the browser should use gRPC-Web.
 
 `devops.yml` validates `.devops/helm` with kubeconform (Kubernetes and Flux schemas). The chart lives outside this
 repo, so CI does not render it with the patches.
@@ -152,4 +232,5 @@ Runs ktlint, tests and JaCoCo (line coverage over 80 %, branch coverage over 75 
 
 ## CI
 GitHub Actions runs the gate on every PR. Pushes to `main` publish `ghcr.io/jagieloadrian/filebrowserapi:main-<yyyyMMddHHmmss>-<sha7>`,
-`v*` tags publish the semver tag. Dependabot keeps Gradle and Actions versions current.
+`v*` tags publish the semver tag. The web client goes to `ghcr.io/jagieloadrian/filebrowserapi-ui` with the same tags.
+Dependabot keeps Gradle and Actions versions current.

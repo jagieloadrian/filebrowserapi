@@ -1,7 +1,7 @@
 # Roadmap: FileBrowserAPI
 
-Updated 2026-11-12. Kotlin 2.0 + Spring Boot 3.4, module `FilebrowserBE` with two run modes (profile `web` = REST on
-8080, profile `server` = gRPC on 9090) and an empty `FilebrowserUI` module.
+Updated 2026-11-15. Kotlin 2.4 + Spring Boot 4.1, module `FilebrowserBE` with two run modes (profile `web` = REST on
+8080, profile `server` = gRPC on 9090), shared `FilebrowserProto` and the Compose Multiplatform client `FilebrowserUI`.
 
 ## Current state
 
@@ -12,10 +12,9 @@ Done:
 - One REST error body `{error, message, details}`, probes `/health/live` and `/health/ready`, Prometheus `/metrics`,
   JSON logs with `traceId` from `traceparent`.
 - Jib image (`eclipse-temurin:21-jre`, amd64 + arm64, UID 10001), GitHub Actions CI, GHCR, Dependabot.
-- Phases 1 to 3, see below.
+- Phases 1 to 3, 5 and 6, see below; phase 4 waits for the rollout.
 
-Open problems: none known; next work is deployment (phase 4).
-- `FilebrowserUI` is a "Hello World" stub.
+Open problems: none known; next work is the rollout (phase 4) once Authelia runs.
 
 ## Phase 1: Security and correctness (P0), done 2026-11-12
 1. Done: one resolver in `service/PathModifierUtils.kt` normalises every user-supplied segment and rejects anything
@@ -82,6 +81,12 @@ Done when: a push to `main` rolls the new image out to the cluster.
 
 5. Done 2026-11-13: per-user quota (5GB, counts trash and versions) and a 2GB free-space reserve on the disk.
 
-## Phase 6: FilebrowserUI
-1. Decide: build a client (Compose Multiplatform or web SPA) or delete the stub module.
-2. A web client needs CORS hosts from configuration.
+## Phase 6: FilebrowserUI, done 2026-11-15
+1. Done: Compose Multiplatform client for the desktop (JVM) and the browser (Wasm); `-Ptransport=http|grpc` picks REST
+   or gRPC at build time. The browser uses gRPC-Web through Envoy and uploads over REST (no client streaming).
+2. Done: CORS hosts from `application.cors.allowed-origins`; `runLocalGrpc` runs gRPC without OIDC.
+3. Done: nginx web image `filebrowserapi-ui` (same-origin proxy), HelmReleases `filebrowser-ui` and
+   `filebrowser-grpc-web`, CI builds and pushes the image.
+4. Done: OIDC sign-in (authorization code + PKCE); an empty issuer turns it off for local runs.
+
+Done when: a user signs in through Authelia in the browser and on the desktop and manages files (open: Authelia).
