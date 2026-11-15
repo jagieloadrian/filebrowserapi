@@ -9,6 +9,7 @@ data class Entry(
     val directory: Boolean,
     val size: Long,
     val modified: Instant,
+    val contentType: String? = null,
 ) {
     val name: String get() = path.substringAfterLast('/')
     val parent: String get() = path.substringBeforeLast('/')

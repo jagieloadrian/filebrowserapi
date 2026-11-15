@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
@@ -26,6 +29,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -67,6 +71,12 @@ private data class Dividers(
     val destination: String,
     val width: Dp,
     val columnDividers: Int,
+)
+
+private data class Preview(
+    val name: String,
+    val bytes: ByteArray,
+    val shown: SemanticsMatcher,
 )
 
 private data class TopBar(
@@ -228,11 +238,12 @@ class AppTest :
             withTests(
                 nameFn = { it.first },
                 "Documents" to "Open folder",
-                "notes.txt" to "Show actions",
+                "notes.txt" to "Preview file",
+                "archive.zip" to "Show actions",
             ) { (name, expected) ->
                 // given
                 val session = signedIn()
-                api.entries += listOf(folder("/Documents"), file("/notes.txt"))
+                api.entries += listOf(folder("/Documents"), file("/notes.txt"), file("/archive.zip"))
 
                 runComposeUiTest {
                     // when
@@ -245,6 +256,59 @@ class AppTest :
                     // then
                     onNodeWithText(name).fetchSemanticsNode().config[SemanticsActions.OnClick].label shouldBe expected
                 }
+            }
+        }
+
+        context("should preview a file when its row is clicked") {
+            withTests(
+                nameFn = { it.name },
+                Preview("notes.txt", "hello world".encodeToByteArray(), hasText("hello world")),
+                Preview(
+                    "photo.png",
+                    png(),
+                    hasContentDescription("photo.png") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Image),
+                ),
+            ) { case ->
+                // given
+                val session = signedIn()
+                api.entries += file("/${case.name}", size = case.bytes.size.toLong())
+                api.contents["/${case.name}"] = case.bytes
+                runComposeUiTest {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // when
+                    onNodeWithText(case.name).performClick()
+
+                    // then
+                    onNode(isHeading() and hasText(case.name)).assertIsDisplayed()
+                    waitUntilExactlyOneExists(case.shown)
+                    onNode(case.shown).assertIsDisplayed()
+                }
+            }
+        }
+
+        test("should offer a download instead of a preview when the image is too large") {
+            // given
+            val session = signedIn()
+            api.entries += file("/huge.png", size = 21L * 1024 * 1024)
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+
+                // when
+                onNodeWithText("huge.png").performClick()
+
+                // then
+                onNodeWithText("Too large to preview").assertIsDisplayed()
+                onNodeWithText("Download file").assertIsDisplayed()
+                api.calls.filter { it.startsWith("download") } shouldBe emptyList()
             }
         }
 

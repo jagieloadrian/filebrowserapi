@@ -5,10 +5,12 @@ import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
 import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineStub
 import com.anjo.filebrowser.entriesResponse
 import com.anjo.filebrowser.entry
+import com.anjo.filebrowser.fileResponse
 import com.anjo.filebrowser.ui.FakeAccessTokens
 import com.anjo.filebrowser.ui.file
 import com.anjo.filebrowser.ui.folder
 import com.anjo.filebrowser.ui.model.PickedFile
+import com.google.protobuf.ByteString
 import com.google.protobuf.Empty
 import com.google.protobuf.timestamp
 import io.grpc.Metadata
@@ -25,9 +27,12 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlin.time.Instant
 
+private const val CHUNK = 4
+private const val FILE_CHUNKS = 3
 private val AUTHORIZATION = Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER)
 
 private data class CodeCase(
@@ -90,6 +95,9 @@ class GrpcFilebrowserApiTest :
                 }
 
                 override suspend fun getQuota(request: Empty): Filebrowser.Quota = throw StatusException(failure)
+
+                override fun getFile(request: Filebrowser.FileOperation): Flow<Filebrowser.FileResponse> =
+                    flow { repeat(FILE_CHUNKS) { emit(fileResponse { data = ByteString.copyFrom(ByteArray(CHUNK) { 1 }) }) } }
             }
         val name = InProcessServerBuilder.generateName()
         val server =
@@ -124,6 +132,20 @@ class GrpcFilebrowserApiTest :
             request.path shouldBe "/Docs"
             request.name shouldBe "a"
             entries shouldBe listOf(file("/Docs/a.txt", size = 4).copy(modified = Instant.parse("2026-11-13T10:00:00.5Z")))
+        }
+
+        context("should stop reading the file once it has the requested bytes") {
+            withTests(
+                nameFn = { "limit ${it.first}" },
+                null to FILE_CHUNKS * CHUNK,
+                CHUNK + 1L to 2 * CHUNK,
+            ) { (maxBytes, expected) ->
+                // when
+                val bytes = api.download(file("/a.bin"), maxBytes)
+
+                // then
+                bytes.size shouldBe expected
+            }
         }
 
         test("should stream the upload in chunks that carry the target") {

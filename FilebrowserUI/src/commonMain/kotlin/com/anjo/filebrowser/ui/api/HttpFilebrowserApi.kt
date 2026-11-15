@@ -11,6 +11,7 @@ import io.ktor.client.request.delete
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
@@ -48,11 +49,16 @@ class HttpFilebrowserApi(
                 }.decode()
         }
 
-    override suspend fun download(entry: Entry): ByteArray =
+    override suspend fun download(
+        entry: Entry,
+        maxBytes: Long?,
+    ): ByteArray =
         call {
             client
-                .get("$api/files/${entry.name.encodeURLPathPart()}") { parameter("path", entry.parent) }
-                .checked()
+                .get("$api/files/${entry.name.encodeURLPathPart()}") {
+                    parameter("path", entry.parent)
+                    maxBytes?.let { header(HttpHeaders.Range, "bytes=0-${it - 1}") }
+                }.checked()
                 .body()
         }
 

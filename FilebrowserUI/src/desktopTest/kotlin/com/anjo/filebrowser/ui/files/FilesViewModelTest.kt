@@ -1,18 +1,26 @@
 package com.anjo.filebrowser.ui.files
 
 import com.anjo.filebrowser.ui.FakeFilebrowserApi
+import com.anjo.filebrowser.ui.PNG_SIZE
 import com.anjo.filebrowser.ui.api.ApiException
 import com.anjo.filebrowser.ui.api.ApiStatus
 import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.file
 import com.anjo.filebrowser.ui.folder
+import com.anjo.filebrowser.ui.model.Entry
+import com.anjo.filebrowser.ui.model.FilePreview
 import com.anjo.filebrowser.ui.model.PickedFile
+import com.anjo.filebrowser.ui.model.PreviewContent
 import com.anjo.filebrowser.ui.model.Quota
+import com.anjo.filebrowser.ui.png
 import com.anjo.filebrowser.ui.trashed
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.datatest.withTests
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -20,6 +28,14 @@ import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+
+private const val MIB = 1024L * 1024
+
+private data class SizeCase(
+    val name: String,
+    val entry: Entry,
+    val downloads: List<String>,
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FilesViewModelTest :
@@ -133,6 +149,145 @@ class FilesViewModelTest :
 
                 // then
                 viewModel.snackbar.first().message shouldBe ApiStatus.NOT_FOUND.fallback
+            }
+        }
+
+        context("preview") {
+            suspend fun previewed() =
+                viewModel.state
+                    .first { it.preview?.content != Loadable.Loading }
+                    .preview
+                    ?.content
+
+            test("should show the whole text of a small text file") {
+                // given
+                api.contents["/a.txt"] = "hello".encodeToByteArray()
+
+                // when
+                viewModel.preview(file("/a.txt", size = 5))
+
+                // then
+                previewed() shouldBe Loadable.Ready(PreviewContent.Text("hello", shownBytes = null))
+            }
+
+            test("should replace invalid UTF-8 bytes with the replacement character") {
+                // given
+                api.contents["/a.txt"] = byteArrayOf(0x61, 0xFF.toByte(), 0x62)
+
+                // when
+                viewModel.preview(file("/a.txt", size = 3))
+
+                // then
+                previewed() shouldBe Loadable.Ready(PreviewContent.Text("a\uFFFDb", shownBytes = null))
+            }
+
+            context("should decide from the known size how much of the file to read") {
+                withTests(
+                    nameFn = { it.name },
+                    SizeCase("text at the limit is read whole", file("/a.txt", size = MIB), listOf("download /a.txt")),
+                    SizeCase("bigger text is read up to the limit", file("/a.txt", size = MIB + 1), listOf("download /a.txt $MIB")),
+                    SizeCase("image at the limit is read whole", file("/a.png", size = 20 * MIB), listOf("download /a.png")),
+                    SizeCase("bigger image is not read", file("/a.png", size = 20 * MIB + 1), emptyList()),
+                ) { case ->
+                    // when
+                    viewModel.preview(case.entry)
+                    previewed()
+
+                    // then
+                    api.calls.filter { it.startsWith("download") } shouldBe case.downloads
+                }
+            }
+
+            test("should say how much of a big text file it shows") {
+                // given
+                api.contents["/a.txt"] = "head".encodeToByteArray()
+
+                // when
+                viewModel.preview(file("/a.txt", size = 3 * MIB))
+
+                // then
+                previewed() shouldBe Loadable.Ready(PreviewContent.Text("head", shownBytes = MIB))
+            }
+
+            test("should call an image above the limit too large") {
+                // when
+                viewModel.preview(file("/a.png", size = 20 * MIB + 1))
+
+                // then
+                previewed() shouldBe Loadable.Ready(PreviewContent.TooLarge(20 * MIB))
+            }
+
+            test("should decode an image file") {
+                // given
+                api.contents["/a.png"] = png()
+
+                // when
+                viewModel.preview(file("/a.png", size = 100))
+
+                // then
+                previewed()
+                    .shouldBeInstanceOf<Loadable.Ready<PreviewContent>>()
+                    .value
+                    .shouldBeInstanceOf<PreviewContent.Image>()
+                    .bitmap.width shouldBe PNG_SIZE
+            }
+
+            test("should say it cannot preview an image that does not decode") {
+                // given
+                api.contents["/a.png"] = "not an image".encodeToByteArray()
+
+                // when
+                viewModel.preview(file("/a.png", size = 12))
+
+                // then
+                previewed() shouldBe Loadable.Ready(PreviewContent.Unreadable)
+            }
+
+            test("should show the error when the download fails") {
+                // given
+                api.failures["download"] = ApiException(ApiStatus.OFFLINE)
+
+                // when
+                viewModel.preview(file("/a.txt"))
+
+                // then
+                previewed() shouldBe Loadable.Failed(ApiStatus.OFFLINE.fallback)
+            }
+
+            test("should show loading until the file arrives") {
+                // given
+                api.downloadGate = CompletableDeferred()
+                api.contents["/a.txt"] = "hello".encodeToByteArray()
+                viewModel.preview(file("/a.txt", size = 5))
+                viewModel.state.value.preview shouldBe FilePreview(file("/a.txt", size = 5), Loadable.Loading)
+
+                // when
+                api.downloadGate?.complete(Unit)
+
+                // then
+                previewed() shouldBe Loadable.Ready(PreviewContent.Text("hello", shownBytes = null))
+            }
+
+            test("should cancel the download when the preview closes") {
+                // given
+                api.downloadGate = CompletableDeferred()
+                viewModel.preview(file("/a.txt"))
+
+                // when
+                viewModel.closePreview()
+
+                // then
+                api.cancelledDownloads shouldBe listOf("/a.txt")
+                viewModel.state.value.preview shouldBe null
+            }
+
+            test("should not open a preview for a file it cannot show") {
+                // when
+                viewModel.preview(file("/a.zip"))
+
+                // then
+                viewModel.state.value.preview shouldBe null
+                api.calls.filter { it.startsWith("download") } shouldBe emptyList()
             }
         }
 

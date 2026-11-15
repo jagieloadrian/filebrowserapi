@@ -64,8 +64,9 @@ fun EmptyState(
     icon: ImageVector,
     title: String,
     body: String,
+    action: @Composable () -> Unit = {},
 ) {
-    Message(icon = icon, tint = MaterialTheme.colorScheme.onSurfaceVariant, title = title, body = body)
+    Message(icon = icon, tint = MaterialTheme.colorScheme.onSurfaceVariant, title = title, body = body, action = action)
 }
 
 @Composable

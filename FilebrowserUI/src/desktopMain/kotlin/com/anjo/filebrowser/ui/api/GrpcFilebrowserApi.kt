@@ -22,6 +22,7 @@ import io.grpc.stub.MetadataUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.takeWhile
 import java.io.ByteArrayOutputStream
 import kotlin.time.Instant
 
@@ -44,13 +45,19 @@ class GrpcFilebrowserApi(
                         name?.let { this.name = it }
                     },
                 ).entriesList
-                .map { Entry(it.path, it.directory, it.size, it.modified.toInstant()) }
+                .map { Entry(it.path, it.directory, it.size, it.modified.toInstant(), it.contentType.ifEmpty { null }) }
         }
 
-    override suspend fun download(entry: Entry): ByteArray =
+    override suspend fun download(
+        entry: Entry,
+        maxBytes: Long?,
+    ): ByteArray =
         call {
             val content = ByteArrayOutputStream()
-            it.getFile(operation(entry.name, entry.parent)).collect { it.data.writeTo(content) }
+            it
+                .getFile(operation(entry.name, entry.parent))
+                .takeWhile { content.size() < (maxBytes ?: Long.MAX_VALUE) }
+                .collect { it.data.writeTo(content) }
             content.toByteArray()
         }
 

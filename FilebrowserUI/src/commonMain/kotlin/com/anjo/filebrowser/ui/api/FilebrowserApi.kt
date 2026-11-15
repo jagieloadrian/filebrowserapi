@@ -11,7 +11,10 @@ interface FilebrowserApi {
         name: String?,
     ): List<Entry>
 
-    suspend fun download(entry: Entry): ByteArray
+    suspend fun download(
+        entry: Entry,
+        maxBytes: Long? = null,
+    ): ByteArray
 
     suspend fun upload(
         directory: String,

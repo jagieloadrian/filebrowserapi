@@ -1,5 +1,6 @@
 package com.anjo.filebrowser.ui.files
 
+import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anjo.filebrowser.ui.api.ApiException
@@ -8,10 +9,13 @@ import com.anjo.filebrowser.ui.api.FilebrowserApi
 import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.common.Snack
 import com.anjo.filebrowser.ui.model.Entry
+import com.anjo.filebrowser.ui.model.FilePreview
 import com.anjo.filebrowser.ui.model.PickedFile
+import com.anjo.filebrowser.ui.model.PreviewContent
 import com.anjo.filebrowser.ui.platform.pickFile
 import com.anjo.filebrowser.ui.platform.saveFile
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -24,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.annotation.KoinViewModel
 
 internal const val SEARCH_DELAY_MS = 300L
@@ -39,6 +44,7 @@ class FilesViewModel(
     private val snacks = Channel<Snack>(Channel.BUFFERED)
     val snackbar: Flow<Snack> = snacks.receiveAsFlow()
     private var loading: Job? = null
+    private var previewing: Job? = null
 
     fun refresh() = load()
 
@@ -60,6 +66,57 @@ class FilesViewModel(
     ) = act { send(file, overwrite) }
 
     fun download(entry: Entry) = act { saveFile(entry.name) { api.download(entry) } }
+
+    fun preview(entry: Entry) {
+        val kind = previewKind(entry) ?: return
+        previewing?.cancel()
+        mutableState.update { it.copy(preview = FilePreview(entry)) }
+        previewing =
+            viewModelScope.launch {
+                val content = previewContent(entry, kind)
+                mutableState.update { it.copy(preview = it.preview?.copy(content = content)) }
+            }
+    }
+
+    fun closePreview() {
+        previewing?.cancel()
+        mutableState.update { it.copy(preview = null) }
+    }
+
+    private suspend fun previewContent(
+        entry: Entry,
+        kind: PreviewKind,
+    ): Loadable<PreviewContent> {
+        val oversized = entry.size > kind.maxBytes
+        if (oversized && !kind.partial) return Loadable.Ready(PreviewContent.TooLarge(kind.maxBytes))
+        val shownBytes = kind.maxBytes.takeIf { oversized }
+        return try {
+            val bytes = api.download(entry, shownBytes)
+            Loadable.Ready(
+                when (kind) {
+                    PreviewKind.TEXT -> {
+                        PreviewContent.Text(
+                            bytes.decodeToString(0, minOf(bytes.size.toLong(), kind.maxBytes).toInt()),
+                            shownBytes,
+                        )
+                    }
+
+                    PreviewKind.IMAGE -> {
+                        withContext(Dispatchers.Default) { decodeImage(bytes) }
+                    }
+                },
+            )
+        } catch (e: ApiException) {
+            Loadable.Failed(e.message)
+        }
+    }
+
+    private fun decodeImage(bytes: ByteArray): PreviewContent =
+        try {
+            PreviewContent.Image(bytes.decodeToImageBitmap())
+        } catch (e: IllegalArgumentException) {
+            PreviewContent.Unreadable
+        }
 
     fun createFolder(name: String) = act { api.createFolder(state.value.path, name) }
 

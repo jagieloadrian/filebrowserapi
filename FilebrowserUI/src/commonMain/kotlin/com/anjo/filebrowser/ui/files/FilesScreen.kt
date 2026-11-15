@@ -159,6 +159,23 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
         }
     }
 
+    state.preview?.let { preview ->
+        PreviewDialog(
+            preview,
+            onClose = viewModel::closePreview,
+            onRetry = { viewModel.preview(preview.entry) },
+            onDownload = { viewModel.download(preview.entry) },
+            onRename = {
+                viewModel.closePreview()
+                nameRequest = NameRequest.Rename(preview.entry)
+            },
+            onDelete = {
+                viewModel.closePreview()
+                viewModel.delete(preview.entry)
+            },
+        )
+    }
+
     nameRequest?.let { request ->
         val renamed = (request as? NameRequest.Rename)?.entry
         NameDialog(
@@ -256,6 +273,7 @@ private fun EntryList(
                     searching = searching,
                     wide = wide,
                     onOpen = { viewModel.open(entry.path) },
+                    onPreview = { viewModel.preview(entry) },
                     onDownload = { viewModel.download(entry) },
                     onRename = { onRename(entry) },
                     onDelete = { viewModel.delete(entry) },
@@ -271,6 +289,7 @@ private fun EntryRow(
     searching: Boolean,
     wide: Boolean,
     onOpen: () -> Unit,
+    onPreview: () -> Unit,
     onDownload: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -313,9 +332,21 @@ private fun EntryRow(
             }
         }
     }
+    val previewable = previewKind(entry) != null
     val modifier =
-        Modifier.clickable(onClickLabel = if (entry.directory) "Open folder" else "Show actions") {
-            if (entry.directory) onOpen() else menu = true
+        Modifier.clickable(
+            onClickLabel =
+                when {
+                    entry.directory -> "Open folder"
+                    previewable -> "Preview file"
+                    else -> "Show actions"
+                },
+        ) {
+            when {
+                entry.directory -> onOpen()
+                previewable -> onPreview()
+                else -> menu = true
+            }
         }
     if (wide) {
         ColumnsRow(
@@ -342,7 +373,7 @@ private fun EntryRow(
 }
 
 @Composable
-private fun MenuItem(
+internal fun MenuItem(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,

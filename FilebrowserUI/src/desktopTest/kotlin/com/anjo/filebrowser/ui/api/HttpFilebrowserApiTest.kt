@@ -68,7 +68,7 @@ class HttpFilebrowserApiTest :
                 server.request.call() shouldBe "${HttpMethod.Get} /api/v1/entries?path=%2FDocs&name=rep"
                 entries shouldBe
                     listOf(
-                        file("/Docs/report.txt", size = 4),
+                        file("/Docs/report.txt", size = 4).copy(contentType = "text/plain"),
                         folder("/Docs/old").copy(modified = Instant.parse("2026-11-13T10:00:00.5Z")),
                     )
             }
@@ -94,7 +94,20 @@ class HttpFilebrowserApiTest :
 
                 // then
                 server.request.call() shouldBe "${HttpMethod.Get} /api/v1/files/my%20report.txt?path=%2FDocs"
+                server.request.headers[HttpHeaders.Range] shouldBe null
                 bytes.decodeToString() shouldBe "hello"
+            }
+
+            test("should ask only for the first bytes when the download has a limit") {
+                // given
+                val server = Server("hel")
+
+                // when
+                val bytes = server.api.download(file("/notes.txt"), maxBytes = 3)
+
+                // then
+                server.request.headers[HttpHeaders.Range] shouldBe "bytes=0-2"
+                bytes.decodeToString() shouldBe "hel"
             }
 
             test("should map the trash and the quota") {
