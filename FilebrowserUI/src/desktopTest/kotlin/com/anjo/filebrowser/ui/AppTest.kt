@@ -2,7 +2,9 @@ package com.anjo.filebrowser.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertIsDisplayed
@@ -21,6 +23,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.anjo.filebrowser.ui.api.FilebrowserApi
 import com.anjo.filebrowser.ui.auth.AuthSession
@@ -46,6 +49,7 @@ private val NARROWEST_WIDTH = 320.dp
 private val HEIGHT = 640.dp
 private val WIDE_WIDTH = 1000.dp
 private val NAVIGATION_RAIL = 80.dp
+private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
 
@@ -130,6 +134,27 @@ class AppTest :
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2.0 KB", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+
+        test("should stack the file details under the name when large text does not fit the columns") {
+            // given
+            val session = signedIn()
+            api.entries += file("/report.pdf", size = 2048)
+
+            runComposeUiTest {
+                // when
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = LARGE_TEXT)) {
+                            Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                        }
+                    }
+                }
+
+                // then
+                onNodeWithText("PDF file", useUnmergedTree = true).assertDoesNotExist()
+                onNodeWithText("2.0 KB · Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
             }
         }
 

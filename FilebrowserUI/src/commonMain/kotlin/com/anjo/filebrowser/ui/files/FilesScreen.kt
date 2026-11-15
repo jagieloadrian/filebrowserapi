@@ -77,6 +77,7 @@ import com.anjo.filebrowser.ui.common.SnackbarEffect
 import com.anjo.filebrowser.ui.common.TIME_COLUMN
 import com.anjo.filebrowser.ui.common.TYPE_COLUMN
 import com.anjo.filebrowser.ui.common.fileType
+import com.anjo.filebrowser.ui.common.fitsColumns
 import com.anjo.filebrowser.ui.common.folderLabel
 import com.anjo.filebrowser.ui.common.formatSize
 import com.anjo.filebrowser.ui.common.formatTime
@@ -247,7 +248,7 @@ private fun EntryList(
     onRename: (Entry) -> Unit,
 ) {
     BoxWithConstraints {
-        val wide = maxWidth >= Spacing.expanded
+        val wide = fitsColumns()
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
             items(entries, key = { it.path }) { entry ->
                 EntryRow(

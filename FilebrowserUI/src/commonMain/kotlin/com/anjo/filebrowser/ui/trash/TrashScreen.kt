@@ -51,6 +51,7 @@ import com.anjo.filebrowser.ui.common.SIZE_COLUMN
 import com.anjo.filebrowser.ui.common.SkeletonList
 import com.anjo.filebrowser.ui.common.SnackbarEffect
 import com.anjo.filebrowser.ui.common.TIME_COLUMN
+import com.anjo.filebrowser.ui.common.fitsColumns
 import com.anjo.filebrowser.ui.common.folderLabel
 import com.anjo.filebrowser.ui.common.formatSize
 import com.anjo.filebrowser.ui.common.formatTime
@@ -124,7 +125,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
                         EmptyState(Icons.Outlined.Delete, "Trash is empty", "Files and folders you delete appear here.")
                     } else {
                         BoxWithConstraints {
-                            val wide = maxWidth >= Spacing.expanded
+                            val wide = fitsColumns()
                             LazyColumn(Modifier.fillMaxSize()) {
                                 items(loaded.value, key = { it.id }) { item ->
                                     TrashRow(item, wide, onRestore = { viewModel.restore(item) }, onPurge = { purge = Purge.One(item) })
