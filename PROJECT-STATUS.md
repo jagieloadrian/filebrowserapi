@@ -4,15 +4,25 @@ Last update: 2026-11-15, branch `feature-14/kmp-ui`.
 
 ## Completed
 
+### 2026-11-15, `feature-14/kmp-ui`: REST-only browser, web client served by the backend
+- The browser client talks REST only: the browser gRPC client, its proxy and their settings are gone. BuildKonfig
+  `transport` exists for the desktop target only; the Wasm build always uses `HttpFilebrowserApi`.
+- Wasm `backendUrl` defaults to the page's origin; the dev server on 8081 proxies `/api` and `/share` to 8080, and
+  `.devops/application-local.yaml` no longer allows CORS from 8081.
+- Backend serves the web client when `spring.web.resources.static-locations` is set: GET outside `/api/**` is public,
+  `/api/**` keeps its rules, `no-cache` without `Last-Modified`. Embedded-server tests (`WebClientTest`).
+- Jib copies the Wasm bundle to `/app/ui` and depends on `:FilebrowserUI:wasmJsBrowserDistribution`.
+- `.devops/helm/kustomization.yaml` (pvc + release) is the A/B switch; `filebrowser-ui` moved to `ui.yaml`. CI builds
+  the bundle once (one Gradle run with the OIDC variables) for both images and bumps tags in every helm file.
+
 ### 2026-11-15, `feature-14/kmp-ui` (from `main`): roadmap phase 6 done
 - `FilebrowserProto` module owns `filebrowser.proto`; backend and UI depend on it.
 - `FilebrowserUI`: Compose Multiplatform 1.12.2, desktop (`jvm("desktop")`) and `wasmJs`, Ktor, Koin, BuildKonfig.
-  `-Ptransport=http|grpc`, `-PbackendUrl=`; HTTP, native gRPC (desktop) and gRPC-Web (Wire, browser) clients.
+  `-Ptransport=http|grpc` (desktop), `-PbackendUrl=`; HTTP and native gRPC (desktop) clients.
 - Backend: CORS origins from configuration, `runLocalGrpc` (profiles `server,local`, user `local`).
-- Local Envoy compose for gRPC-Web on 8090 (no route timeout, so long transfers survive).
-- nginx web image `ghcr.io/jagieloadrian/filebrowserapi-ui`, HelmReleases `filebrowser-ui` and `filebrowser-grpc-web`,
-  CI builds the Wasm bundle and pushes the image with the backend's tag.
-- OIDC sign-in in the UI (authorization code + PKCE S256, public client), token on all three transports, refresh
+- nginx web image `ghcr.io/jagieloadrian/filebrowserapi-ui`, HelmRelease `filebrowser-ui`, CI builds the Wasm
+  bundle and pushes the image with the backend's tag.
+- OIDC sign-in in the UI (authorization code + PKCE S256, public client), token on REST and gRPC, refresh
   and one retry on 401; 403 names the needed groups. Tested against fakes only.
 - Code comments removed (standard general/01); gate green.
 
@@ -150,8 +160,13 @@ Project aligned with the coding standards from the `standards` MCP server:
   running total in the DB if it gets slow). Concurrent writes can overshoot the quota by one upload.
 
 - 2026-11-15: UI targets desktop and Wasm only; transport and backend URL are build-time settings (BuildKonfig).
-- gRPC-Web has no client streaming, so browser uploads use REST on the same origin; Envoy translates the rest.
-- The web image proxies `/api/`, `/share/` and gRPC-Web on its own origin, so the cluster needs no CORS.
+- 2026-11-15: the browser uses REST only (owner's decision); gRPC stays a desktop option.
+- The web client is same-origin in both deployments (backend or nginx proxy), so the cluster needs no CORS.
+- Default deployment A: the backend serves the UI (one pod, no nginx hop). B keeps the nginx image for a split.
+- The backend serves the UI through plain Spring properties, no app config. Every GET outside `/api/**` is public, so
+  unknown paths get 404 instead of 401. Jib pins file times to the epoch, so `Last-Modified` is off and files go out
+  with `no-cache` and no validator: each page load downloads the bundle (about 14 MB). Add content ETags for the UI
+  paths if that gets slow.
 - OIDC: empty `oidcIssuer` means no sign-in (local runs). Tokens stay in memory; the PKCE verifier and state sit
   in `sessionStorage` only for the browser redirect. SHA-256 from Ktor, randomness from `Uuid.random()`, no new
   dependency. Any failed refresh signs the user out.
@@ -164,11 +179,12 @@ Project aligned with the coding standards from the `standards` MCP server:
   access token), then set the backend issuer and the CI variables `OIDC_ISSUER` and `OIDC_CLIENT_ID`.
 - UI sign-in is untested against Authelia: check the loopback redirect with a random port, CORS on the discovery
   and token endpoints, and that the name shows in the top bar. Sign out does not end the Authelia session.
-- UI rollout: run the devops workflow (kubeconform), check that the shared chart renders a release without
-  `route` and its Service names, and add Istio AuthorizationPolicies for ui to filebrowser:8080, ui to
-  grpc-web:8080 and grpc-web to filebrowser-grpc:9090. nginx restarts until the upstream Services exist; restart
-  Envoy after ConfigMap changes. The UI image tag is a placeholder until the first `main` build.
-- Wire 7.2.1 is very new; a gRPC web build needs an explicit `-PbackendUrl` (empty in the image).
+- UI rollout (A): register both redirect URIs in Authelia, then open `https://filebrowser.home.arpa/`. For B, list
+  `ui.yaml` in the kustomization and add an Istio AuthorizationPolicy for ui to filebrowser:8080; nginx restarts
+  until the upstream Service exists. The UI image tag is a placeholder until the first `main` build.
+- Flux applies `.devops/helm` through `kustomization.yaml` now: a new manifest there must be listed to be deployed.
+- Not run here: the webpack dev server proxy (only its generated config was checked) and the backend image with a
+  real `/app/ui` against PostgreSQL.
 - Existing deployments: move files from `filebrowser/` to `filebrowser/<sub>/` before upgrading.
 - Phase 4 rollout: set the issuer once Authelia runs, register `.devops/helm` in the cluster's Flux, deploy GitHub
   App variables. The first `main` build then replaces the `main-placeholder` image tag.

@@ -82,11 +82,13 @@ Done when: a push to `main` rolls the new image out to the cluster.
 5. Done 2026-11-13: per-user quota (5GB, counts trash and versions) and a 2GB free-space reserve on the disk.
 
 ## Phase 6: FilebrowserUI, done 2026-11-15
-1. Done: Compose Multiplatform client for the desktop (JVM) and the browser (Wasm); `-Ptransport=http|grpc` picks REST
-   or gRPC at build time. The browser uses gRPC-Web through Envoy and uploads over REST (no client streaming).
-2. Done: CORS hosts from `application.cors.allowed-origins`; `runLocalGrpc` runs gRPC without OIDC.
-3. Done: nginx web image `filebrowserapi-ui` (same-origin proxy), HelmReleases `filebrowser-ui` and
-   `filebrowser-grpc-web`, CI builds and pushes the image.
+1. Done: Compose Multiplatform client for the desktop (JVM) and the browser (Wasm). The browser talks REST only;
+   `-Ptransport=http|grpc` picks REST or gRPC for the desktop at build time.
+2. Done: CORS hosts from `application.cors.allowed-origins`; `runLocalGrpc` runs gRPC without OIDC. Local web dev
+   proxies `/api` and `/share` through the dev server, so it needs no CORS.
+3. Done: two deployments of the web client, switched in `.devops/helm/kustomization.yaml`: A (default) the REST
+   backend serves the bundle from its Jib image at `filebrowser.home.arpa`; B the nginx image `filebrowserapi-ui`
+   (same-origin proxy, `ui.yaml`) at `filebrowser-ui.home.arpa`. CI builds the bundle once for both images.
 4. Done: OIDC sign-in (authorization code + PKCE); an empty issuer turns it off for local runs.
 
 Done when: a user signs in through Authelia in the browser and on the desktop and manages files (open: Authelia).
