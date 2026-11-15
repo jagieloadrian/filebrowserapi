@@ -6,5 +6,3 @@ spring:
       file: ../.devops/postgres-compose/compose.yaml
 application:
   path: build/local-data
-  cors:
-    allowed-origins: http://localhost:8081

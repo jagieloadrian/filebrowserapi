@@ -27,6 +27,7 @@ val desktopBackendUrl = backendUrl.getOrElse(if (transport == "grpc") "http://lo
 val oidcIssuer = providers.gradleProperty("oidcIssuer").getOrElse("")
 val oidcClientId = providers.gradleProperty("oidcClientId").getOrElse("filebrowser")
 val oidcScopes = providers.gradleProperty("oidcScopes").getOrElse("openid profile groups offline_access")
+val restProxy = KotlinWebpackConfig.DevServer.Proxy(mutableListOf("/api", "/share"), "http://localhost:8080")
 
 kotlin {
     jvmToolchain(21)
@@ -41,7 +42,7 @@ kotlin {
         browser {
             commonWebpackConfig {
                 outputFileName = "filebrowser.js"
-                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).copy(port = 8081)
+                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).copy(port = 8081, proxy = mutableListOf(restProxy))
             }
         }
         binaries.executable()
@@ -93,7 +94,7 @@ koinCompiler {
 buildkonfig {
     packageName = "com.anjo.filebrowser.ui"
     defaultConfigs {
-        buildConfigField(STRING, "backendUrl", backendUrl.getOrElse("http://localhost:8080"))
+        buildConfigField(STRING, "backendUrl", backendUrl.getOrElse(""))
         buildConfigField(STRING, "oidcIssuer", oidcIssuer)
         buildConfigField(STRING, "oidcClientId", oidcClientId)
         buildConfigField(STRING, "oidcScopes", oidcScopes)
