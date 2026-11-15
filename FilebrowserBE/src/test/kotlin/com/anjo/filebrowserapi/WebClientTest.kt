@@ -112,6 +112,15 @@ class WebClientTest : FunSpec() {
             result.status.value() shouldBe 404
         }
 
+        test("should still serve Swagger UI when the web client takes the root path") {
+            // when
+            val result = client.page("/swagger-ui/index.html")
+
+            // then
+            result.status.value() shouldBe 200
+            result.responseBody shouldNotBe INDEX
+        }
+
         context("should return 401 when API or non-GET request is sent without token") {
             withTests(
                 nameFn = { "${it.first} ${it.second}" },
