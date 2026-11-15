@@ -4,6 +4,16 @@ Last update: 2026-11-15, branch `feature-14/kmp-ui`.
 
 ## Completed
 
+### 2026-11-15, `feature-14/kmp-ui`: content ETags, one HelmRelease per deployable unit
+- UI files served by the backend carry a strong ETag (MD5 of the content, hashed once per file and process);
+  `If-None-Match` gets 304 without a body, `no-cache` stays, `Last-Modified` stays off. `RestServerConfig` registers
+  `/**` before Boot's handler, so the cache policy moved from `application-web.yaml` into it. Tests in
+  `WebClientTest` (ETag on `/`, `/index.html`, `.wasm`; 304; same file same ETag, other content other ETag).
+- `.devops/helm`: `filebrowser-app` (REST + UI), `filebrowser-api` (REST only), `filebrowser-ui` (nginx, proxies to
+  `filebrowser-api`), `filebrowser-grpc`, each in a file of its own name; `release.yaml` and `ui.yaml` are gone.
+  Default kustomization: `pvc`, `filebrowser-app`, `filebrowser-grpc`. kubeconform green; `kubectl kustomize` builds
+  the default, split, API-only, with and without gRPC; CI tag `sed` checked on a copy (all four image lines).
+
 ### 2026-11-15, `feature-14/kmp-ui`: REST-only browser, web client served by the backend
 - The browser client talks REST only: the browser gRPC client, its proxy and their settings are gone. BuildKonfig
   `transport` exists for the desktop target only; the Wasm build always uses `HttpFilebrowserApi`.
@@ -162,26 +172,33 @@ Project aligned with the coding standards from the `standards` MCP server:
 - 2026-11-15: UI targets desktop and Wasm only; transport and backend URL are build-time settings (BuildKonfig).
 - 2026-11-15: the browser uses REST only (owner's decision); gRPC stays a desktop option.
 - The web client is same-origin in both deployments (backend or nginx proxy), so the cluster needs no CORS.
-- Default deployment A: the backend serves the UI (one pod, no nginx hop). B keeps the nginx image for a split.
-- The backend serves the UI through plain Spring properties, no app config. Every GET outside `/api/**` is public, so
-  unknown paths get 404 instead of 401. Jib pins file times to the epoch, so `Last-Modified` is off and files go out
-  with `no-cache` and no validator: each page load downloads the bundle (about 14 MB). Add content ETags for the UI
-  paths if that gets slow.
+- Deployments are picked only by listing release files in `kustomization.yaml`; no env edits. Default
+  `filebrowser-app` (one pod, no nginx hop); split `filebrowser-api` + `filebrowser-ui`; `filebrowser-api` alone has
+  no web client; `filebrowser-grpc` is optional. `filebrowser-app` and `filebrowser-ui` both own
+  `filebrowser.home.arpa` (alternatives), so they are never listed together and share one OIDC redirect URI.
+- The releases were renamed before the first rollout, so Vault paths, Service names and Istio targets follow the
+  new names; nothing deployed had to move.
+- The backend serves the UI from `spring.web.resources.static-locations`. Every GET outside `/api/**` is public, so
+  unknown paths get 404 instead of 401. Jib pins file times to the epoch, so `Last-Modified` is off; content ETags
+  with `no-cache` make each load a revalidation, and the bundle (about 14 MB) downloads only after a deploy. MD5
+  (Spring `DigestUtils`, streamed) is enough for change detection; the hash cache lives as long as the process.
 - OIDC: empty `oidcIssuer` means no sign-in (local runs). Tokens stay in memory; the PKCE verifier and state sit
   in `sessionStorage` only for the browser redirect. SHA-256 from Ktor, randomness from `Uuid.random()`, no new
   dependency. Any failed refresh signs the user out.
 
 ## Next steps and risks
-- Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password in Vault under
-  `secret/apps/filebrowser` and `secret/apps/filebrowser-grpc` (`SPRING_DATASOURCE_PASSWORD`).
+- Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password (`SPRING_DATASOURCE_PASSWORD`)
+  in Vault under `secret/apps/<release>` for each listed backend release: `filebrowser-app`, `filebrowser-api`,
+  `filebrowser-grpc`.
 - Trash and versions count against the quota until purged; users free space by emptying the trash.
 - Authelia client: register it as in README "UI sign-in" (public, PKCE, `RS256`, `aud` = client ID, `groups` in the
   access token), then set the backend issuer and the CI variables `OIDC_ISSUER` and `OIDC_CLIENT_ID`.
 - UI sign-in is untested against Authelia: check the loopback redirect with a random port, CORS on the discovery
   and token endpoints, and that the name shows in the top bar. Sign out does not end the Authelia session.
-- UI rollout (A): register both redirect URIs in Authelia, then open `https://filebrowser.home.arpa/`. For B, list
-  `ui.yaml` in the kustomization and add an Istio AuthorizationPolicy for ui to filebrowser:8080; nginx restarts
-  until the upstream Service exists. The UI image tag is a placeholder until the first `main` build.
+- UI rollout: register `https://filebrowser.home.arpa/` (and the desktop loopback URI) in Authelia, then open it.
+  Istio AuthorizationPolicies: the gateway to `filebrowser-app`, `filebrowser-api`, `filebrowser-ui` and
+  `filebrowser-grpc`; `filebrowser-ui` to `filebrowser-api:8080` for the split. nginx restarts until the upstream
+  Service exists. The UI image tag is a placeholder until the first `main` build.
 - Flux applies `.devops/helm` through `kustomization.yaml` now: a new manifest there must be listed to be deployed.
 - Not run here: the webpack dev server proxy (only its generated config was checked) and the backend image with a
   real `/app/ui` against PostgreSQL.

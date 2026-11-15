@@ -60,7 +60,7 @@ Open problems: none known; next work is the rollout (phase 4) once Authelia runs
 5. Done: each user sees only `filebrowser/<sub>`; a `sub` that cannot name a directory gets 400.
 
 ## Phase 4: Deployment
-1. Done: `.devops/helm/release.yaml` with HelmReleases for REST and gRPC, a shared PVC, CI bumps the image tag,
+1. Done: HelmReleases for REST and gRPC in `.devops/helm` (one file per release), a shared PVC, CI bumps the image tag,
    `devops.yml` validates with kubeconform. Open: OIDC issuer (placeholder until Authelia runs) and the registration
    in the cluster's Flux.
 2. Done: `runLocal` starts the REST API without OIDC.
@@ -86,9 +86,11 @@ Done when: a push to `main` rolls the new image out to the cluster.
    `-Ptransport=http|grpc` picks REST or gRPC for the desktop at build time.
 2. Done: CORS hosts from `application.cors.allowed-origins`; `runLocalGrpc` runs gRPC without OIDC. Local web dev
    proxies `/api` and `/share` through the dev server, so it needs no CORS.
-3. Done: two deployments of the web client, switched in `.devops/helm/kustomization.yaml`: A (default) the REST
-   backend serves the bundle from its Jib image at `filebrowser.home.arpa`; B the nginx image `filebrowserapi-ui`
-   (same-origin proxy, `ui.yaml`) at `filebrowser-ui.home.arpa`. CI builds the bundle once for both images.
+3. Done: one HelmRelease per deployable unit, picked only by listing it in `.devops/helm/kustomization.yaml`:
+   `filebrowser-app` (default, REST and the bundle from the Jib image) or `filebrowser-api` + `filebrowser-ui`
+   (nginx, same-origin proxy), both at `filebrowser.home.arpa`; `filebrowser-api` alone has no web client;
+   `filebrowser-grpc` is optional. CI builds the bundle once for both images. The backend sends content ETags, so a
+   page load downloads the bundle only after a deploy.
 4. Done: OIDC sign-in (authorization code + PKCE); an empty issuer turns it off for local runs.
 
 Done when: a user signs in through Authelia in the browser and on the desktop and manages files (open: Authelia).

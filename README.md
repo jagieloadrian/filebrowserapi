@@ -125,9 +125,9 @@ The Wasm bundle (`FilebrowserUI/build/dist/wasmJs/productionExecutable`) ships i
 the API:
 * The backend image (default deployment): Jib copies the bundle to `/app/ui`; every `jib*` task builds it first. The
   REST profile serves it only when `SPRING_WEB_RESOURCES_STATIC_LOCATIONS=file:/app/ui/` is set: `index.html` at `/`,
-  `.wasm` as `application/wasm`, every file with `Cache-Control: no-cache` and without `Last-Modified` (Jib sets file
-  times to the epoch), so the browser loads a new deploy on the next visit. GET requests outside `/api/**` need no
-  token; unknown paths get 404.
+  `.wasm` as `application/wasm`, every file with `Cache-Control: no-cache`, a strong ETag (MD5 of the file, hashed
+  once per process) and without `Last-Modified` (Jib sets file times to the epoch). The browser revalidates on each
+  load and gets 304 until a deploy changes a file. GET requests outside `/api/**` need no token; unknown paths get 404.
 * `ghcr.io/jagieloadrian/filebrowserapi-ui`: `nginxinc/nginx-unprivileged` on port 8080 serves the bundle and proxies
   `/api/` and `/share/` to `BACKEND_URL`. Build it locally:
 
@@ -137,11 +137,11 @@ the API:
 ### UI sign-in
 With `-PoidcIssuer` set, the UI signs in with the authorization code flow and PKCE (S256) as a public client and
 sends the access token to REST and gRPC. Endpoints come from the issuer's discovery document. The browser redirects in
-the same window back to the page's origin (`/`), so the client lists both hostnames: `https://filebrowser.home.arpa/`
-(backend serves the UI) and `https://filebrowser-ui.home.arpa/` (separate web image). The desktop app opens the system browser and receives the
-code on `http://127.0.0.1:<random port>/callback` (RFC 8252). Tokens live only in memory. The app refreshes them once
-after a 401 and shows the sign-in screen again when the refresh fails. 403 means the account lacks the
-`filebrowser-reader` or `filebrowser-writer` group. CI passes the repository variables `OIDC_ISSUER` and
+the same window back to the page's origin (`/`). `filebrowser-app` and `filebrowser-ui` both serve the UI at
+`https://filebrowser.home.arpa/`, so that is the one web redirect URI. The desktop app opens the system browser and
+receives the code on `http://127.0.0.1:<random port>/callback` (RFC 8252). Tokens live only in memory. The app
+refreshes them once after a 401 and shows the sign-in screen again when the refresh fails. 403 means the account lacks
+the `filebrowser-reader` or `filebrowser-writer` group. CI passes the repository variables `OIDC_ISSUER` and
 `OIDC_CLIENT_ID` to the Wasm build that both images carry.
 
 Authelia client (untested until Authelia runs):
@@ -165,7 +165,6 @@ identity_providers:
         pkce_challenge_method: 'S256'
         redirect_uris:
           - 'https://filebrowser.home.arpa/'
-          - 'https://filebrowser-ui.home.arpa/'
           - 'http://127.0.0.1/callback'
         scopes: ['openid', 'profile', 'groups', 'offline_access']
         grant_types: ['authorization_code', 'refresh_token']
@@ -203,31 +202,39 @@ The container logs JSON with `timestamp`, `level`, `message`, `logger` and `trac
 The REST profile serves `/health/live`, `/health/ready` and Prometheus metrics at `/metrics`.
 
 ## Deployment
-`.devops/helm` holds HelmReleases of the cluster's shared chart `charts/app` (Flux source `flux-system`), on node
-`homelab/node: rpi`:
-* `filebrowser` (`release.yaml`): REST (`web`) and the web client, `filebrowser.home.arpa`, HTTP probes on
-  `/health/live` and `/health/ready`.
-* `filebrowser-grpc` (`release.yaml`): gRPC (`server`), `filebrowser-grpc.home.arpa`, native Kubernetes `grpc` probes
-  on 9090.
-* `filebrowser-ui` (`ui.yaml`): the nginx web image, `filebrowser-ui.home.arpa`, proxying to `filebrowser`.
+`.devops/helm` holds one HelmRelease per file, named like the file, on the cluster's shared chart `charts/app` (Flux
+source `flux-system`) and node `homelab/node: rpi`:
 
-`.devops/helm/kustomization.yaml` is the one switch for the web client:
-* A, together (default): `resources` lists `pvc.yaml` and `release.yaml`. `filebrowser` serves the UI from `/app/ui`
-  (`SPRING_WEB_RESOURCES_STATIC_LOCATIONS`) at `https://filebrowser.home.arpa/`. One pod, no nginx.
-* B, separate: add `ui.yaml` to `resources`. nginx serves the UI at `https://filebrowser-ui.home.arpa/`. The backend
-  still serves it on its own host until `SPRING_WEB_RESOURCES_STATIC_LOCATIONS` is removed from `filebrowser`.
+| Release | Serves | Image | Host | Vault path |
+|---------|--------|-------|------|------------|
+| `filebrowser-app` | REST (`web`) and the web client from `/app/ui` | backend | `filebrowser.home.arpa` | `secret/apps/filebrowser-app` |
+| `filebrowser-api` | REST (`web`) only | backend | `filebrowser-api.home.arpa` | `secret/apps/filebrowser-api` |
+| `filebrowser-ui` | web client (nginx), proxies `/api/` and `/share/` to `filebrowser-api:8080` | `filebrowserapi-ui` | `filebrowser.home.arpa` | none |
+| `filebrowser-grpc` | gRPC (`server`), native Kubernetes `grpc` probes on 9090 | backend | `filebrowser-grpc.home.arpa` | `secret/apps/filebrowser-grpc` |
 
-`filebrowser` and `filebrowser-grpc` mount the PVC `filebrowser-data` (`.devops/helm/pvc.yaml`, `local-path`, kept when the release is removed) at
-`/data`. The chart has no volumes or gRPC probes, so Flux `postRenderers` patch them in. `/tmp` is 2Gi because uploads
-spool there before they are moved.
+`resources` in `.devops/helm/kustomization.yaml` picks the deployment; no env value changes:
+
+| Combination | `resources` besides `pvc.yaml` |
+|-------------|-------------------------------|
+| Together (default) | `filebrowser-app.yaml`, `filebrowser-grpc.yaml` |
+| Split | `filebrowser-api.yaml`, `filebrowser-ui.yaml`, optional `filebrowser-grpc.yaml` |
+| No web client | `filebrowser-api.yaml`, optional `filebrowser-grpc.yaml` |
+
+Never list `filebrowser-app.yaml` and `filebrowser-ui.yaml` together: both claim `filebrowser.home.arpa`.
+`filebrowser-ui` needs `filebrowser-api`. REST releases have HTTP probes on `/health/live` and `/health/ready`.
+
+The backend releases mount the PVC `filebrowser-data` (`.devops/helm/pvc.yaml`, `local-path`, kept when a release is
+removed) at `/data`. The chart has no volumes or gRPC probes, so Flux `postRenderers` patch them in. `/tmp` is 2Gi
+because uploads spool there before they are moved.
 
 They read PostgreSQL at `postgres.apps.svc.cluster.local:5432`, database and user `filebrowser`. The password comes
-from Vault (`secrets: true`): key `SPRING_DATASOURCE_PASSWORD` in `secret/apps/filebrowser` and
-`secret/apps/filebrowser-grpc`. Flyway migrates the schema on startup; `/health/ready` includes the database.
+from Vault (`secrets: true`): key `SPRING_DATASOURCE_PASSWORD` in the release's path from the table. Flyway migrates
+the schema on startup; `/health/ready` includes the database.
 
 Before the first rollout:
-* Create the `filebrowser` database and user, and store the password in Vault under both paths.
-* Set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` in both releases. It is the placeholder
+* Create the `filebrowser` database and user, and store the password in Vault under the path of each backend release
+  you list.
+* Set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` in every backend release. It is the placeholder
   `https://issuer.invalid` until Authelia runs; health is green, but every API call fails.
 * Register `.devops/helm` of this repo in the cluster's Flux (GitRepository and Kustomization).
 * Add the deploy GitHub App (on the `main` ruleset bypass list): variable `DEPLOY_APP_CLIENT_ID`, secret
@@ -235,7 +242,7 @@ Before the first rollout:
   no tag is bumped.
 * For the web client, set the repository variables `OIDC_ISSUER` (and `OIDC_CLIENT_ID` if not `filebrowser`).
 
-`devops.yml` validates every manifest in `.devops/helm`, `ui.yaml` included, with kubeconform (Kubernetes and Flux
+`devops.yml` validates every manifest in `.devops/helm`, listed or not, with kubeconform (Kubernetes and Flux
 schemas); it skips `kustomization.yaml`. The chart lives outside this repo, so CI does not render it with the patches.
 
 ## Quality gate
