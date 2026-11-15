@@ -24,6 +24,7 @@ koin = "4.2.2"
 koin-compiler = "1.2.3"
 buildkonfig = "0.24.0"
 kotlinx-browser = "0.5.0"
+material-color-utilities = "5.0.1"
 serialization = "1.13.0"
 
 [libraries]
@@ -75,6 +76,7 @@ compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", v
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-multiplatform" }
 compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "compose-multiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
+material-color-utilities = { module = "com.materialkolor:material-color-utilities", version.ref = "material-color-utilities" }
 compose-material-icons = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "compose-material-icons" }
 lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }

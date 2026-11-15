@@ -5,6 +5,8 @@ import com.anjo.filebrowser.ui.api.transportApi
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.Oidc
 import com.anjo.filebrowser.ui.auth.authBrowser
+import com.anjo.filebrowser.ui.platform.settingsStorage
+import com.anjo.filebrowser.ui.theme.AppearanceSettings
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.MainScope
 import org.koin.core.annotation.ComponentScan
@@ -28,3 +30,6 @@ fun authSession(): AuthSession =
 
 @Singleton
 fun filebrowserApi(session: AuthSession): FilebrowserApi = transportApi(BuildKonfig.backendUrl, session)
+
+@Singleton
+fun appearanceSettings(): AppearanceSettings = AppearanceSettings(settingsStorage())

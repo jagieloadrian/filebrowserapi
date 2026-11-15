@@ -22,6 +22,7 @@ import com.anjo.filebrowser.ui.auth.FakeBrowser
 import com.anjo.filebrowser.ui.auth.FakeIdentityProvider
 import com.anjo.filebrowser.ui.auth.settled
 import com.anjo.filebrowser.ui.files.FilesViewModel
+import com.anjo.filebrowser.ui.theme.AppearanceSettings
 import com.anjo.filebrowser.ui.trash.TrashViewModel
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
@@ -50,6 +51,7 @@ private fun backend(
 ) = module {
     single { api }
     single { session }
+    single { AppearanceSettings(FakeSettingsStorage()) }
     viewModel { FilesViewModel(get()) }
     viewModel { TrashViewModel(get()) }
 }

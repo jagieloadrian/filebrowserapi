@@ -55,6 +55,7 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.material3)
             implementation(libs.compose.material.icons)
+            implementation(libs.material.color.utilities)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.koin.annotations)

@@ -38,7 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import com.anjo.filebrowser.ui.auth.AccountMenu
+import com.anjo.filebrowser.ui.common.AppMenu
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.Loadable
@@ -85,7 +85,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
                     IconButton(onClick = viewModel::refresh) {
                         Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
                     }
-                    AccountMenu()
+                    AppMenu()
                 },
             )
         },
