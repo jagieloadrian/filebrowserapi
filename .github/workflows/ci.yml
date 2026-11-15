@@ -64,7 +64,11 @@ jobs:
       - run: ./gradlew :FilebrowserBE:jib -PimageTag=${{ steps.tag.outputs.value }} --console=plain
       - env:
           TRANSPORT: ${{ vars.WEB_TRANSPORT || 'http' }}
-        run: ./gradlew :FilebrowserUI:wasmJsBrowserDistribution -PbackendUrl= -Ptransport="$TRANSPORT" --console=plain
+          OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
+          OIDC_CLIENT_ID: ${{ vars.OIDC_CLIENT_ID || 'filebrowser' }}
+        run: >-
+          ./gradlew :FilebrowserUI:wasmJsBrowserDistribution -PbackendUrl= -Ptransport="$TRANSPORT"
+          -PoidcIssuer="$OIDC_ISSUER" -PoidcClientId="$OIDC_CLIENT_ID" --console=plain
       - uses: docker/setup-buildx-action@v4
       - uses: docker/build-push-action@v7
         with:
