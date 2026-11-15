@@ -54,7 +54,6 @@ class GrpcServerTest : FunSpec() {
     @MockkBean
     private lateinit var fileManager: FileManager
 
-    // ponytail: one channel per spec; the port is injected after construction, so it is built on first use
     private val channel by lazy { ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build() }
 
     // getters, so every test gets a fresh token and a fresh 5 s deadline

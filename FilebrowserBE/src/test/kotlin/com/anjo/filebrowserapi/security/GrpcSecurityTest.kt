@@ -43,7 +43,6 @@ class GrpcSecurityTest : FunSpec() {
     @LocalGrpcServerPort
     private var port: Int = 0
 
-    // ponytail: one channel per spec; the port is injected after construction, so it is built on first use
     private val channel by lazy { ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build() }
 
     init {
