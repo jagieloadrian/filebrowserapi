@@ -97,6 +97,8 @@ class SecurityConfig {
                 authorize(HttpMethod.GET, "/share/*", permitAll)
                 authorize(HttpMethod.GET, "/api/v1/**", hasAnyRole(READER, WRITER))
                 authorize("/api/v1/**", hasRole(WRITER))
+                authorize("/api/**", denyAll)
+                authorize(HttpMethod.GET, "/**", permitAll)
                 authorize(anyRequest, denyAll)
             }
             oauth2ResourceServer {
