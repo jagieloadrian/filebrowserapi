@@ -22,3 +22,5 @@ fun formatSize(bytes: Long): String {
 fun formatTime(instant: Instant): String = instant.toString().let { "${it.take(10)} ${it.substring(11, 16)} UTC" }
 
 fun folderLabel(path: String): String = path.ifEmpty { HOME }
+
+fun fileType(name: String): String = if (name.lastIndexOf('.') > 0) "${name.substringAfterLast('.').uppercase()} file" else "File"

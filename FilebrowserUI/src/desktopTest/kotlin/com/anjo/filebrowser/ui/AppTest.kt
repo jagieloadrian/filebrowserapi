@@ -7,6 +7,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
@@ -37,6 +38,8 @@ import org.koin.dsl.module
 
 private val NARROWEST_WIDTH = 320.dp
 private val HEIGHT = 640.dp
+private val WIDE_WIDTH = 1000.dp
+private val NAVIGATION_RAIL = 80.dp
 private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
 
@@ -100,6 +103,27 @@ class AppTest :
                 // then
                 destination("Trash").assertIsSelected()
                 onNode(isHeading() and hasText("Trash")).assertIsDisplayed()
+            }
+        }
+
+        test("should spread the file list over the full width with type, size and modified columns when the window is wide") {
+            // given
+            val session = signedIn()
+            api.entries += file("/report.pdf", size = 2048)
+
+            runComposeUiTest {
+                // when
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+
+                // then
+                onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH - NAVIGATION_RAIL)
+                onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("2.0 KB", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
             }
         }
 

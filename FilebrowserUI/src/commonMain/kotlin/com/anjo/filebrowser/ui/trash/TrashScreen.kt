@@ -1,10 +1,12 @@
 package com.anjo.filebrowser.ui.trash
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -41,10 +43,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.anjo.filebrowser.ui.common.AppMenu
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
+import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
 import com.anjo.filebrowser.ui.common.Loadable
+import com.anjo.filebrowser.ui.common.NameWithColumns
 import com.anjo.filebrowser.ui.common.QuotaBar
+import com.anjo.filebrowser.ui.common.SIZE_COLUMN
 import com.anjo.filebrowser.ui.common.SkeletonList
 import com.anjo.filebrowser.ui.common.SnackbarEffect
+import com.anjo.filebrowser.ui.common.TIME_COLUMN
 import com.anjo.filebrowser.ui.common.folderLabel
 import com.anjo.filebrowser.ui.common.formatSize
 import com.anjo.filebrowser.ui.common.formatTime
@@ -102,7 +108,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
                 "Deleted items stay here for 30 days. They count toward your storage until they are deleted forever.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s),
+                modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s).widthIn(max = Spacing.content),
             )
             when (val loaded = state.items) {
                 Loadable.Loading -> {
@@ -117,9 +123,12 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
                     if (loaded.value.isEmpty()) {
                         EmptyState(Icons.Outlined.Delete, "Trash is empty", "Files and folders you delete appear here.")
                     } else {
-                        LazyColumn(Modifier.fillMaxSize()) {
-                            items(loaded.value, key = { it.id }) { item ->
-                                TrashRow(item, onRestore = { viewModel.restore(item) }, onPurge = { purge = Purge.One(item) })
+                        BoxWithConstraints {
+                            val wide = maxWidth >= Spacing.expanded
+                            LazyColumn(Modifier.fillMaxSize()) {
+                                items(loaded.value, key = { it.id }) { item ->
+                                    TrashRow(item, wide, onRestore = { viewModel.restore(item) }, onPurge = { purge = Purge.One(item) })
+                                }
                             }
                         }
                     }
@@ -147,18 +156,27 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
 @Composable
 private fun TrashRow(
     item: TrashItem,
+    wide: Boolean,
     onRestore: () -> Unit,
     onPurge: () -> Unit,
 ) {
-    val details =
-        listOfNotNull(
-            "From ${folderLabel(item.parent)}",
-            if (item.directory) null else formatSize(item.size),
-            "Deleted ${formatTime(item.deletedAt)}",
-        ).joinToString(" · ")
+    val folder = "From ${folderLabel(item.parent)}"
+    val size = if (item.directory) null else formatSize(item.size)
+    val deleted = "Deleted ${formatTime(item.deletedAt)}"
     ListItem(
-        headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = { Text(details) },
+        headlineContent = {
+            if (wide) {
+                NameWithColumns(item.name, listOf(folder to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, deleted to TIME_COLUMN))
+            } else {
+                Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        },
+        supportingContent =
+            if (wide) {
+                null
+            } else {
+                { Text(listOfNotNull(folder, size, deleted).joinToString(" · ")) }
+            },
         leadingContent = {
             Icon(
                 if (item.directory) Icons.Outlined.Folder else Icons.Outlined.Description,

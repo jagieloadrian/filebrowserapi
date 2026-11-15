@@ -3,6 +3,7 @@ package com.anjo.filebrowser.ui.files
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -62,11 +64,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.anjo.filebrowser.ui.common.AppMenu
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
+import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
 import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.common.NameDialog
+import com.anjo.filebrowser.ui.common.NameWithColumns
 import com.anjo.filebrowser.ui.common.QuotaBar
+import com.anjo.filebrowser.ui.common.SIZE_COLUMN
 import com.anjo.filebrowser.ui.common.SkeletonList
 import com.anjo.filebrowser.ui.common.SnackbarEffect
+import com.anjo.filebrowser.ui.common.TIME_COLUMN
+import com.anjo.filebrowser.ui.common.TYPE_COLUMN
+import com.anjo.filebrowser.ui.common.fileType
 import com.anjo.filebrowser.ui.common.folderLabel
 import com.anjo.filebrowser.ui.common.formatSize
 import com.anjo.filebrowser.ui.common.formatTime
@@ -188,7 +196,7 @@ private fun SearchField(
             },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.m),
+        modifier = Modifier.padding(horizontal = Spacing.m).widthIn(max = Spacing.content).fillMaxWidth(),
     )
 }
 
@@ -234,16 +242,20 @@ private fun EntryList(
     viewModel: FilesViewModel,
     onRename: (Entry) -> Unit,
 ) {
-    LazyColumn(Modifier.fillMaxSize()) {
-        items(entries, key = { it.path }) { entry ->
-            EntryRow(
-                entry = entry,
-                searching = searching,
-                onOpen = { viewModel.open(entry.path) },
-                onDownload = { viewModel.download(entry) },
-                onRename = { onRename(entry) },
-                onDelete = { viewModel.delete(entry) },
-            )
+    BoxWithConstraints {
+        val wide = maxWidth >= Spacing.expanded
+        LazyColumn(Modifier.fillMaxSize()) {
+            items(entries, key = { it.path }) { entry ->
+                EntryRow(
+                    entry = entry,
+                    searching = searching,
+                    wide = wide,
+                    onOpen = { viewModel.open(entry.path) },
+                    onDownload = { viewModel.download(entry) },
+                    onRename = { onRename(entry) },
+                    onDelete = { viewModel.delete(entry) },
+                )
+            }
         }
     }
 }
@@ -252,21 +264,38 @@ private fun EntryList(
 private fun EntryRow(
     entry: Entry,
     searching: Boolean,
+    wide: Boolean,
     onOpen: () -> Unit,
     onDownload: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
-    val details =
-        listOfNotNull(
-            if (searching) "In ${folderLabel(entry.parent)}" else null,
-            if (entry.directory) "Folder" else formatSize(entry.size),
-            "Modified ${formatTime(entry.modified)}",
-        ).joinToString(" · ")
+    val folder = if (searching) "In ${folderLabel(entry.parent)}" else null
+    val size = if (entry.directory) null else formatSize(entry.size)
+    val modified = "Modified ${formatTime(entry.modified)}"
     ListItem(
-        headlineContent = { Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = { Text(details) },
+        headlineContent = {
+            if (wide) {
+                NameWithColumns(
+                    entry.name,
+                    listOfNotNull(
+                        folder?.let { it to FOLDER_COLUMN },
+                        (if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN,
+                        size.orEmpty() to SIZE_COLUMN,
+                        modified to TIME_COLUMN,
+                    ),
+                )
+            } else {
+                Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        },
+        supportingContent =
+            if (wide) {
+                null
+            } else {
+                { Text(listOfNotNull(folder, size ?: "Folder", modified).joinToString(" · ")) }
+            },
         leadingContent = {
             Icon(
                 if (entry.directory) Icons.Outlined.Folder else Icons.Outlined.Description,

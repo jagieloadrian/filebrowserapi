@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,7 +18,7 @@ fun QuotaBar(quota: Quota?) {
     if (quota == null) return
     val fraction = if (quota.limit > 0) (quota.used.toFloat() / quota.limit).coerceIn(0f, 1f) else 0f
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = Spacing.m, vertical = Spacing.s),
+        Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s).widthIn(max = Spacing.content).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
         Text(

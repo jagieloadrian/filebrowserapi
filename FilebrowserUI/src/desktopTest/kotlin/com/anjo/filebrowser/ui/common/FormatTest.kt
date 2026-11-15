@@ -24,6 +24,18 @@ class FormatTest :
             formatTime(Instant.parse("2026-11-13T10:05:30.123Z")) shouldBe "2026-11-13 10:05 UTC"
         }
 
+        context("fileType") {
+            withTests(
+                nameFn = { "should name the type of ${it.first} ${it.second}" },
+                "report.pdf" to "PDF file",
+                "archive.tar.gz" to "GZ file",
+                "README" to "File",
+                ".bashrc" to "File",
+            ) { (name, expected) ->
+                fileType(name) shouldBe expected
+            }
+        }
+
         test("should name the root folder Home") {
             folderLabel("") shouldBe "Home"
             folderLabel("/Docs") shouldBe "/Docs"

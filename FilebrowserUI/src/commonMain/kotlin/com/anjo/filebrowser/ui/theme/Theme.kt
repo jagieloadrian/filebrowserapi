@@ -17,6 +17,7 @@ object Spacing {
     val xl = 32.dp
     val content = 720.dp
     val wide = 600.dp
+    val expanded = 840.dp
 }
 
 @Composable

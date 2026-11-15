@@ -1,11 +1,9 @@
 package com.anjo.filebrowser.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
@@ -24,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.anjo.filebrowser.ui.auth.AuthSession
@@ -103,12 +100,8 @@ internal fun Browser() {
 
 @Composable
 private fun Screen(destination: Destination) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        Box(Modifier.widthIn(max = Spacing.content)) {
-            when (destination) {
-                Destination.FILES -> FilesScreen()
-                Destination.TRASH -> TrashScreen()
-            }
-        }
+    when (destination) {
+        Destination.FILES -> FilesScreen()
+        Destination.TRASH -> TrashScreen()
     }
 }
