@@ -4,6 +4,19 @@ Last update: 2026-11-16, branch `feature-14/kmp-ui`.
 
 ## Completed
 
+### 2026-11-16, `feature-14/kmp-ui`: list dividers, file preview
+- Lists: a divider between rows (none above the first or after the last), inset 16 dp, `outlineVariant`. Wide rows
+  (columns from 840 dp) draw vertical dividers between the name and each column over the full row height; stacked
+  rows (compact or large text) keep only the row dividers.
+- File preview: clicking a text or image file opens a dialog (full screen below 600 dp, large and centered above) with
+  close, Download, Rename and Delete; text is plain monospace, selectable, with a line wrapping toggle; images fit the
+  view. Formats and limits are in README "UI". Other files still open the actions menu ("Preview file" for readers).
+- `FilebrowserApi.download` takes an optional byte limit: REST sends `Range: bytes=0-<n-1>` (Spring serves 206 for
+  file resources), gRPC stops collecting the stream. `Entry` now carries the listing's `contentType`.
+- Tests: divider counts and row-height dividers, extension and content type to preview kind, size limits, UTF-8
+  replacement, loading, errors and cancel on close, Range header, gRPC early stop, offscreen .txt, .png and too-large
+  previews.
+
 ### 2026-11-16, `feature-14/kmp-ui`: narrow windows, color themes, full width, UI review
 - Narrow windows: the bottom bar below 600 dp already worked; the desktop window had no minimum size (now 320 × 480
   dp), and a long account name pushed the top bar title out at 320 dp. The account menu is an icon button now.
@@ -206,7 +219,17 @@ Project aligned with the coding standards from the `standards` MCP server:
   cannot be undone, not decoration), adjacent 48 dp top bar targets (Material 3 default), focus shown as the
   Material state layer instead of an outline, the 14 sp trash note, and the 48 dp state icon outside `Spacing`.
 
+- 2026-11-16, preview: bytes come through the existing download (token, REST and desktop gRPC), no new endpoint.
+  Text over 1 MiB is read partially instead of hitting a 5 MiB cap, since both transports can stop early. Images
+  decode with Compose's `ByteArray.decodeToImageBitmap()` (in `ui-graphics`, no new dependency) on
+  `Dispatchers.Default`, scaled with `ContentScale.Inside` so small images are not blown up. Escape closes the dialog
+  through Compose's own back handling (desktop window and browser), which offscreen tests cannot press.
+- Left out of the preview on purpose: SVG, PDF, audio, video, syntax highlighting, Markdown or HTML rendering, and
+  a preview action in the row menu.
+
 ## Next steps and risks
+- Preview limits to watch: one `Text` lays out up to 1 MiB, which may be slow in the browser; a 20 MiB image can
+  decode to a large bitmap. Not checked in a real window: Escape, the dialog sizes, `Range` through nginx.
 - Not checked in a real browser or desktop window: the theme menu, `localStorage` persistence and its fallback, the
   320 dp window minimum (offscreen Compose tests only; no Wasm test target).
 - Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password (`SPRING_DATASOURCE_PASSWORD`)
