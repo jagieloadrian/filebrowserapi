@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -64,18 +63,19 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anjo.filebrowser.ui.common.AppMenu
+import com.anjo.filebrowser.ui.common.ColumnsRow
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
 import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.common.NameDialog
-import com.anjo.filebrowser.ui.common.NameWithColumns
 import com.anjo.filebrowser.ui.common.QuotaBar
 import com.anjo.filebrowser.ui.common.SIZE_COLUMN
 import com.anjo.filebrowser.ui.common.SkeletonList
 import com.anjo.filebrowser.ui.common.SnackbarEffect
 import com.anjo.filebrowser.ui.common.TIME_COLUMN
 import com.anjo.filebrowser.ui.common.TYPE_COLUMN
+import com.anjo.filebrowser.ui.common.dividedItems
 import com.anjo.filebrowser.ui.common.fileType
 import com.anjo.filebrowser.ui.common.fitsColumns
 import com.anjo.filebrowser.ui.common.folderLabel
@@ -250,7 +250,7 @@ private fun EntryList(
     BoxWithConstraints {
         val wide = fitsColumns()
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
-            items(entries, key = { it.path }) { entry ->
+            dividedItems(entries, key = { it.path }) { entry ->
                 EntryRow(
                     entry = entry,
                     searching = searching,
@@ -279,72 +279,66 @@ private fun EntryRow(
     val folder = if (searching) "In ${folderLabel(entry.parent)}" else null
     val size = if (entry.directory) null else formatSize(entry.size)
     val modified = "Modified ${formatTime(entry.modified)}"
-    ListItem(
-        headlineContent = {
-            if (wide) {
-                NameWithColumns(
-                    entry.name,
-                    listOfNotNull(
-                        folder?.let { it to FOLDER_COLUMN },
-                        (if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN,
-                        size.orEmpty() to SIZE_COLUMN,
-                        modified to TIME_COLUMN,
-                    ),
-                )
-            } else {
-                Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val leading: @Composable () -> Unit = {
+        Icon(
+            if (entry.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
+            contentDescription = if (entry.directory) "Folder" else "File",
+        )
+    }
+    val trailing: @Composable () -> Unit = {
+        Box {
+            IconButton(onClick = { menu = true }) {
+                Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${entry.name}")
             }
-        },
-        supportingContent =
-            if (wide) {
-                null
-            } else {
-                { Text(listOfNotNull(folder, size ?: "Folder", modified).joinToString(" · ")) }
-            },
-        leadingContent = {
-            Icon(
-                if (entry.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
-                contentDescription = if (entry.directory) "Folder" else "File",
-            )
-        },
-        trailingContent = {
-            Box {
-                IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${entry.name}")
-                }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    if (entry.directory) {
-                        MenuItem("Open", Icons.Outlined.FolderOpen) {
-                            menu = false
-                            onOpen()
-                        }
-                    } else {
-                        MenuItem("Download", Icons.Outlined.Download) {
-                            menu = false
-                            onDownload()
-                        }
-                    }
-                    MenuItem("Rename", Icons.Outlined.DriveFileRenameOutline) {
-                        menu = false
-                        onRename()
-                    }
-                    MenuItem("Delete", Icons.Outlined.Delete) {
-                        menu = false
-                        onDelete()
-                    }
-                }
-            }
-        },
-        modifier =
-            Modifier.clickable(onClickLabel = if (entry.directory) "Open folder" else "Show actions") {
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (entry.directory) {
-                    onOpen()
+                    MenuItem("Open", Icons.Outlined.FolderOpen) {
+                        menu = false
+                        onOpen()
+                    }
                 } else {
-                    menu =
-                        true
+                    MenuItem("Download", Icons.Outlined.Download) {
+                        menu = false
+                        onDownload()
+                    }
                 }
-            },
-    )
+                MenuItem("Rename", Icons.Outlined.DriveFileRenameOutline) {
+                    menu = false
+                    onRename()
+                }
+                MenuItem("Delete", Icons.Outlined.Delete) {
+                    menu = false
+                    onDelete()
+                }
+            }
+        }
+    }
+    val modifier =
+        Modifier.clickable(onClickLabel = if (entry.directory) "Open folder" else "Show actions") {
+            if (entry.directory) onOpen() else menu = true
+        }
+    if (wide) {
+        ColumnsRow(
+            entry.name,
+            listOfNotNull(
+                folder?.let { it to FOLDER_COLUMN },
+                (if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN,
+                size.orEmpty() to SIZE_COLUMN,
+                modified to TIME_COLUMN,
+            ),
+            leading,
+            trailing,
+            modifier,
+        )
+    } else {
+        ListItem(
+            headlineContent = { Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            supportingContent = { Text(listOfNotNull(folder, size ?: "Folder", modified).joinToString(" · ")) },
+            leadingContent = leading,
+            trailingContent = trailing,
+            modifier = modifier,
+        )
+    }
 }
 
 @Composable

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteForever
@@ -41,16 +40,17 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.anjo.filebrowser.ui.common.AppMenu
+import com.anjo.filebrowser.ui.common.ColumnsRow
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
 import com.anjo.filebrowser.ui.common.Loadable
-import com.anjo.filebrowser.ui.common.NameWithColumns
 import com.anjo.filebrowser.ui.common.QuotaBar
 import com.anjo.filebrowser.ui.common.SIZE_COLUMN
 import com.anjo.filebrowser.ui.common.SkeletonList
 import com.anjo.filebrowser.ui.common.SnackbarEffect
 import com.anjo.filebrowser.ui.common.TIME_COLUMN
+import com.anjo.filebrowser.ui.common.dividedItems
 import com.anjo.filebrowser.ui.common.fitsColumns
 import com.anjo.filebrowser.ui.common.folderLabel
 import com.anjo.filebrowser.ui.common.formatSize
@@ -127,7 +127,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
                         BoxWithConstraints {
                             val wide = fitsColumns()
                             LazyColumn(Modifier.fillMaxSize()) {
-                                items(loaded.value, key = { it.id }) { item ->
+                                dividedItems(loaded.value, key = { it.id }) { item ->
                                     TrashRow(item, wide, onRestore = { viewModel.restore(item) }, onPurge = { purge = Purge.One(item) })
                                 }
                             }
@@ -164,35 +164,30 @@ private fun TrashRow(
     val folder = "From ${folderLabel(item.parent)}"
     val size = if (item.directory) null else formatSize(item.size)
     val deleted = "Deleted ${formatTime(item.deletedAt)}"
-    ListItem(
-        headlineContent = {
-            if (wide) {
-                NameWithColumns(item.name, listOf(folder to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, deleted to TIME_COLUMN))
-            } else {
-                Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val leading: @Composable () -> Unit = {
+        Icon(
+            if (item.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
+            contentDescription = if (item.directory) "Folder" else "File",
+        )
+    }
+    val trailing: @Composable () -> Unit = {
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onRestore) { Text("Restore") }
+            IconButton(onClick = onPurge) {
+                Icon(Icons.Outlined.DeleteForever, contentDescription = "Delete ${item.name} forever")
             }
-        },
-        supportingContent =
-            if (wide) {
-                null
-            } else {
-                { Text(listOfNotNull(folder, size, deleted).joinToString(" · ")) }
-            },
-        leadingContent = {
-            Icon(
-                if (item.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
-                contentDescription = if (item.directory) "Folder" else "File",
-            )
-        },
-        trailingContent = {
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onRestore) { Text("Restore") }
-                IconButton(onClick = onPurge) {
-                    Icon(Icons.Outlined.DeleteForever, contentDescription = "Delete ${item.name} forever")
-                }
-            }
-        },
-    )
+        }
+    }
+    if (wide) {
+        ColumnsRow(item.name, listOf(folder to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, deleted to TIME_COLUMN), leading, trailing)
+    } else {
+        ListItem(
+            headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            supportingContent = { Text(listOfNotNull(folder, size, deleted).joinToString(" · ")) },
+            leadingContent = leading,
+            trailingContent = trailing,
+        )
+    }
 }
 
 @Composable

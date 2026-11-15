@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
@@ -19,23 +20,29 @@ import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
 import com.anjo.filebrowser.ui.api.FilebrowserApi
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.FakeBrowser
 import com.anjo.filebrowser.ui.auth.FakeIdentityProvider
 import com.anjo.filebrowser.ui.auth.settled
+import com.anjo.filebrowser.ui.common.COLUMN_DIVIDER
+import com.anjo.filebrowser.ui.common.ROW_DIVIDER
 import com.anjo.filebrowser.ui.files.FilesViewModel
 import com.anjo.filebrowser.ui.theme.AppearanceSettings
 import com.anjo.filebrowser.ui.trash.TrashViewModel
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +61,13 @@ private val NAVIGATION_RAIL = 80.dp
 private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
+
+private data class Dividers(
+    val layout: String,
+    val destination: String,
+    val width: Dp,
+    val columnDividers: Int,
+)
 
 private data class TopBar(
     val destination: String,
@@ -157,6 +171,56 @@ class AppTest :
                 // then
                 onNodeWithText("PDF file", useUnmergedTree = true).assertDoesNotExist()
                 onNodeWithText("2.0 KB · Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+
+        context("should separate the rows with one divider fewer than rows and the columns only when the window is wide") {
+            withTests(
+                nameFn = { it.layout },
+                Dividers("files wide", "Files", WIDE_WIDTH, columnDividers = 9),
+                Dividers("files compact", "Files", NARROWEST_WIDTH, columnDividers = 0),
+                Dividers("trash wide", "Trash", WIDE_WIDTH, columnDividers = 9),
+                Dividers("trash compact", "Trash", NARROWEST_WIDTH, columnDividers = 0),
+            ) { case ->
+                // given
+                val session = signedIn()
+                api.entries += listOf(folder("/Documents"), file("/a.txt"), file("/b.txt"))
+                api.trashItems += listOf(trashed("2", "/b.txt"), trashed("3", "/c.txt"))
+                runComposeUiTest {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(case.width, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // when
+                    destination(case.destination).performClick()
+
+                    // then
+                    onAllNodesWithTag(ROW_DIVIDER, useUnmergedTree = true).fetchSemanticsNodes() shouldHaveSize 2
+                    onAllNodesWithTag(COLUMN_DIVIDER, useUnmergedTree = true).fetchSemanticsNodes() shouldHaveSize case.columnDividers
+                }
+            }
+        }
+
+        test("should draw the column dividers over the full row height when the window is wide") {
+            // given
+            val session = signedIn()
+            api.entries += file("/report.pdf", size = 2048)
+
+            runComposeUiTest {
+                // when
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+
+                // then
+                val rowHeight = onNodeWithText("report.pdf").getUnclippedBoundsInRoot().height
+                val dividers = onAllNodesWithTag(COLUMN_DIVIDER, useUnmergedTree = true)
+                dividers.fetchSemanticsNodes() shouldHaveSize 3
+                repeat(3) { dividers[it].assertHeightIsEqualTo(rowHeight) }
             }
         }
 
