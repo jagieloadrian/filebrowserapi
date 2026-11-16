@@ -1,6 +1,7 @@
 package com.anjo.filebrowser.ui.files
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -35,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +44,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -78,8 +87,20 @@ internal fun PreviewDialog(
 ) {
     var wrap by rememberSaveable { mutableStateOf(true) }
     val content = (preview.content as? Loadable.Ready)?.value
+    val focus = remember { FocusRequester() }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        LaunchedEffect(focus) { focus.requestFocus() }
+        BoxWithConstraints(
+            Modifier
+                .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    val escape = event.key == Key.Escape && event.type == KeyEventType.KeyDown
+                    if (escape) onClose()
+                    escape
+                }.focusRequester(focus)
+                .focusable(),
+            contentAlignment = Alignment.Center,
+        ) {
             val compact = maxWidth < Spacing.wide
             Surface(
                 if (compact) Modifier.fillMaxSize() else Modifier.fillMaxSize().padding(Spacing.xl),

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
@@ -22,13 +23,16 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.test.waitUntilExactlyOneExists
@@ -53,6 +57,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
 import io.kotest.matchers.ints.shouldBeInRange
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -319,6 +324,30 @@ class AppTest :
                     // then
                     onAllNodesWithTag(PREVIEW_LINE, useUnmergedTree = true).fetchSemanticsNodes().size shouldBeInRange 1..MAX_COMPOSED_LINES
                 }
+            }
+        }
+
+        test("should close the preview and cancel its download when Escape is pressed") {
+            // given
+            val session = signedIn()
+            api.entries += file("/notes.txt")
+            api.downloadGate = CompletableDeferred()
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                onNodeWithText("notes.txt").performClick()
+                onNode(isHeading() and hasText("notes.txt")).assertIsDisplayed()
+
+                // when
+                onNode(isFocused() and hasAnyDescendant(isHeading() and hasText("notes.txt"))).performKeyInput { pressKey(Key.Escape) }
+
+                // then
+                onNode(isHeading() and hasText("notes.txt")).assertDoesNotExist()
+                waitUntil(timeoutMillis = PREVIEW_TIMEOUT_MS) { api.cancelledDownloads.isNotEmpty() }
+                api.cancelledDownloads shouldBe listOf("/notes.txt")
             }
         }
 

@@ -282,6 +282,20 @@ class FilesViewModelTest :
                 viewModel.state.value.preview shouldBe null
             }
 
+            test("should do nothing more when the preview closes twice") {
+                // given
+                api.downloadGate = CompletableDeferred()
+                viewModel.preview(file("/a.txt"))
+                viewModel.closePreview()
+
+                // when
+                viewModel.closePreview()
+
+                // then
+                api.cancelledDownloads shouldBe listOf("/a.txt")
+                viewModel.state.value.preview shouldBe null
+            }
+
             test("should not open a preview for a file it cannot show") {
                 // when
                 viewModel.preview(file("/a.zip"))
