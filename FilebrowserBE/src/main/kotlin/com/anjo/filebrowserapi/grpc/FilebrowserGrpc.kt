@@ -5,6 +5,21 @@ import com.anjo.filebrowser.Filebrowser.FileResponse
 import com.anjo.filebrowser.Filebrowser.StringResponse
 import com.anjo.filebrowser.Filebrowser.StringsResponse
 import com.anjo.filebrowser.FilebrowserApiGrpcKt.FilebrowserApiCoroutineImplBase
+import com.anjo.filebrowser.createdShare
+import com.anjo.filebrowser.duplicateGroup
+import com.anjo.filebrowser.duplicatesResponse
+import com.anjo.filebrowser.entriesResponse
+import com.anjo.filebrowser.entry
+import com.anjo.filebrowser.fileResponse
+import com.anjo.filebrowser.fileVersion
+import com.anjo.filebrowser.quota
+import com.anjo.filebrowser.share
+import com.anjo.filebrowser.sharesResponse
+import com.anjo.filebrowser.stringResponse
+import com.anjo.filebrowser.stringsResponse
+import com.anjo.filebrowser.trashItem
+import com.anjo.filebrowser.trashResponse
+import com.anjo.filebrowser.versionsResponse
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.model.Entry
@@ -19,6 +34,7 @@ import com.anjo.filebrowserapi.service.VersionManager
 import com.google.protobuf.Empty
 import com.google.protobuf.Timestamp
 import com.google.protobuf.kotlin.toByteString
+import com.google.protobuf.timestamp
 import io.grpc.Status
 import io.grpc.StatusException
 import kotlinx.coroutines.Dispatchers
@@ -47,10 +63,7 @@ class FilebrowserGrpc(
 ) : FilebrowserApiCoroutineImplBase() {
     override suspend fun showFilesTree(request: Filebrowser.PathRequest): StringsResponse {
         val fileTree = fileManager.showFilesTree(request.path)
-        return StringsResponse
-            .newBuilder()
-            .addAllDirectories(fileTree)
-            .build()
+        return stringsResponse { directories += fileTree }
     }
 
     override suspend fun uploadFile(requests: Flow<Filebrowser.UploadFile>): StringResponse =
@@ -74,10 +87,7 @@ class FilebrowserGrpc(
                     Files.newInputStream(spool).use {
                         fileManager.uploadFile(metadata.name, it, size, metadata.path, metadata.overwrite)
                     }
-                StringResponse
-                    .newBuilder()
-                    .setPath(path)
-                    .build()
+                stringResponse { this.path = path }
             } finally {
                 Files.deleteIfExists(spool)
             }
@@ -87,68 +97,44 @@ class FilebrowserGrpc(
         flow {
             fileManager.getFile(request.name, request.path).inputStream().use { input ->
                 generateSequence { input.readNBytes(CHUNK_SIZE).takeIf { it.isNotEmpty() } }.forEach { chunk ->
-                    emit(
-                        FileResponse
-                            .newBuilder()
-                            .setData(chunk.toByteString())
-                            .build(),
-                    )
+                    emit(fileResponse { data = chunk.toByteString() })
                 }
             }
         }.flowOn(Dispatchers.IO)
 
     override suspend fun renameFile(request: Filebrowser.FileOperation): StringResponse {
         val filePath = fileManager.renameFile(request.name, request.path)
-        return StringResponse
-            .newBuilder()
-            .setPath(filePath)
-            .build()
+        return stringResponse { path = filePath }
     }
 
     override suspend fun deleteFile(request: Filebrowser.FileOperation): Empty {
         fileManager.deleteFile(request.name, request.path)
-        return Empty
-            .newBuilder()
-            .build()
+        return Empty.getDefaultInstance()
     }
 
     override suspend fun showDirectoriesTree(request: Filebrowser.PathRequest): StringsResponse {
         val allDirectories = directoryManager.showDirectoriesTree(request.path)
-        return StringsResponse
-            .newBuilder()
-            .addAllDirectories(allDirectories)
-            .build()
+        return stringsResponse { directories += allDirectories }
     }
 
     override suspend fun addDirectory(request: Filebrowser.FileOperation): StringResponse {
         val directoryPath = directoryManager.addDirectory(request.name, request.path)
-        return StringResponse
-            .newBuilder()
-            .setPath(directoryPath)
-            .build()
+        return stringResponse { path = directoryPath }
     }
 
     override suspend fun addDirectoriesRecursively(request: Filebrowser.PathRequest): StringResponse {
         val directoryPath = directoryManager.addDirectoriesRecursively(request.path)
-        return StringResponse
-            .newBuilder()
-            .setPath(directoryPath)
-            .build()
+        return stringResponse { path = directoryPath }
     }
 
     override suspend fun renameDirectory(request: Filebrowser.FileOperation): StringResponse {
         val directoryPath = directoryManager.renameDirectory(request.name, request.path)
-        return StringResponse
-            .newBuilder()
-            .setPath(directoryPath)
-            .build()
+        return stringResponse { path = directoryPath }
     }
 
     override suspend fun deleteDirectory(request: Filebrowser.PathRequest): Empty {
         directoryManager.deleteDirectory(request.path)
-        return Empty
-            .newBuilder()
-            .build()
+        return Empty.getDefaultInstance()
     }
 
     override suspend fun deleteDirectoryRecursively(request: Filebrowser.PathRequest): Empty {
@@ -157,49 +143,41 @@ class FilebrowserGrpc(
     }
 
     override suspend fun listEntries(request: Filebrowser.EntriesRequest): Filebrowser.EntriesResponse =
-        Filebrowser.EntriesResponse
-            .newBuilder()
-            .addAllEntries(entryManager.listEntries(request.path, request.name, request.extension, request.tag).map { it.toProto() })
-            .build()
+        entriesResponse {
+            entries += entryManager.listEntries(request.path, request.name, request.extension, request.tag).map { it.toProto() }
+        }
 
     override suspend fun updateEntryMeta(request: Filebrowser.EntryMetaUpdate): Filebrowser.Entry =
         entryManager.updateMeta(request.path, request.description, request.tagsList).toProto()
 
     override suspend fun findDuplicates(request: Filebrowser.PathRequest): Filebrowser.DuplicatesResponse =
-        Filebrowser.DuplicatesResponse
-            .newBuilder()
-            .addAllGroups(
+        duplicatesResponse {
+            groups +=
                 entryManager.findDuplicates(request.path).map {
-                    Filebrowser.DuplicateGroup
-                        .newBuilder()
-                        .setSha256(it.sha256)
-                        .setSize(it.size)
-                        .addAllPaths(it.paths)
-                        .build()
-                },
-            ).build()
+                    duplicateGroup {
+                        sha256 = it.sha256
+                        size = it.size
+                        paths += it.paths
+                    }
+                }
+        }
 
     override suspend fun listTrash(request: Empty): Filebrowser.TrashResponse =
-        Filebrowser.TrashResponse
-            .newBuilder()
-            .addAllItems(
+        trashResponse {
+            items +=
                 trashManager.list().map {
-                    Filebrowser.TrashItem
-                        .newBuilder()
-                        .setId(it.id.toString())
-                        .setPath(it.path)
-                        .setDirectory(it.directory)
-                        .setSize(it.size)
-                        .setDeletedAt(it.deletedAt.toProto())
-                        .build()
-                },
-            ).build()
+                    trashItem {
+                        id = it.id.toString()
+                        path = it.path
+                        directory = it.directory
+                        size = it.size
+                        deletedAt = it.deletedAt.toProto()
+                    }
+                }
+        }
 
     override suspend fun restoreTrash(request: Filebrowser.TrashId): StringResponse =
-        StringResponse
-            .newBuilder()
-            .setPath(trashManager.restore(request.id))
-            .build()
+        stringResponse { path = trashManager.restore(request.id) }
 
     override suspend fun purgeTrash(request: Filebrowser.TrashId): Empty {
         trashManager.purge(request.id)
@@ -212,39 +190,30 @@ class FilebrowserGrpc(
     }
 
     override suspend fun listVersions(request: Filebrowser.PathRequest): Filebrowser.VersionsResponse =
-        Filebrowser.VersionsResponse
-            .newBuilder()
-            .addAllVersions(
+        versionsResponse {
+            versions +=
                 versionManager.list(request.path).map {
-                    Filebrowser.FileVersion
-                        .newBuilder()
-                        .setId(it.id.toString())
-                        .setSize(it.size)
-                        .setCreatedAt(it.createdAt.toProto())
-                        .build()
-                },
-            ).build()
+                    fileVersion {
+                        id = it.id.toString()
+                        size = it.size
+                        createdAt = it.createdAt.toProto()
+                    }
+                }
+        }
 
     override suspend fun restoreVersion(request: Filebrowser.VersionId): StringResponse =
-        StringResponse
-            .newBuilder()
-            .setPath(versionManager.restore(request.id))
-            .build()
+        stringResponse { path = versionManager.restore(request.id) }
 
     override suspend fun createShare(request: Filebrowser.ShareRequest): Filebrowser.CreatedShare {
         val created = shareManager.create(request.path, request.takeIf { it.hasDays() }?.days)
-        return Filebrowser.CreatedShare
-            .newBuilder()
-            .setShare(created.share.toProto())
-            .setToken(created.token)
-            .build()
+        return createdShare {
+            share = created.share.toProto()
+            token = created.token
+        }
     }
 
     override suspend fun listShares(request: Empty): Filebrowser.SharesResponse =
-        Filebrowser.SharesResponse
-            .newBuilder()
-            .addAllShares(shareManager.list().map { it.toProto() })
-            .build()
+        sharesResponse { shares += shareManager.list().map { it.toProto() } }
 
     override suspend fun revokeShare(request: Filebrowser.ShareId): Empty {
         shareManager.revoke(request.id)
@@ -252,51 +221,41 @@ class FilebrowserGrpc(
     }
 
     override suspend fun getQuota(request: Empty): Filebrowser.Quota {
-        val quota = quotaManager.quota()
-        return Filebrowser.Quota
-            .newBuilder()
-            .setUsed(quota.used)
-            .setLimit(quota.limit)
-            .build()
+        val current = quotaManager.quota()
+        return quota {
+            used = current.used
+            limit = current.limit
+        }
     }
 
     override suspend fun copyEntry(request: Filebrowser.EntryTransfer): StringResponse =
-        StringResponse
-            .newBuilder()
-            .setPath(entryManager.copyEntry(request.source, request.target))
-            .build()
+        stringResponse { path = entryManager.copyEntry(request.source, request.target) }
 
     override suspend fun moveEntry(request: Filebrowser.EntryTransfer): StringResponse =
-        StringResponse
-            .newBuilder()
-            .setPath(entryManager.moveEntry(request.source, request.target))
-            .build()
+        stringResponse { path = entryManager.moveEntry(request.source, request.target) }
 
     private fun Entry.toProto(): Filebrowser.Entry =
-        Filebrowser.Entry
-            .newBuilder()
-            .setPath(path)
-            .setDirectory(directory)
-            .setSize(size)
-            .setModified(modified.toProto())
-            .setContentType(contentType.orEmpty())
-            .setDescription(description.orEmpty())
-            .addAllTags(tags)
-            .build()
+        entry {
+            path = this@toProto.path
+            directory = this@toProto.directory
+            size = this@toProto.size
+            modified = this@toProto.modified.toProto()
+            contentType = this@toProto.contentType.orEmpty()
+            description = this@toProto.description.orEmpty()
+            tags += this@toProto.tags
+        }
 
     private fun Share.toProto(): Filebrowser.Share =
-        Filebrowser.Share
-            .newBuilder()
-            .setId(id.toString())
-            .setPath(path)
-            .setCreatedAt(createdAt.toProto())
-            .setExpiresAt(expiresAt.toProto())
-            .build()
+        share {
+            id = this@toProto.id.toString()
+            path = this@toProto.path
+            createdAt = this@toProto.createdAt.toProto()
+            expiresAt = this@toProto.expiresAt.toProto()
+        }
 
     private fun Instant.toProto(): Timestamp =
-        Timestamp
-            .newBuilder()
-            .setSeconds(epochSecond)
-            .setNanos(nano)
-            .build()
+        timestamp {
+            seconds = epochSecond
+            nanos = nano
+        }
 }
