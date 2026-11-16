@@ -1,6 +1,5 @@
 package com.anjo.filebrowser.ui.files
 
-import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anjo.filebrowser.ui.api.ApiException
@@ -102,7 +101,7 @@ class FilesViewModel(
                     }
 
                     PreviewKind.IMAGE -> {
-                        withContext(Dispatchers.Default) { decodeImage(bytes) }
+                        withContext(Dispatchers.Default) { previewImage(bytes) }
                     }
                 },
             )
@@ -110,13 +109,6 @@ class FilesViewModel(
             Loadable.Failed(e.message)
         }
     }
-
-    private fun decodeImage(bytes: ByteArray): PreviewContent =
-        try {
-            PreviewContent.Image(bytes.decodeToImageBitmap())
-        } catch (e: IllegalArgumentException) {
-            PreviewContent.Unreadable
-        }
 
     fun createFolder(name: String) = act { api.createFolder(state.value.path, name) }
 

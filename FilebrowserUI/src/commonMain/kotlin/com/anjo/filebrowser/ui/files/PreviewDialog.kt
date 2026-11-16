@@ -169,6 +169,16 @@ private fun Content(
             )
         }
 
+        is PreviewContent.TooManyPixels -> {
+            EmptyState(
+                Icons.Outlined.FileDownload,
+                "Too large to preview",
+                "This image is ${content.width} × ${content.height} pixels, more than the preview can show. " +
+                    "Download it to open it in another app.",
+                download,
+            )
+        }
+
         PreviewContent.Unreadable -> {
             EmptyState(
                 Icons.Outlined.BrokenImage,

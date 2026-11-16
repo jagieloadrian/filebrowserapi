@@ -22,5 +22,10 @@ sealed interface PreviewContent {
         val maxBytes: Long,
     ) : PreviewContent
 
+    data class TooManyPixels(
+        val width: Int,
+        val height: Int,
+    ) : PreviewContent
+
     data object Unreadable : PreviewContent
 }
