@@ -4,6 +4,23 @@ Last update: 2026-11-16, branch `feature-14/kmp-ui`.
 
 ## Completed
 
+### 2026-11-16, `feature-14/kmp-ui`: preview limits, row menu, code highlighting
+- Images: Skia's `Codec` reads the size from the header first. Up to 4096 × 4096 pixels (16.7 Mpx) decode as before;
+  bigger JPEG and WebP decode at 1/2, 1/4 or 1/8 into an N32 bitmap that fits, turned upright by the EXIF origin;
+  other formats, or images too big even at 1/8, say "Too large to preview" with the size in pixels and are never
+  decoded. A header Skia cannot read says "Cannot preview this file".
+- Text: split into lines (CRLF, LF, CR; no extra line for a trailing newline) and lines over 1000 characters into
+  chunks, shown in a `LazyColumn` so only visible lines are laid out. Wrap off scrolls the whole list horizontally,
+  as wide as the longest line measured in the monospace style.
+- Escape: the dialog root takes focus and closes on Escape through `onPreviewKeyEvent`; closing twice is a no-op.
+- Row menu: previewable files list "Preview" first. Not in Trash, which has no way to read a trashed file's content.
+- Code highlighting with a toggle (on by default) for C-like, Python and shell, JSON, YAML/TOML/ini/conf/properties,
+  XML/HTML, CSS and SQL; plain for txt, md, log, csv, tsv and unknown extensions. Colors are theme roles.
+- Tests: pixel limit decisions, small PNG/JPEG, a generated 4100 px JPEG at half size (also with EXIF rotation), an
+  oversized PNG that never reaches the full decoder, a cut header; line and chunk splitting; at most 100 composed
+  line nodes for 1 MiB of text, wrapped or not; Escape closes and cancels the download; the row menu item; tokenizer
+  cases per family; spans on and off in a .kt preview; token colors at least 4.5:1 on `surface` in every theme.
+
 ### 2026-11-16, `feature-14/kmp-ui`: list dividers, file preview
 - Lists: a divider between rows (none above the first or after the last), inset 16 dp, `outlineVariant`. Wide rows
   (columns from 840 dp) draw vertical dividers between the name and each column over the full row height; stacked
@@ -222,14 +239,33 @@ Project aligned with the coding standards from the `standards` MCP server:
 - 2026-11-16, preview: bytes come through the existing download (token, REST and desktop gRPC), no new endpoint.
   Text over 1 MiB is read partially instead of hitting a 5 MiB cap, since both transports can stop early. Images
   decode with Compose's `ByteArray.decodeToImageBitmap()` (in `ui-graphics`, no new dependency) on
-  `Dispatchers.Default`, scaled with `ContentScale.Inside` so small images are not blown up. Escape closes the dialog
-  through Compose's own back handling (desktop window and browser), which offscreen tests cannot press.
-- Left out of the preview on purpose: SVG, PDF, audio, video, syntax highlighting, Markdown or HTML rendering, and
-  a preview action in the row menu.
+  `Dispatchers.Default`, scaled with `ContentScale.Inside` so small images are not blown up.
+- Left out of the preview on purpose: SVG, PDF, audio, video, Markdown or HTML rendering.
+- 2026-11-16, preview image limit: `org.jetbrains.skia.Codec` is reachable from `commonMain` (both targets use
+  Skiko), so no `expect`/`actual` and no header parser of our own. 4096 × 4096 pixels is about 64 MB as N32. Only
+  JPEG and WebP downscale natively in Skia; PNG, GIF and BMP would need a full decode first, so they are refused.
+  The scaled path applies the EXIF origin itself, because the full decode does and phone photos rely on it.
+- 2026-11-16, text preview: lines are cut at 1000 characters (never inside a surrogate pair) so minified files do
+  not make one huge item; a cut line continues as the next row. `SelectionContainer` wraps the list, but Compose
+  selects only composed items: a selection that is scrolled out of view is lost, and copying a range longer than
+  the screen copies only the visible part. With wrap off the list is as wide as the longest line by characters,
+  measured in the monospace style; a shorter line with wider characters (CJK, emoji, tabs) can be cut off.
+- 2026-11-16, Escape: handled on the focused dialog root instead of relying on the platform back mapping, which
+  offscreen tests cannot press; the dialog's own back handling stays on as a fallback when focus is elsewhere.
+- 2026-11-16, highlighting: an own line tokenizer instead of `dev.snipme:highlights` (JVM and Wasm, small), which
+  has no JSON, YAML, TOML, XML, CSS or SQL, works on whole texts and whose 1.2.0 was under two weeks old. Lines are
+  tokenized when composed and cached per item; block comments, multi-line strings and open XML tags carry over to
+  the next line through a state scan that only runs up to the furthest line shown. Single-line strings and line
+  comments carry only across the chunks of one cut line. Heuristics: keys are words before `:`/`=` (CSS selectors
+  such as `a:hover` count as keys), an apostrophe in an unquoted YAML value starts a string to the end of the line,
+  Rust lifetimes read as strings, TOML/ini section headers stay plain. Keywords and keys use `primary`, numbers and
+  attributes `secondary`, strings `tertiary`, comments italic `onSurfaceVariant`.
 
 ## Next steps and risks
-- Preview limits to watch: one `Text` lays out up to 1 MiB, which may be slow in the browser; a 20 MiB image can
-  decode to a large bitmap. Not checked in a real window: Escape, the dialog sizes, `Range` through nginx.
+- Preview, not checked in a real window or browser (offscreen desktop tests only, no Wasm test target): Escape and
+  focus in the dialog, scrolling speed of 1 MiB of text in the browser, selection across lines, horizontal scroll
+  with wrap off, the dialog sizes, scaled JPEG and WebP decoding on Wasm, `Range` through nginx. Jumping far into a
+  big code file runs a one-time state scan of the lines above on the UI thread.
 - Not checked in a real browser or desktop window: the theme menu, `localStorage` persistence and its fallback, the
   320 dp window minimum (offscreen Compose tests only; no Wasm test target).
 - Database for the rollout: create `filebrowser` in the cluster's PostgreSQL, password (`SPRING_DATASOURCE_PASSWORD`)

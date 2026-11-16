@@ -114,16 +114,23 @@ and System, Light or Dark mode. The choice is kept per user under the keys `file
 on the desktop in Java Preferences (user node `com/anjo/filebrowser`), in the browser in `localStorage`. Unknown or
 unreadable values fall back to Blue and System. The desktop window is at least 320 × 480 dp.
 
-Clicking a file opens a preview when the UI can show it; other files open the actions menu. The extension decides,
-and the content type from the listing helps when the extension is unknown:
-* Text, shown as plain monospace text (never rendered as HTML or Markdown), decoded as UTF-8 with replacement
-  characters, line wrapping on by default: `txt md log csv tsv json yaml yml xml toml ini conf properties html css sql
-  sh kt kts java js ts py go rs c h cpp`, or a `text/*`, JSON, XML or JavaScript content type. Files over 1 MiB show
-  their first 1 MiB with a note: REST asks for `Range: bytes=0-1048575`, gRPC stops reading the stream after 1 MiB.
+Clicking a file opens a preview when the UI can show it; other files open the actions menu, where previewable files
+also list "Preview" first. The extension decides, and the content type from the listing helps when the extension is
+unknown:
+* Text, shown as monospace text (never rendered as HTML or Markdown), decoded as UTF-8 with replacement characters,
+  line wrapping on by default: `txt md log csv tsv json yaml yml xml toml ini conf properties html css sql sh kt kts
+  java js ts py go rs c h cpp`, or a `text/*`, JSON, XML or JavaScript content type. Files over 1 MiB show their
+  first 1 MiB with a note: REST asks for `Range: bytes=0-1048575`, gRPC stops reading the stream after 1 MiB. Only
+  the visible lines are laid out; lines over 1000 characters continue on the next row. Code is highlighted (keywords,
+  strings, comments, numbers, keys, tags and attributes, in theme colors) with a toggle, on by default, for every
+  extension above except `txt md log csv tsv`.
 * Images, scaled down to fit and never up, aspect ratio kept: `png jpg jpeg gif webp bmp` (GIF shows its first frame),
-  up to 20 MiB. Bigger images say "Too large to preview" and are not downloaded.
+  up to 20 MiB. Bigger files say "Too large to preview" and are not downloaded. Images up to 4096 × 4096 pixels
+  decode in full; bigger JPEG and WebP decode at 1/2, 1/4 or 1/8 size to fit that limit (EXIF orientation kept), and
+  other formats, or images still too big at 1/8, say "Too large to preview" without being decoded.
 * No preview for SVG, PDF, audio and video. The preview offers Download, Rename and Delete; a file that does not decode
-  says "Cannot preview this file" and offers Download. Closing the preview cancels its download.
+  says "Cannot preview this file" and offers Download. Escape or the close button closes the preview and cancels its
+  download.
 
 Local runs, without Authelia (the backend runs with the `local` profile):
 
