@@ -10,7 +10,7 @@ data class FilePreview(
 
 sealed interface PreviewContent {
     data class Text(
-        val text: String,
+        val lines: List<PreviewLine>,
         val shownBytes: Long?,
     ) : PreviewContent
 
@@ -29,3 +29,8 @@ sealed interface PreviewContent {
 
     data object Unreadable : PreviewContent
 }
+
+data class PreviewLine(
+    val text: String,
+    val continued: Boolean = false,
+)

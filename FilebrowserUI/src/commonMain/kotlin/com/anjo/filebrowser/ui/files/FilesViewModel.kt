@@ -92,16 +92,16 @@ class FilesViewModel(
         return try {
             val bytes = api.download(entry, shownBytes)
             Loadable.Ready(
-                when (kind) {
-                    PreviewKind.TEXT -> {
-                        PreviewContent.Text(
-                            bytes.decodeToString(0, minOf(bytes.size.toLong(), kind.maxBytes).toInt()),
-                            shownBytes,
-                        )
-                    }
+                withContext(Dispatchers.Default) {
+                    when (kind) {
+                        PreviewKind.TEXT -> {
+                            val text = bytes.decodeToString(0, minOf(bytes.size.toLong(), kind.maxBytes).toInt())
+                            PreviewContent.Text(previewLines(text), shownBytes)
+                        }
 
-                    PreviewKind.IMAGE -> {
-                        withContext(Dispatchers.Default) { previewImage(bytes) }
+                        PreviewKind.IMAGE -> {
+                            previewImage(bytes)
+                        }
                     }
                 },
             )

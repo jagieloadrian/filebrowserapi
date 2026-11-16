@@ -5,12 +5,15 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.WrapText
 import androidx.compose.material.icons.outlined.BrokenImage
@@ -41,10 +44,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -54,7 +61,10 @@ import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.common.formatSize
 import com.anjo.filebrowser.ui.model.FilePreview
 import com.anjo.filebrowser.ui.model.PreviewContent
+import com.anjo.filebrowser.ui.model.PreviewLine
 import com.anjo.filebrowser.ui.theme.Spacing
+
+internal const val PREVIEW_LINE = "previewLine"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,7 +206,7 @@ private fun TextPreview(
     size: Long,
     wrap: Boolean,
 ) {
-    val horizontal = rememberScrollState()
+    val style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
     Column {
         content.shownBytes?.let {
             Text(
@@ -207,17 +217,39 @@ private fun TextPreview(
             )
         }
         SelectionContainer(Modifier.weight(1f).fillMaxWidth()) {
-            Text(
-                content.text,
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .then(if (wrap) Modifier else Modifier.horizontalScroll(horizontal))
-                    .padding(Spacing.m),
-                style = MaterialTheme.typography.bodyMedium,
-                fontFamily = FontFamily.Monospace,
-                softWrap = wrap,
-            )
+            if (wrap) {
+                Lines(content.lines, style, wrap = true, Modifier.fillMaxSize())
+            } else {
+                val measurer = rememberTextMeasurer()
+                val longest =
+                    remember(content.lines) {
+                        content.lines
+                            .maxByOrNull { it.text.length }
+                            ?.text
+                            .orEmpty()
+                    }
+                val width = remember(longest, style) { measurer.measure(longest, style, softWrap = false).size.width }
+                Box(Modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
+                    Lines(
+                        content.lines,
+                        style,
+                        wrap = false,
+                        Modifier.fillMaxHeight().width(with(LocalDensity.current) { width.toDp() } + Spacing.m * 2),
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun Lines(
+    lines: List<PreviewLine>,
+    style: TextStyle,
+    wrap: Boolean,
+    modifier: Modifier,
+) {
+    LazyColumn(modifier, contentPadding = PaddingValues(Spacing.m)) {
+        items(lines.size) { Text(lines[it].text, Modifier.testTag(PREVIEW_LINE), style = style, softWrap = wrap) }
     }
 }

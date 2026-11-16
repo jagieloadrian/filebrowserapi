@@ -11,6 +11,7 @@ import com.anjo.filebrowser.ui.model.Entry
 import com.anjo.filebrowser.ui.model.FilePreview
 import com.anjo.filebrowser.ui.model.PickedFile
 import com.anjo.filebrowser.ui.model.PreviewContent
+import com.anjo.filebrowser.ui.model.PreviewLine
 import com.anjo.filebrowser.ui.model.Quota
 import com.anjo.filebrowser.ui.png
 import com.anjo.filebrowser.ui.trashed
@@ -167,7 +168,7 @@ class FilesViewModelTest :
                 viewModel.preview(file("/a.txt", size = 5))
 
                 // then
-                previewed() shouldBe Loadable.Ready(PreviewContent.Text("hello", shownBytes = null))
+                previewed() shouldBe Loadable.Ready(PreviewContent.Text(listOf(PreviewLine("hello")), shownBytes = null))
             }
 
             test("should replace invalid UTF-8 bytes with the replacement character") {
@@ -178,7 +179,7 @@ class FilesViewModelTest :
                 viewModel.preview(file("/a.txt", size = 3))
 
                 // then
-                previewed() shouldBe Loadable.Ready(PreviewContent.Text("a\uFFFDb", shownBytes = null))
+                previewed() shouldBe Loadable.Ready(PreviewContent.Text(listOf(PreviewLine("a\uFFFDb")), shownBytes = null))
             }
 
             context("should decide from the known size how much of the file to read") {
@@ -206,7 +207,7 @@ class FilesViewModelTest :
                 viewModel.preview(file("/a.txt", size = 3 * MIB))
 
                 // then
-                previewed() shouldBe Loadable.Ready(PreviewContent.Text("head", shownBytes = MIB))
+                previewed() shouldBe Loadable.Ready(PreviewContent.Text(listOf(PreviewLine("head")), shownBytes = MIB))
             }
 
             test("should call an image above the limit too large") {
@@ -265,7 +266,7 @@ class FilesViewModelTest :
                 api.downloadGate?.complete(Unit)
 
                 // then
-                previewed() shouldBe Loadable.Ready(PreviewContent.Text("hello", shownBytes = null))
+                previewed() shouldBe Loadable.Ready(PreviewContent.Text(listOf(PreviewLine("hello")), shownBytes = null))
             }
 
             test("should cancel the download when the preview closes") {

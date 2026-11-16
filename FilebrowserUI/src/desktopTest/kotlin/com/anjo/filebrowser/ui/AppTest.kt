@@ -20,6 +20,7 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
@@ -29,6 +30,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -42,12 +44,14 @@ import com.anjo.filebrowser.ui.auth.settled
 import com.anjo.filebrowser.ui.common.COLUMN_DIVIDER
 import com.anjo.filebrowser.ui.common.ROW_DIVIDER
 import com.anjo.filebrowser.ui.files.FilesViewModel
+import com.anjo.filebrowser.ui.files.PREVIEW_LINE
 import com.anjo.filebrowser.ui.theme.AppearanceSettings
 import com.anjo.filebrowser.ui.trash.TrashViewModel
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
+import io.kotest.matchers.ints.shouldBeInRange
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -65,6 +69,8 @@ private val NAVIGATION_RAIL = 80.dp
 private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
+private const val PREVIEW_TIMEOUT_MS = 5_000L
+private const val MAX_COMPOSED_LINES = 100
 
 private data class Dividers(
     val layout: String,
@@ -287,6 +293,31 @@ class AppTest :
                     onNode(isHeading() and hasText(case.name)).assertIsDisplayed()
                     waitUntilExactlyOneExists(case.shown)
                     onNode(case.shown).assertIsDisplayed()
+                }
+            }
+        }
+
+        context("should compose only the visible lines of a 1 MiB text preview") {
+            withTests(nameFn = { if (it) "wrapped" else "not wrapped" }, true, false) { wrapped ->
+                // given
+                val session = signedIn()
+                val text = ("x".repeat(63) + "\n").repeat(16_384).encodeToByteArray()
+                api.entries += file("/big.log", size = text.size.toLong())
+                api.contents["/big.log"] = text
+                runComposeUiTest {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // when
+                    onNodeWithText("big.log").performClick()
+                    waitUntilAtLeastOneExists(hasTestTag(PREVIEW_LINE), PREVIEW_TIMEOUT_MS)
+                    if (!wrapped) onNodeWithContentDescription("Wrap lines").performClick()
+
+                    // then
+                    onAllNodesWithTag(PREVIEW_LINE, useUnmergedTree = true).fetchSemanticsNodes().size shouldBeInRange 1..MAX_COMPOSED_LINES
                 }
             }
         }
