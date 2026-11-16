@@ -28,6 +28,7 @@ import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.AuthState
 import com.anjo.filebrowser.ui.auth.SignInScreen
 import com.anjo.filebrowser.ui.auth.SigningIn
+import com.anjo.filebrowser.ui.common.label
 import com.anjo.filebrowser.ui.files.FilesScreen
 import com.anjo.filebrowser.ui.theme.FilebrowserTheme
 import com.anjo.filebrowser.ui.theme.Spacing
@@ -38,12 +39,11 @@ import org.koin.dsl.koinConfiguration
 import org.koin.plugin.module.dsl.module
 
 private enum class Destination(
-    val label: String,
     val icon: ImageVector,
     val selectedIcon: ImageVector,
 ) {
-    FILES("Files", Icons.Outlined.Folder, Icons.Filled.Folder),
-    TRASH("Trash", Icons.Outlined.Delete, Icons.Filled.Delete),
+    FILES(Icons.Outlined.Folder, Icons.Filled.Folder),
+    TRASH(Icons.Outlined.Delete, Icons.Filled.Delete),
 }
 
 @Composable

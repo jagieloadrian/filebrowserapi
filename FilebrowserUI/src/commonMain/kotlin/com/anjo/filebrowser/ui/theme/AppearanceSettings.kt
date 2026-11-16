@@ -18,11 +18,11 @@ class AppearanceSettings(
 
     fun choose(palette: Palette) {
         mutableState.update { it.copy(palette = palette) }
-        storage.write(PALETTE_KEY, palette.id)
+        storage.write(PALETTE_KEY, palette.name.lowercase())
     }
 
     fun choose(mode: ThemeMode) {
         mutableState.update { it.copy(mode = mode) }
-        storage.write(MODE_KEY, mode.id)
+        storage.write(MODE_KEY, mode.name.lowercase())
     }
 }

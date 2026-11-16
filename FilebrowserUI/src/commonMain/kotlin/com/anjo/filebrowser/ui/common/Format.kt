@@ -23,4 +23,6 @@ fun formatTime(instant: Instant): String = instant.toString().let { "${it.take(1
 
 fun folderLabel(path: String): String = path.ifEmpty { HOME }
 
+internal val Enum<*>.label: String get() = name.lowercase().replaceFirstChar(Char::uppercase)
+
 fun fileType(name: String): String = if (name.lastIndexOf('.') > 0) "${name.substringAfterLast('.').uppercase()} file" else "File"

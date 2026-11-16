@@ -2,6 +2,7 @@ package com.anjo.filebrowser.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.anjo.filebrowser.ui.common.label
 import com.anjo.filebrowser.ui.files.tokenStyle
 import com.anjo.filebrowser.ui.model.TokenKind
 import io.kotest.core.spec.style.FunSpec
