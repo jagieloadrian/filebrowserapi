@@ -3,8 +3,6 @@ package com.anjo.filebrowserapi.service
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
-import com.anjo.filebrowserapi.model.OperationType
-import com.anjo.filebrowserapi.utils.formatResponsePath
 import com.anjo.filebrowserapi.validation.NAME_RULE
 import com.anjo.filebrowserapi.validation.isValidName
 import com.anjo.filebrowserapi.validation.isValidSubject
@@ -70,33 +68,11 @@ class PathModifierUtils(
         owner: String,
     ): Path = Files.createDirectories(Path.of(properties.path, store, owner).toAbsolutePath().normalize())
 
-    fun relativePath(file: File): String = formatResponsePath(file.path, generateDefaultPath())
+    fun relativePath(file: File): String = file.path.substringAfter(generateDefaultPath())
 
-    fun mergePath(path: String?): String = resolve(path).path
-
-    fun validPath(
-        path: String?,
-        operationType: OperationType,
-    ) {
-        if (!path.isNullOrBlank()) isExistPath(path, operationType)
+    fun validPath(path: String?) {
+        if (!path.isNullOrBlank() && !resolve(path).exists()) throw NotFoundException("Path $path does not exist")
     }
-
-    private fun isExistPath(
-        path: String,
-        operationType: OperationType,
-    ) {
-        val extractFile = resolve(path)
-        if (!extractFile.exists()) {
-            throw NotFoundException("Path: $path to ${operationType.description} file or directory is not exist")
-        }
-    }
-
-    fun extractMidPath(sourcePath: String): List<String> = sourcePath.split("/").dropLast(1)
-
-    fun generatePathToRename(
-        extractMidPath: List<String>,
-        newName: String,
-    ): String = resolveEntry(*extractMidPath.toTypedArray(), requireName(newName)).path
 
     fun resolveName(
         parent: String?,
@@ -107,6 +83,4 @@ class PathModifierUtils(
         name.also { if (!isValidName(it)) throw BadInputException("Invalid name '$it': $NAME_RULE") }
 
     fun generateDefaultPath(): String = baseDirectory().toString()
-
-    fun formatPath(path: String): String = if (path.first() == '/') path.drop(1) else path
 }

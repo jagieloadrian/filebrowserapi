@@ -8,7 +8,6 @@ import com.anjo.filebrowserapi.model.Entry
 import com.anjo.filebrowserapi.model.EntryMeta
 import com.anjo.filebrowserapi.model.FileHash
 import com.anjo.filebrowserapi.repository.MetadataRepository
-import com.anjo.filebrowserapi.utils.formatResponsePath
 import com.anjo.filebrowserapi.validation.normalizeDescription
 import com.anjo.filebrowserapi.validation.normalizeTags
 import org.springframework.http.MediaType
@@ -34,29 +33,27 @@ class EntryManager(
         extension: String?,
         tag: String? = null,
     ): List<Entry> {
-        val defaultPath = modifierUtils.generateDefaultPath()
         val directory = modifierUtils.resolve(path)
-        if (!directory.isDirectory) throw NotFoundException("Directory ${formatResponsePath(directory.path, defaultPath)} does not exist")
+        if (!directory.isDirectory) throw NotFoundException("Directory ${modifierUtils.relativePath(directory)} does not exist")
         val wantedExtension = extension?.removePrefix(".")
         val wantedTag = tag?.lowercase()
-        val metas = metadata.findUnder(modifierUtils.currentUser(), formatResponsePath(directory.path, defaultPath))
+        val metas = metadata.findUnder(modifierUtils.currentUser(), modifierUtils.relativePath(directory))
         return directory
             .walk()
             .drop(1)
             .filter { name.isNullOrBlank() || it.name.contains(name, ignoreCase = true) }
             .filter { wantedExtension.isNullOrBlank() || (it.isFile && it.extension.equals(wantedExtension, ignoreCase = true)) }
-            .map { it.toEntry(defaultPath, metas) }
+            .map { it.toEntry(metas) }
             .filter { wantedTag.isNullOrBlank() || wantedTag in it.tags }
             .sortedBy { it.path }
             .toList()
     }
 
     fun findDuplicates(path: String?): List<DuplicateGroup> {
-        val defaultPath = modifierUtils.generateDefaultPath()
         val directory = modifierUtils.resolve(path)
-        if (!directory.isDirectory) throw NotFoundException("Directory ${formatResponsePath(directory.path, defaultPath)} does not exist")
+        if (!directory.isDirectory) throw NotFoundException("Directory ${modifierUtils.relativePath(directory)} does not exist")
         val owner = modifierUtils.currentUser()
-        val cache = metadata.findHashes(owner, formatResponsePath(directory.path, defaultPath))
+        val cache = metadata.findHashes(owner, modifierUtils.relativePath(directory))
         val hashes =
             directory
                 .walk()
@@ -66,7 +63,7 @@ class EntryManager(
                 .filter { it.size > 1 }
                 .flatten()
                 .map { file ->
-                    val key = formatResponsePath(file.path, defaultPath)
+                    val key = modifierUtils.relativePath(file)
                     cache[key]?.takeIf { it.size == file.length() && it.modifiedMs == file.lastModified() }
                         ?: FileHash(key, file.length(), file.lastModified(), sha256(file))
                 }
@@ -117,9 +114,8 @@ class EntryManager(
         if (to.exists()) throw AlreadyExistsException("$target already exists")
         if (to.toPath().startsWith(from.toPath())) throw BadInputException("Cannot put $source inside itself")
         if (to.parentFile?.isDirectory != true) throw NotFoundException("Target directory of $target does not exist")
-        val defaultPath = modifierUtils.generateDefaultPath()
-        val toKey = formatResponsePath(to.path, defaultPath)
-        action(from, to, formatResponsePath(from.path, defaultPath), toKey)
+        val toKey = modifierUtils.relativePath(to)
+        action(from, to, modifierUtils.relativePath(from), toKey)
         return toKey
     }
 
@@ -130,17 +126,13 @@ class EntryManager(
     ): Entry {
         val file = modifierUtils.resolveEntry(path)
         if (!file.exists()) throw NotFoundException("$path does not exist")
-        val defaultPath = modifierUtils.generateDefaultPath()
-        val meta = EntryMeta(formatResponsePath(file.path, defaultPath), normalizeDescription(description), normalizeTags(tags))
+        val meta = EntryMeta(modifierUtils.relativePath(file), normalizeDescription(description), normalizeTags(tags))
         metadata.save(modifierUtils.currentUser(), meta.path, meta.description, meta.tags)
-        return file.toEntry(defaultPath, mapOf(meta.path to meta))
+        return file.toEntry(mapOf(meta.path to meta))
     }
 
-    private fun File.toEntry(
-        defaultPath: String,
-        metas: Map<String, EntryMeta>,
-    ): Entry {
-        val key = formatResponsePath(path, defaultPath)
+    private fun File.toEntry(metas: Map<String, EntryMeta>): Entry {
+        val key = modifierUtils.relativePath(this)
         return Entry(
             path = key,
             directory = isDirectory,

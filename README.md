@@ -7,7 +7,7 @@
 
  Most free solutions and apps don't meet with my expectations.<br>
  I wanted to create an app to manage folders and files, supporting most extensions.<br>
- The application is lightweight, doesn't have UI, it's served only via http request.<br>
+ The application is lightweight and serves REST and gRPC; `FilebrowserUI` is a client for the desktop and the browser.<br>
 
  I use in this project: 
  * Kotlin 2.4.21
@@ -15,6 +15,7 @@
  * Gradle 9.9.1
  * gRPC 1.85.1 + Protobuf 4.36.2
  * Kotest 6 (`FunSpec` specs), MockK, Testcontainers
+ * Compose Multiplatform 1.12.2, Ktor 3.6.1 and Koin 4.2.2 for the UI
  * PostgreSQL 17 with Exposed 1.6.1 and Flyway for metadata (tags, descriptions, trash, versions, share links, content hashes); the
    file system stays the source of truth for files
 
@@ -99,6 +100,116 @@ In Swagger, click "Authorize" and paste an access token to try the API.
   chunks. REST downloads carry the file's `Content-Type` and an attachment `Content-Disposition`.
 
 
+## UI
+`FilebrowserUI` is a Compose Multiplatform client for the desktop (JVM) and the browser (Kotlin/Wasm). The browser
+always talks REST. Gradle properties set its configuration at build time:
+* `-Ptransport=http|grpc` (default `http`): REST or gRPC for the desktop app only. The Wasm build has no gRPC code.
+* `-PbackendUrl=`: the server. The desktop app defaults to `http://localhost:8080` (REST) or `http://localhost:9090`
+  (gRPC). The browser defaults to an empty value, the page's own origin.
+* `-PoidcIssuer=`, `-PoidcClientId=` (default `filebrowser`), `-PoidcScopes=`: see [UI sign-in](#ui-sign-in). An empty
+  issuer (the default) turns sign-in off.
+
+The top bar menu (settings, or the account menu when signed in) picks a color theme (Blue, Green, Purple, Orange, Rose)
+and System, Light or Dark mode. The choice is kept per user under the keys `filebrowser.theme` and `filebrowser.mode`:
+on the desktop in Java Preferences (user node `com/anjo/filebrowser`), in the browser in `localStorage`. Unknown or
+unreadable values fall back to Blue and System. The desktop window is at least 320 × 480 dp.
+
+Clicking a file opens a preview when the UI can show it; other files open the actions menu, where previewable files
+also list "Preview" first. The extension decides, and the content type from the listing helps when the extension is
+unknown:
+* Text, shown as monospace text (never rendered as HTML or Markdown), decoded as UTF-8 with replacement characters,
+  line wrapping on by default: `txt md log csv tsv json yaml yml xml toml ini conf properties html css sql sh kt kts
+  java js ts py go rs c h cpp`, or a `text/*`, JSON, XML or JavaScript content type. Files over 1 MiB show their
+  first 1 MiB with a note: REST asks for `Range: bytes=0-1048575`, gRPC stops reading the stream after 1 MiB. Only
+  the visible lines are laid out; lines over 1000 characters continue on the next row. Code is highlighted (keywords,
+  strings, comments, numbers, keys, tags and attributes, in theme colors) with a toggle, on by default, for every
+  extension above except `txt md log csv tsv`.
+* Images, scaled down to fit and never up, aspect ratio kept: `png jpg jpeg gif webp bmp` (GIF shows its first frame),
+  up to 20 MiB. Bigger files say "Too large to preview" and are not downloaded. Images up to 4096 × 4096 pixels
+  decode in full; bigger JPEG and WebP decode at 1/2, 1/4 or 1/8 size to fit that limit (EXIF orientation kept), and
+  other formats, or images still too big at 1/8, say "Too large to preview" without being decoded.
+* No preview for SVG, PDF, audio and video. The preview offers Download, Rename and Delete; a file that does not decode
+  says "Cannot preview this file" and offers Download. Escape or the close button closes the preview and cancels its
+  download.
+
+Local runs, without Authelia (the backend runs with the `local` profile):
+
+    ./gradlew :FilebrowserBE:runLocal                         # REST on 8080
+    ./gradlew :FilebrowserUI:wasmJsBrowserDevelopmentRun      # browser on http://localhost:8081
+
+The dev server on 8081 proxies `/api` and `/share` to `http://localhost:8080`, so the page stays on one origin and needs
+no CORS. To run it like `filebrowser-app` (the backend serves the built UI on 8080):
+
+    ./gradlew :FilebrowserUI:wasmJsBrowserDistribution
+    SPRING_WEB_RESOURCES_STATIC_LOCATIONS="file:$PWD/FilebrowserUI/build/dist/wasmJs/productionExecutable/" \
+        ./gradlew :FilebrowserBE:runLocal
+
+For the desktop app over gRPC on 9090, run the backend with the `server` profile:
+
+    ./gradlew :FilebrowserBE:runLocal --args='--spring.profiles.active=server,local'
+
+The desktop app is packaged with `./gradlew [-Ptransport=grpc] :FilebrowserUI:createDistributable`
+(`FilebrowserUI/build/compose/binaries/main/app`). A browser client on another origin needs that origin in
+`application.cors.allowed-origins`.
+
+### Web image
+The Wasm bundle (`FilebrowserUI/build/dist/wasmJs/productionExecutable`) ships in two images, both on one origin with
+the API:
+* The backend image (default deployment): Jib copies the bundle to `/app/ui`; every `jib*` task builds it first. The
+  REST profile serves it only when `SPRING_WEB_RESOURCES_STATIC_LOCATIONS=file:/app/ui/` is set: `index.html` at `/`,
+  `.wasm` as `application/wasm`, every file with `Cache-Control: no-cache`, a strong ETag (MD5 of the file, hashed
+  once per process) and without `Last-Modified` (Jib sets file times to the epoch). The browser revalidates on each
+  load and gets 304 until a deploy changes a file. GET requests outside `/api/**` need no token; unknown paths get 404.
+* `ghcr.io/jagieloadrian/filebrowserapi-ui`: `nginxinc/nginx-unprivileged` on port 8080 serves the bundle and proxies
+  `/api/` and `/share/` to `BACKEND_URL`. Build it locally:
+
+      ./gradlew :FilebrowserUI:wasmJsBrowserDistribution
+      docker build -t filebrowserapi-ui:local FilebrowserUI
+
+### UI sign-in
+With `-PoidcIssuer` set, the UI signs in with the authorization code flow and PKCE (S256) as a public client and
+sends the access token to REST and gRPC. Endpoints come from the issuer's discovery document. The browser redirects in
+the same window back to the page's origin (`/`). `filebrowser-app` and `filebrowser-ui` both serve the UI at
+`https://filebrowser.home.arpa/`, so that is the one web redirect URI. The desktop app opens the system browser and
+receives the code on `http://127.0.0.1:<random port>/callback` (RFC 8252). Tokens live only in memory. The app
+refreshes them once after a 401 and shows the sign-in screen again when the refresh fails. 403 means the account lacks
+the `filebrowser-reader` or `filebrowser-writer` group. CI passes the repository variables `OIDC_ISSUER` and
+`OIDC_CLIENT_ID` to the Wasm build that both images carry.
+
+Authelia client (untested until Authelia runs):
+
+```yaml
+identity_providers:
+  oidc:
+    claims_policies:
+      filebrowser:
+        access_token: ['groups']
+        id_token: ['preferred_username', 'name']
+    cors:
+      endpoints: ['authorization', 'token', 'revocation', 'introspection', 'userinfo']
+      allowed_origins_from_client_redirect_uris: true
+    clients:
+      - client_id: 'filebrowser'
+        client_name: 'Filebrowser'
+        public: true
+        token_endpoint_auth_method: 'none'
+        require_pkce: true
+        pkce_challenge_method: 'S256'
+        redirect_uris:
+          - 'https://filebrowser.home.arpa/'
+          - 'http://127.0.0.1/callback'
+        scopes: ['openid', 'profile', 'groups', 'offline_access']
+        grant_types: ['authorization_code', 'refresh_token']
+        response_types: ['code']
+        access_token_signed_response_alg: 'RS256'
+        audience: ['filebrowser']
+        requested_audience_mode: 'implicit'
+        claims_policy: 'filebrowser'
+```
+
+The backend's `audiences` must contain the same client ID. Authelia has no `end_session_endpoint`, so "Sign out" only
+drops the tokens in the app.
+
 ## Container image
 The image is built with Jib (`eclipse-temurin:21-jre`, `linux/amd64` and `linux/arm64`, UID 10001).
 Build it into the local Docker daemon:
@@ -111,6 +222,8 @@ Run the REST API (port 8080, profile `web`, files in volume `/data`):
         -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://auth.example.com \
         -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=filebrowser ghcr.io/jagieloadrian/filebrowserapi:local
 
+Add `-e SPRING_WEB_RESOURCES_STATIC_LOCATIONS=file:/app/ui/` to serve the web client at `/`.
+
 Run the gRPC server (port 9090, profile `server`):
 
     docker run -p 9090:9090 -e SPRING_PROFILES_ACTIVE=server -v filebrowser-data:/data \
@@ -121,26 +234,45 @@ The container logs JSON with `timestamp`, `level`, `message`, `logger` and `trac
 The REST profile serves `/health/live`, `/health/ready` and Prometheus metrics at `/metrics`.
 
 ## Deployment
-`.devops/helm/release.yaml` holds two HelmReleases of the cluster's shared chart `charts/app` (Flux source
-`flux-system`), on node `homelab/node: rpi`:
-* `filebrowser`: REST (`web`), `filebrowser.home.arpa`, HTTP probes on `/health/live` and `/health/ready`.
-* `filebrowser-grpc`: gRPC (`server`), `filebrowser-grpc.home.arpa`, native Kubernetes `grpc` probes on 9090.
+`.devops/helm` holds one HelmRelease per file, named like the file, on the cluster's shared chart `charts/app` (Flux
+source `flux-system`) and node `homelab/node: rpi`:
 
-Both mount the PVC `filebrowser-data` (`.devops/helm/pvc.yaml`, `local-path`, kept when the release is removed) at
-`/data`. The chart has no volumes or gRPC probes, so Flux `postRenderers` patch them in. `/tmp` is 2Gi because uploads
-spool there before they are moved.
+| Release | Serves | Image | Host | Vault path |
+|---------|--------|-------|------|------------|
+| `filebrowser-app` | REST (`web`) and the web client from `/app/ui` | backend | `filebrowser.home.arpa` | `secret/apps/filebrowser-app` |
+| `filebrowser-api` | REST (`web`) only | backend | `filebrowser-api.home.arpa` | `secret/apps/filebrowser-api` |
+| `filebrowser-ui` | web client (nginx), proxies `/api/` and `/share/` to `filebrowser-api:8080` | `filebrowserapi-ui` | `filebrowser.home.arpa` | none |
+| `filebrowser-grpc` | gRPC (`server`), native Kubernetes `grpc` probes on 9090 | backend | `filebrowser-grpc.home.arpa` | `secret/apps/filebrowser-grpc` |
 
-Both read PostgreSQL at `postgres.apps.svc.cluster.local:5432`, database and user `filebrowser`. The password comes
-from Vault (`secrets: true`): key `SPRING_DATASOURCE_PASSWORD` in `secret/apps/filebrowser` and
-`secret/apps/filebrowser-grpc`. Flyway migrates the schema on startup; `/health/ready` includes the database.
+`resources` in `.devops/helm/kustomization.yaml` picks the deployment; no env value changes:
+
+| Combination | `resources` besides `pvc.yaml` |
+|-------------|-------------------------------|
+| Together (default) | `filebrowser-app.yaml`, `filebrowser-grpc.yaml` |
+| Split | `filebrowser-api.yaml`, `filebrowser-ui.yaml`, optional `filebrowser-grpc.yaml` |
+| No web client | `filebrowser-api.yaml`, optional `filebrowser-grpc.yaml` |
+
+Never list `filebrowser-app.yaml` and `filebrowser-ui.yaml` together: both claim `filebrowser.home.arpa`.
+`filebrowser-ui` needs `filebrowser-api`. REST releases have HTTP probes on `/health/live` and `/health/ready`.
+
+The backend releases mount the PVC `filebrowser-data` (`.devops/helm/pvc.yaml`, `local-path`, kept when a release is
+removed) at `/data`. The chart has no volumes or gRPC probes, so Flux `postRenderers` patch them in. `/tmp` is 2Gi
+because uploads spool there before they are moved.
+
+They read PostgreSQL at `postgres.apps.svc.cluster.local:5432`, database and user `filebrowser`. The password comes
+from Vault (`secrets: true`): key `SPRING_DATASOURCE_PASSWORD` in the release's path from the table. Flyway migrates
+the schema on startup; `/health/ready` includes the database.
 
 Before the first rollout:
-* Create the `filebrowser` database and user, and store the password in Vault under both paths.
-* Set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` in both releases. It is the placeholder
+* Create the `filebrowser` database and user, and store the password in Vault under the path of each backend release
+  you list.
+* Set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` in every backend release. It is the placeholder
   `https://issuer.invalid` until Authelia runs; health is green, but every API call fails.
 * Register `.devops/helm` of this repo in the cluster's Flux (GitRepository and Kustomization).
 * Add the deploy GitHub App (on the `main` ruleset bypass list): variable `DEPLOY_APP_CLIENT_ID`, secret
-  `DEPLOY_APP_PRIVATE_KEY`. CI then writes each new `main` image tag into `release.yaml`; without them no tag is bumped.
+  `DEPLOY_APP_PRIVATE_KEY`. CI then writes each new `main` image tag into every file under `.devops/helm`; without them
+  no tag is bumped.
+* For the web client, set the repository variables `OIDC_ISSUER` (and `OIDC_CLIENT_ID` if not `filebrowser`).
 
 `devops.yml` validates `.devops/helm` with kubeconform (Kubernetes and Flux schemas) and renders both releases with
 homelab-infra `charts/app` (`helm template`, without the Flux `postRenderers` patches) through kubeconform. homelab-infra
@@ -155,4 +287,6 @@ Runs ktlint, tests and JaCoCo (line coverage over 80 %, branch coverage over 75 
 
 ## CI
 GitHub Actions runs the gate on every PR. Pushes to `main` publish `ghcr.io/jagieloadrian/filebrowserapi:main-<yyyyMMddHHmmss>-<sha7>`,
-`v*` tags publish the semver tag. Dependabot keeps Gradle and Actions versions current.
+`v*` tags publish the semver tag. One Gradle run builds the Wasm bundle with `OIDC_ISSUER` and `OIDC_CLIENT_ID` and the
+Jib image that carries it; `ghcr.io/jagieloadrian/filebrowserapi-ui` copies the same bundle and gets the same tags.
+Dependabot keeps Gradle and Actions versions current.

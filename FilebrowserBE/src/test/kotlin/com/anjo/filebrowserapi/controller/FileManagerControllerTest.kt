@@ -165,6 +165,19 @@ class FileManagerControllerTest : FunSpec() {
             }
         }
 
+        test("should return only the requested bytes when a range is asked for") {
+            // given
+            val file = tempdir().resolve(FIRST_FILE_NAME).apply { writeText("0123456789") }
+            every { service.getFile(FIRST_FILE_NAME, null) } returns file
+
+            // when
+            val response = mockMvc.get("$FILES/$FIRST_FILE_NAME") { header(HttpHeaders.RANGE, "bytes=0-3") }.andReturn().response
+
+            // then
+            response.status shouldBe 206
+            response.contentAsString shouldBe "0123"
+        }
+
         test("should return 204 when file is deleted") {
             // given
             every { service.deleteFile(FIRST_FILE_NAME, null) } just Runs

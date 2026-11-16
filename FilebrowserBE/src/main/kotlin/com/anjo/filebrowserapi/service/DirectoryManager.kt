@@ -4,9 +4,7 @@ import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotEmptyException
 import com.anjo.filebrowserapi.exception.NotFoundException
-import com.anjo.filebrowserapi.model.OperationType
 import com.anjo.filebrowserapi.repository.MetadataRepository
-import com.anjo.filebrowserapi.utils.formatResponsePath
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import java.io.File
@@ -19,39 +17,31 @@ class DirectoryManager(
     private val trash: TrashManager,
 ) {
     private val logger = KotlinLogging.logger {}
-    private val defaultPath: String get() = modifierUtils.generateDefaultPath()
 
-    fun showDirectoriesTree(path: String?): List<String> {
-        val mergePath = modifierUtils.mergePath(path)
-
-        return File(mergePath)
+    fun showDirectoriesTree(path: String?): List<String> =
+        modifierUtils
+            .resolve(path)
             .walk()
             .filter { file ->
                 file.isDirectory
             }.map { file ->
-                formatResponsePath(file.path, defaultPath)
+                modifierUtils.relativePath(file)
             }.drop(1)
             .sorted()
             .toList()
-    }
 
     fun addDirectory(
         directoryName: String,
         path: String?,
     ): String {
-        modifierUtils.validPath(path, OperationType.CREATE)
+        modifierUtils.validPath(path)
         val directory = modifierUtils.resolveName(path, directoryName)
 
         if (directory.mkdir()) {
-            return formatResponsePath(directory.path, defaultPath)
+            return modifierUtils.relativePath(directory)
         } else {
             throw AlreadyExistsException(
-                "Directory with name: $directoryName in path: ${
-                    formatResponsePath(
-                        directory.path,
-                        defaultPath,
-                    )
-                } exist",
+                "Directory with name: $directoryName in path: ${modifierUtils.relativePath(directory)} exist",
             )
         }
     }
@@ -59,24 +49,21 @@ class DirectoryManager(
     fun addDirectoriesRecursively(pathMultiDirectories: String): String {
         val directories = modifierUtils.resolveEntry(pathMultiDirectories)
         directories.mkdirs()
-        return formatResponsePath(directories.path, defaultPath)
+        return modifierUtils.relativePath(directories)
     }
 
     fun renameDirectory(
         newName: String,
         path: String,
     ): String {
-        val validPath = modifierUtils.formatPath(path)
-        val extractMidPath = modifierUtils.extractMidPath(validPath)
-
         val sourceDir = modifierUtils.resolveEntry(path)
-        val targetDir = File(modifierUtils.generatePathToRename(extractMidPath, newName))
+        val targetDir = modifierUtils.resolveName(path.substringBeforeLast('/', ""), newName)
         requireDirectory(sourceDir, "Cannot rename not existing directory")
         if (targetDir.exists()) throw AlreadyExistsException("Directory $newName already exists")
 
         Files.move(sourceDir.toPath(), targetDir.toPath())
-        val target = formatResponsePath(targetDir.path, defaultPath)
-        metadata.relocate(modifierUtils.currentUser(), formatResponsePath(sourceDir.path, defaultPath), target)
+        val target = modifierUtils.relativePath(targetDir)
+        metadata.relocate(modifierUtils.currentUser(), modifierUtils.relativePath(sourceDir), target)
         return target
     }
 
@@ -99,7 +86,7 @@ class DirectoryManager(
     ) {
         if (!directory.exists()) throw NotFoundException(missingMessage)
         if (!directory.isDirectory) {
-            throw BadInputException("Path ${formatResponsePath(directory.path, defaultPath)} is not a directory")
+            throw BadInputException("Path ${modifierUtils.relativePath(directory)} is not a directory")
         }
     }
 }

@@ -17,6 +17,7 @@ import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.datatest.withTests
 import io.kotest.engine.spec.tempdir
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
@@ -116,7 +117,7 @@ class FileManagerTest :
             // given
             val wrongPath = "/${SECOND_NAME}"
             val file = createFile(FIRST_FILE_NAME)
-            val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
+            val expectedMessage = "Path $wrongPath does not exist"
 
             // when
             val exception = shouldThrow<NotFoundException> { service.uploadFile(FIRST_FILE_NAME, file.inputStream(), 0, wrongPath) }
@@ -173,7 +174,7 @@ class FileManagerTest :
         test("should throw NotFoundException when reading file from missing path") {
             // given
             val wrongPath = FIRST_NAME
-            val expectedMessage = "Path: $FIRST_NAME to read file or directory is not exist"
+            val expectedMessage = "Path $FIRST_NAME does not exist"
 
             // when
             val exception = shouldThrow<NotFoundException> { service.getFile(FIRST_FILE_NAME, wrongPath) }
@@ -209,7 +210,7 @@ class FileManagerTest :
         test("should throw NotFoundException when deleting file from missing path") {
             // given
             val wrongPath = FIRST_NAME
-            val expectedMessage = "Path: $FIRST_NAME to delete file or directory is not exist"
+            val expectedMessage = "Path $FIRST_NAME does not exist"
 
             // when
             val exception = shouldThrow<NotFoundException> { service.deleteFile(FIRST_FILE_NAME, wrongPath) }
@@ -229,6 +230,29 @@ class FileManagerTest :
             result shouldBe "/$SECOND_FILE_NAME"
             File("$baseFolder/$SECOND_FILE_NAME").exists() shouldBe true
             verify(exactly = 1) { metadata.relocate("user-1", "/$FIRST_FILE_NAME", "/$SECOND_FILE_NAME") }
+        }
+
+        test("should keep the parent directory when a nested file is renamed") {
+            // given
+            createFolder(FIRST_NAME)
+            createFile("$FIRST_NAME/$FIRST_FILE_NAME")
+
+            // when
+            val result = service.renameFile(SECOND_FILE_NAME, "/$FIRST_NAME/$FIRST_FILE_NAME")
+
+            // then
+            result shouldBe "/$FIRST_NAME/$SECOND_FILE_NAME"
+            File("$baseFolder/$FIRST_NAME/$SECOND_FILE_NAME").exists() shouldBe true
+        }
+
+        context("should throw BadInputException when the renamed path is the base directory") {
+            withTests(mapOf("null" to null, "empty" to "", "blank" to " ", "slash" to "/")) { input ->
+                // when
+                val result = shouldThrow<BadInputException> { service.renameFile(SECOND_FILE_NAME, input) }
+
+                // then
+                result.message shouldBe "The base directory cannot be changed"
+            }
         }
 
         test("should throw NotFoundException when renaming missing file") {

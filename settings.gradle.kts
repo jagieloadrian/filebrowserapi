@@ -4,3 +4,4 @@ plugins {
 rootProject.name = "filebrowserapi"
 include("FilebrowserUI")
 include("FilebrowserBE")
+include("FilebrowserProto")

@@ -22,7 +22,6 @@ class QuotaManager(
         if (free - bytes < properties.minFreeSpace.toBytes()) throw QuotaExceededException("Not enough free disk space")
     }
 
-    // ponytail: walks the user's files, trash and versions on every write; keep a running total in the DB if trees grow large
     private fun used(): Long {
         val owner = modifierUtils.currentUser()
         return listOf(

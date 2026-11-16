@@ -8,8 +8,6 @@ import com.anjo.filebrowserapi.TestObjects.signIn
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
-import com.anjo.filebrowserapi.model.OperationType
-import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
@@ -59,7 +57,7 @@ class PathModifierUtilsTest :
         context("should return base path when path is null or blank") {
             withTests(mapOf("null" to null, "empty" to "", "blank" to " ")) { input ->
                 // when
-                val result = utils.mergePath(input)
+                val result = utils.resolve(input).path
 
                 // then
                 result shouldBe basePath
@@ -69,7 +67,7 @@ class PathModifierUtilsTest :
         context("should append path without leading slash when path is given") {
             withTests(FIRST_NAME, "/$FIRST_NAME") { input ->
                 // when
-                val result = utils.mergePath(input)
+                val result = utils.resolve(input).path
 
                 // then
                 result shouldBe "$basePath/$FIRST_NAME"
@@ -79,7 +77,7 @@ class PathModifierUtilsTest :
         context("should accept path when path is null or empty") {
             withTests(mapOf("null" to null, "empty" to "")) { input ->
                 // when & then
-                shouldNotThrowAny { utils.validPath(input, OperationType.READ) }
+                shouldNotThrowAny { utils.validPath(input) }
             }
         }
 
@@ -88,39 +86,23 @@ class PathModifierUtilsTest :
             File("$basePath/$FIRST_NAME").mkdirs()
 
             // when & then
-            shouldNotThrowAny { utils.validPath(FIRST_NAME, OperationType.READ) }
+            shouldNotThrowAny { utils.validPath(FIRST_NAME) }
         }
 
         test("should throw NotFoundException when path does not exist") {
             // when
-            val result = shouldThrow<NotFoundException> { utils.validPath(FIRST_NAME, OperationType.DELETE) }
+            val result = shouldThrow<NotFoundException> { utils.validPath(FIRST_NAME) }
 
             // then
-            result.message shouldBe "Path: $FIRST_NAME to delete file or directory is not exist"
+            result.message shouldBe "Path $FIRST_NAME does not exist"
         }
 
-        test("should return parent segments when path has several segments") {
+        test("should resolve name in base path when parent is empty") {
             // when
-            val result = utils.extractMidPath("$FIRST_NAME/$SECOND_NAME/file.txt")
+            val result = utils.resolveName("", SECOND_NAME)
 
             // then
-            result shouldBe listOf(FIRST_NAME, SECOND_NAME)
-        }
-
-        test("should place new name in base path when there are no parent segments") {
-            // when
-            val result = utils.generatePathToRename(emptyList(), SECOND_NAME)
-
-            // then
-            result shouldBe "$basePath/$SECOND_NAME"
-        }
-
-        test("should place new name under parent segments when they are given") {
-            // when
-            val result = utils.generatePathToRename(listOf(FIRST_NAME), SECOND_NAME)
-
-            // then
-            result shouldBe "$basePath/$FIRST_NAME/$SECOND_NAME"
+            result.path shouldBe "$basePath/$SECOND_NAME"
         }
 
         context("should throw BadInputException when path leaves base directory") {
@@ -138,10 +120,7 @@ class PathModifierUtilsTest :
         context("should throw BadInputException when name is blank or contains slash") {
             withTests(mapOf("empty" to "", "blank" to " ", "a/b" to "a/b", "/a" to "/a", "a/" to "a/")) { input ->
                 // when & then
-                assertSoftly {
-                    shouldThrow<BadInputException> { utils.resolveName(FIRST_NAME, input) }
-                    shouldThrow<BadInputException> { utils.generatePathToRename(emptyList(), input) }
-                }
+                shouldThrow<BadInputException> { utils.resolveName(FIRST_NAME, input) }
             }
         }
 

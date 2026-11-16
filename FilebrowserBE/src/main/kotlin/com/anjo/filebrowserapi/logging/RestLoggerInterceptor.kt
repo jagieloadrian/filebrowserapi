@@ -17,7 +17,7 @@ class RestLoggerInterceptor : HandlerInterceptor {
     ): Boolean {
         logger.info { "Incoming request: Method = ${request.method}; URL: ${request.requestURL.replace(SHARE_TOKEN, "/share/***")}" }
         request.setAttribute("startTime", System.currentTimeMillis())
-        return super.preHandle(request, response, handler)
+        return true
     }
 
     override fun afterCompletion(
@@ -30,6 +30,5 @@ class RestLoggerInterceptor : HandlerInterceptor {
         val endTime = System.currentTimeMillis()
         val timeTaken = endTime - startTime
         logger.info { "Outgoing response: Status = ${response.status} execute in: $timeTaken ms" }
-        super.afterCompletion(request, response, handler, ex)
     }
 }

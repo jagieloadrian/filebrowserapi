@@ -9,8 +9,13 @@ data class AppConfiguration(
     val maxUploadSize: DataSize = DataSize.ofGigabytes(1),
     val quota: DataSize = DataSize.ofGigabytes(5),
     val minFreeSpace: DataSize = DataSize.ofGigabytes(2),
+    val cors: Cors = Cors(),
 ) {
     init {
         require(path.isNotBlank()) { "application.path must not be blank" }
     }
+
+    data class Cors(
+        val allowedOrigins: List<String> = emptyList(),
+    )
 }
