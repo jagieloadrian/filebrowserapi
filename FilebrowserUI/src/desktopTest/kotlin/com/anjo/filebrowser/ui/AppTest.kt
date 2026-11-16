@@ -327,6 +327,58 @@ class AppTest :
             }
         }
 
+        context("should offer Preview as the first row menu item only for files it can show") {
+            withTests(
+                nameFn = { it.first },
+                "notes.txt" to true,
+                "archive.zip" to false,
+            ) { (name, offered) ->
+                // given
+                val session = signedIn()
+                api.entries += file("/$name")
+                runComposeUiTest {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // when
+                    onNodeWithContentDescription("Actions for $name").performClick()
+
+                    // then
+                    val download = onNodeWithText("Download").assertIsDisplayed().getUnclippedBoundsInRoot()
+                    if (offered) {
+                        onNodeWithText("Preview").getUnclippedBoundsInRoot().bottom shouldBeLessThanOrEqualTo download.top
+                    } else {
+                        onNodeWithText("Preview").assertDoesNotExist()
+                    }
+                }
+            }
+        }
+
+        test("should open the preview from the row menu") {
+            // given
+            val session = signedIn()
+            api.entries += file("/notes.txt", size = 11)
+            api.contents["/notes.txt"] = "hello world".encodeToByteArray()
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                onNodeWithContentDescription("Actions for notes.txt").performClick()
+
+                // when
+                onNodeWithText("Preview").performClick()
+
+                // then
+                onNode(isHeading() and hasText("notes.txt")).assertIsDisplayed()
+                waitUntilExactlyOneExists(hasText("hello world"), PREVIEW_TIMEOUT_MS)
+            }
+        }
+
         test("should close the preview and cancel its download when Escape is pressed") {
             // given
             val session = signedIn()

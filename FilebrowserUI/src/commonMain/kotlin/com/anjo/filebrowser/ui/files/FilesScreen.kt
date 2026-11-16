@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Preview
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
@@ -295,6 +296,7 @@ private fun EntryRow(
     onDelete: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
+    val previewable = previewKind(entry) != null
     val folder = if (searching) "In ${folderLabel(entry.parent)}" else null
     val size = if (entry.directory) null else formatSize(entry.size)
     val modified = "Modified ${formatTime(entry.modified)}"
@@ -310,6 +312,12 @@ private fun EntryRow(
                 Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${entry.name}")
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                if (previewable) {
+                    MenuItem("Preview", Icons.Outlined.Preview) {
+                        menu = false
+                        onPreview()
+                    }
+                }
                 if (entry.directory) {
                     MenuItem("Open", Icons.Outlined.FolderOpen) {
                         menu = false
@@ -332,7 +340,6 @@ private fun EntryRow(
             }
         }
     }
-    val previewable = previewKind(entry) != null
     val modifier =
         Modifier.clickable(
             onClickLabel =
