@@ -27,7 +27,6 @@ class FileManager(
     private val versions: VersionManager,
     private val quota: QuotaManager,
 ) {
-    private val defaultPath: String get() = modifierUtils.generateDefaultPath()
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
 
     fun showFilesTree(path: String?): List<String> {
@@ -78,11 +77,8 @@ class FileManager(
         newName: String,
         path: String?,
     ): String {
-        val validPath = path?.let { modifierUtils.formatPath(it) } ?: defaultPath
-        val extractMidPath = modifierUtils.extractMidPath(validPath)
-
         val sourceFile = modifierUtils.resolveEntry(path)
-        val targetFile = File(modifierUtils.generatePathToRename(extractMidPath, newName))
+        val targetFile = modifierUtils.resolveName(path?.substringBeforeLast('/', ""), newName)
         requireFile(sourceFile, "Cannot rename not existing file")
         if (targetFile.exists()) throw AlreadyExistsException("File $newName already exists")
 

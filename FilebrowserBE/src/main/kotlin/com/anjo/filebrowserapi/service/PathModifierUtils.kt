@@ -90,13 +90,6 @@ class PathModifierUtils(
         }
     }
 
-    fun extractMidPath(sourcePath: String): List<String> = sourcePath.split("/").dropLast(1)
-
-    fun generatePathToRename(
-        extractMidPath: List<String>,
-        newName: String,
-    ): String = resolveEntry(*extractMidPath.toTypedArray(), requireName(newName)).path
-
     fun resolveName(
         parent: String?,
         name: String,
@@ -106,6 +99,4 @@ class PathModifierUtils(
         name.also { if (!isValidName(it)) throw BadInputException("Invalid name '$it': $NAME_RULE") }
 
     fun generateDefaultPath(): String = baseDirectory().toString()
-
-    fun formatPath(path: String): String = if (path.first() == '/') path.drop(1) else path
 }

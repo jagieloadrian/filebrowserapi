@@ -9,7 +9,6 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
-import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
@@ -99,28 +98,12 @@ class PathModifierUtilsTest :
             result.message shouldBe "Path: $FIRST_NAME to delete file or directory is not exist"
         }
 
-        test("should return parent segments when path has several segments") {
+        test("should resolve name in base path when parent is empty") {
             // when
-            val result = utils.extractMidPath("$FIRST_NAME/$SECOND_NAME/file.txt")
+            val result = utils.resolveName("", SECOND_NAME)
 
             // then
-            result shouldBe listOf(FIRST_NAME, SECOND_NAME)
-        }
-
-        test("should place new name in base path when there are no parent segments") {
-            // when
-            val result = utils.generatePathToRename(emptyList(), SECOND_NAME)
-
-            // then
-            result shouldBe "$basePath/$SECOND_NAME"
-        }
-
-        test("should place new name under parent segments when they are given") {
-            // when
-            val result = utils.generatePathToRename(listOf(FIRST_NAME), SECOND_NAME)
-
-            // then
-            result shouldBe "$basePath/$FIRST_NAME/$SECOND_NAME"
+            result.path shouldBe "$basePath/$SECOND_NAME"
         }
 
         context("should throw BadInputException when path leaves base directory") {
@@ -138,10 +121,7 @@ class PathModifierUtilsTest :
         context("should throw BadInputException when name is blank or contains slash") {
             withTests(mapOf("empty" to "", "blank" to " ", "a/b" to "a/b", "/a" to "/a", "a/" to "a/")) { input ->
                 // when & then
-                assertSoftly {
-                    shouldThrow<BadInputException> { utils.resolveName(FIRST_NAME, input) }
-                    shouldThrow<BadInputException> { utils.generatePathToRename(emptyList(), input) }
-                }
+                shouldThrow<BadInputException> { utils.resolveName(FIRST_NAME, input) }
             }
         }
 

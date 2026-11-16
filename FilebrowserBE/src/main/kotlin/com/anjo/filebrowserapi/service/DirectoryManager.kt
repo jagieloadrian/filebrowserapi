@@ -59,11 +59,8 @@ class DirectoryManager(
         newName: String,
         path: String,
     ): String {
-        val validPath = modifierUtils.formatPath(path)
-        val extractMidPath = modifierUtils.extractMidPath(validPath)
-
         val sourceDir = modifierUtils.resolveEntry(path)
-        val targetDir = File(modifierUtils.generatePathToRename(extractMidPath, newName))
+        val targetDir = modifierUtils.resolveName(path.substringBeforeLast('/', ""), newName)
         requireDirectory(sourceDir, "Cannot rename not existing directory")
         if (targetDir.exists()) throw AlreadyExistsException("Directory $newName already exists")
 
