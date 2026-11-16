@@ -70,8 +70,6 @@ class PathModifierUtils(
 
     fun relativePath(file: File): String = file.path.substringAfter(generateDefaultPath())
 
-    fun mergePath(path: String?): String = resolve(path).path
-
     fun validPath(path: String?) {
         if (!path.isNullOrBlank() && !resolve(path).exists()) throw NotFoundException("Path $path does not exist")
     }

@@ -26,15 +26,14 @@ class FileManager(
 ) {
     private val formatDate = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")
 
-    fun showFilesTree(path: String?): List<String> {
-        val mergePath = modifierUtils.mergePath(path)
-        return File(mergePath)
+    fun showFilesTree(path: String?): List<String> =
+        modifierUtils
+            .resolve(path)
             .walk()
             .map { file -> modifierUtils.relativePath(file) }
             .drop(1)
             .sorted()
             .toList()
-    }
 
     fun uploadFile(
         originalName: String?,

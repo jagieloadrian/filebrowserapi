@@ -57,7 +57,7 @@ class PathModifierUtilsTest :
         context("should return base path when path is null or blank") {
             withTests(mapOf("null" to null, "empty" to "", "blank" to " ")) { input ->
                 // when
-                val result = utils.mergePath(input)
+                val result = utils.resolve(input).path
 
                 // then
                 result shouldBe basePath
@@ -67,7 +67,7 @@ class PathModifierUtilsTest :
         context("should append path without leading slash when path is given") {
             withTests(FIRST_NAME, "/$FIRST_NAME") { input ->
                 // when
-                val result = utils.mergePath(input)
+                val result = utils.resolve(input).path
 
                 // then
                 result shouldBe "$basePath/$FIRST_NAME"

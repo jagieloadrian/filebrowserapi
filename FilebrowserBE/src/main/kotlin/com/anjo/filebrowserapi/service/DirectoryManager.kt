@@ -18,10 +18,9 @@ class DirectoryManager(
 ) {
     private val logger = KotlinLogging.logger {}
 
-    fun showDirectoriesTree(path: String?): List<String> {
-        val mergePath = modifierUtils.mergePath(path)
-
-        return File(mergePath)
+    fun showDirectoriesTree(path: String?): List<String> =
+        modifierUtils
+            .resolve(path)
             .walk()
             .filter { file ->
                 file.isDirectory
@@ -30,7 +29,6 @@ class DirectoryManager(
             }.drop(1)
             .sorted()
             .toList()
-    }
 
     fun addDirectory(
         directoryName: String,
