@@ -3,9 +3,6 @@ package com.anjo.filebrowserapi.service
 import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
-import com.anjo.filebrowserapi.model.OperationType.CREATE
-import com.anjo.filebrowserapi.model.OperationType.DELETE
-import com.anjo.filebrowserapi.model.OperationType.READ
 import com.anjo.filebrowserapi.repository.MetadataRepository
 import org.springframework.stereotype.Service
 import java.io.File
@@ -46,7 +43,7 @@ class FileManager(
         path: String?,
         overwrite: Boolean = false,
     ): String {
-        modifierUtils.validPath(path, CREATE)
+        modifierUtils.validPath(path)
         val fileName = validFileName(originalName)
         val target = modifierUtils.resolveName(path, fileName)
         if (target.isDirectory) throw AlreadyExistsException("Directory $fileName already exists")
@@ -67,7 +64,7 @@ class FileManager(
         fileName: String,
         path: String?,
     ): File {
-        modifierUtils.validPath(path, READ)
+        modifierUtils.validPath(path)
         val file = modifierUtils.resolveName(path, fileName)
         requireFile(file, "File $fileName does not exist")
         return file
@@ -100,7 +97,7 @@ class FileManager(
         fileName: String,
         path: String?,
     ) {
-        modifierUtils.validPath(path, DELETE)
+        modifierUtils.validPath(path)
         val file = modifierUtils.resolveName(path, fileName)
         requireFile(file, "Cannot remove non existing file")
         trash.moveToTrash(file)

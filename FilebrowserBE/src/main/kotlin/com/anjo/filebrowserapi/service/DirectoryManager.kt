@@ -4,7 +4,6 @@ import com.anjo.filebrowserapi.exception.AlreadyExistsException
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotEmptyException
 import com.anjo.filebrowserapi.exception.NotFoundException
-import com.anjo.filebrowserapi.model.OperationType
 import com.anjo.filebrowserapi.repository.MetadataRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
@@ -37,7 +36,7 @@ class DirectoryManager(
         directoryName: String,
         path: String?,
     ): String {
-        modifierUtils.validPath(path, OperationType.CREATE)
+        modifierUtils.validPath(path)
         val directory = modifierUtils.resolveName(path, directoryName)
 
         if (directory.mkdir()) {

@@ -117,7 +117,7 @@ class FileManagerTest :
             // given
             val wrongPath = "/${SECOND_NAME}"
             val file = createFile(FIRST_FILE_NAME)
-            val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
+            val expectedMessage = "Path $wrongPath does not exist"
 
             // when
             val exception = shouldThrow<NotFoundException> { service.uploadFile(FIRST_FILE_NAME, file.inputStream(), 0, wrongPath) }
@@ -174,7 +174,7 @@ class FileManagerTest :
         test("should throw NotFoundException when reading file from missing path") {
             // given
             val wrongPath = FIRST_NAME
-            val expectedMessage = "Path: $FIRST_NAME to read file or directory is not exist"
+            val expectedMessage = "Path $FIRST_NAME does not exist"
 
             // when
             val exception = shouldThrow<NotFoundException> { service.getFile(FIRST_FILE_NAME, wrongPath) }
@@ -210,7 +210,7 @@ class FileManagerTest :
         test("should throw NotFoundException when deleting file from missing path") {
             // given
             val wrongPath = FIRST_NAME
-            val expectedMessage = "Path: $FIRST_NAME to delete file or directory is not exist"
+            val expectedMessage = "Path $FIRST_NAME does not exist"
 
             // when
             val exception = shouldThrow<NotFoundException> { service.deleteFile(FIRST_FILE_NAME, wrongPath) }

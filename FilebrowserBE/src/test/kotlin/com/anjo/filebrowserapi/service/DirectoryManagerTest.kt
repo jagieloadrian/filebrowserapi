@@ -105,7 +105,7 @@ class DirectoryManagerTest :
             // given
             val name = FIRST_NAME
             val wrongPath = "/$SECOND_NAME"
-            val expectedMessage = "Path: $wrongPath to create file or directory is not exist"
+            val expectedMessage = "Path $wrongPath does not exist"
 
             // when
             val exception = shouldThrow<NotFoundException> { service.addDirectory(name, wrongPath) }

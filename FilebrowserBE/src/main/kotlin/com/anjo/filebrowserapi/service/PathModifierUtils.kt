@@ -3,7 +3,6 @@ package com.anjo.filebrowserapi.service
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
-import com.anjo.filebrowserapi.model.OperationType
 import com.anjo.filebrowserapi.validation.NAME_RULE
 import com.anjo.filebrowserapi.validation.isValidName
 import com.anjo.filebrowserapi.validation.isValidSubject
@@ -73,21 +72,8 @@ class PathModifierUtils(
 
     fun mergePath(path: String?): String = resolve(path).path
 
-    fun validPath(
-        path: String?,
-        operationType: OperationType,
-    ) {
-        if (!path.isNullOrBlank()) isExistPath(path, operationType)
-    }
-
-    private fun isExistPath(
-        path: String,
-        operationType: OperationType,
-    ) {
-        val extractFile = resolve(path)
-        if (!extractFile.exists()) {
-            throw NotFoundException("Path: $path to ${operationType.description} file or directory is not exist")
-        }
+    fun validPath(path: String?) {
+        if (!path.isNullOrBlank() && !resolve(path).exists()) throw NotFoundException("Path $path does not exist")
     }
 
     fun resolveName(

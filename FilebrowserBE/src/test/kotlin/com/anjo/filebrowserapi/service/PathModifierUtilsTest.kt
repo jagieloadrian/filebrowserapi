@@ -8,7 +8,6 @@ import com.anjo.filebrowserapi.TestObjects.signIn
 import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
-import com.anjo.filebrowserapi.model.OperationType
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
@@ -78,7 +77,7 @@ class PathModifierUtilsTest :
         context("should accept path when path is null or empty") {
             withTests(mapOf("null" to null, "empty" to "")) { input ->
                 // when & then
-                shouldNotThrowAny { utils.validPath(input, OperationType.READ) }
+                shouldNotThrowAny { utils.validPath(input) }
             }
         }
 
@@ -87,15 +86,15 @@ class PathModifierUtilsTest :
             File("$basePath/$FIRST_NAME").mkdirs()
 
             // when & then
-            shouldNotThrowAny { utils.validPath(FIRST_NAME, OperationType.READ) }
+            shouldNotThrowAny { utils.validPath(FIRST_NAME) }
         }
 
         test("should throw NotFoundException when path does not exist") {
             // when
-            val result = shouldThrow<NotFoundException> { utils.validPath(FIRST_NAME, OperationType.DELETE) }
+            val result = shouldThrow<NotFoundException> { utils.validPath(FIRST_NAME) }
 
             // then
-            result.message shouldBe "Path: $FIRST_NAME to delete file or directory is not exist"
+            result.message shouldBe "Path $FIRST_NAME does not exist"
         }
 
         test("should resolve name in base path when parent is empty") {
