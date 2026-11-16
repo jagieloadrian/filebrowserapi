@@ -48,7 +48,6 @@ private val TEXT_TYPES = setOf("application/json", "application/xml", "applicati
 private val IMAGE_TYPES = setOf("image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp")
 
 fun previewKind(entry: Entry): PreviewKind? {
-    val extension = entry.name.substringAfterLast('.', "").lowercase()
     val type =
         entry.contentType
             ?.substringBefore(';')
@@ -57,8 +56,8 @@ fun previewKind(entry: Entry): PreviewKind? {
             .orEmpty()
     return when {
         entry.directory -> null
-        extension in TEXT_EXTENSIONS -> PreviewKind.TEXT
-        extension in IMAGE_EXTENSIONS -> PreviewKind.IMAGE
+        entry.extension in TEXT_EXTENSIONS -> PreviewKind.TEXT
+        entry.extension in IMAGE_EXTENSIONS -> PreviewKind.IMAGE
         type.startsWith("text/") || type in TEXT_TYPES -> PreviewKind.TEXT
         type in IMAGE_TYPES -> PreviewKind.IMAGE
         else -> null

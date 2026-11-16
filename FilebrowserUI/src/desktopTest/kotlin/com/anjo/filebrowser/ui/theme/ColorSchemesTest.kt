@@ -2,6 +2,8 @@ package com.anjo.filebrowser.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.anjo.filebrowser.ui.files.tokenStyle
+import com.anjo.filebrowser.ui.model.TokenKind
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
 import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
@@ -51,6 +53,22 @@ class ColorSchemesTest :
                             inverseSurface to inverseOnSurface,
                         ).map { (background, text) -> contrast(background, text) }
                     }
+
+                // then
+                result.forEach { it shouldBeGreaterThanOrEqual TEXT_CONTRAST }
+            }
+        }
+
+        context("should give every highlighted code token at least 4.5:1 contrast on the preview surface") {
+            withTests(
+                nameFn = { "${it.palette.label} ${if (it.dark) "dark" else "light"}" },
+                Palette.entries.flatMap { listOf(SchemeCase(it, dark = false), SchemeCase(it, dark = true)) },
+            ) { case ->
+                // given
+                val scheme = case.palette.colorScheme(case.dark)
+
+                // when
+                val result = TokenKind.entries.map { contrast(scheme.surface, scheme.tokenStyle(it).color) }
 
                 // then
                 result.forEach { it shouldBeGreaterThanOrEqual TEXT_CONTRAST }

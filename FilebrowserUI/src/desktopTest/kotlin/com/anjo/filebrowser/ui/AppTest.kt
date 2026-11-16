@@ -14,6 +14,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -376,6 +377,36 @@ class AppTest :
                 // then
                 onNode(isHeading() and hasText("notes.txt")).assertIsDisplayed()
                 waitUntilExactlyOneExists(hasText("hello world"), PREVIEW_TIMEOUT_MS)
+            }
+        }
+
+        test("should highlight code in a Kotlin preview until highlighting is turned off") {
+            // given
+            val session = signedIn()
+            val code = "fun main() = println(\"hi\") // greet".encodeToByteArray()
+            api.entries += file("/Main.kt", size = code.size.toLong())
+            api.contents["/Main.kt"] = code
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                onNodeWithText("Main.kt").performClick()
+                waitUntilExactlyOneExists(hasTestTag(PREVIEW_LINE), PREVIEW_TIMEOUT_MS)
+
+                fun spans() =
+                    onNode(hasTestTag(PREVIEW_LINE), useUnmergedTree = true)
+                        .fetchSemanticsNode()
+                        .config[SemanticsProperties.Text]
+                        .flatMap { it.spanStyles }
+                spans() shouldHaveSize 3
+
+                // when
+                onNodeWithContentDescription("Highlight code").assertIsOn().performClick()
+
+                // then
+                spans() shouldBe emptyList()
             }
         }
 

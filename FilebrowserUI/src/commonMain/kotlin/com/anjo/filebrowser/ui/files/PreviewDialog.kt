@@ -19,12 +19,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.WrapText
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -58,8 +60,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
@@ -71,6 +77,8 @@ import com.anjo.filebrowser.ui.common.formatSize
 import com.anjo.filebrowser.ui.model.FilePreview
 import com.anjo.filebrowser.ui.model.PreviewContent
 import com.anjo.filebrowser.ui.model.PreviewLine
+import com.anjo.filebrowser.ui.model.Syntax
+import com.anjo.filebrowser.ui.model.TokenKind
 import com.anjo.filebrowser.ui.theme.Spacing
 
 internal const val PREVIEW_LINE = "previewLine"
@@ -86,6 +94,8 @@ internal fun PreviewDialog(
     onDelete: () -> Unit,
 ) {
     var wrap by rememberSaveable { mutableStateOf(true) }
+    var highlight by rememberSaveable { mutableStateOf(true) }
+    val syntax = syntaxFor(preview.entry)
     val content = (preview.content as? Loadable.Ready)?.value
     val focus = remember { FocusRequester() }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -119,6 +129,11 @@ internal fun PreviewDialog(
                                 IconToggleButton(checked = wrap, onCheckedChange = { wrap = it }) {
                                     Icon(Icons.AutoMirrored.Outlined.WrapText, contentDescription = "Wrap lines")
                                 }
+                                if (syntax != null) {
+                                    IconToggleButton(checked = highlight, onCheckedChange = { highlight = it }) {
+                                        Icon(Icons.Outlined.Code, contentDescription = "Highlight code")
+                                    }
+                                }
                             }
                             IconButton(onClick = onDownload) { Icon(Icons.Outlined.Download, contentDescription = "Download") }
                             MoreActions(onRename, onDelete)
@@ -137,7 +152,7 @@ internal fun PreviewDialog(
                             }
 
                             is Loadable.Ready -> {
-                                Content(loaded.value, preview, wrap, onDownload)
+                                Content(loaded.value, preview, wrap, syntax.takeIf { highlight }, onDownload)
                             }
                         }
                     }
@@ -173,12 +188,13 @@ private fun Content(
     content: PreviewContent,
     preview: FilePreview,
     wrap: Boolean,
+    syntax: Syntax?,
     onDownload: () -> Unit,
 ) {
     val download: @Composable () -> Unit = { FilledTonalButton(onClick = onDownload) { Text("Download file") } }
     when (content) {
         is PreviewContent.Text -> {
-            TextPreview(content, preview.entry.size, wrap)
+            TextPreview(content, preview.entry.size, wrap, syntax)
         }
 
         is PreviewContent.Image -> {
@@ -226,8 +242,10 @@ private fun TextPreview(
     content: PreviewContent.Text,
     size: Long,
     wrap: Boolean,
+    syntax: Syntax?,
 ) {
     val style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
+    val highlighter = remember(content.lines, syntax) { syntax?.let { LineHighlighter(content.lines, it) } }
     Column {
         content.shownBytes?.let {
             Text(
@@ -239,7 +257,7 @@ private fun TextPreview(
         }
         SelectionContainer(Modifier.weight(1f).fillMaxWidth()) {
             if (wrap) {
-                Lines(content.lines, style, wrap = true, Modifier.fillMaxSize())
+                Lines(content.lines, style, wrap = true, highlighter, Modifier.fillMaxSize())
             } else {
                 val measurer = rememberTextMeasurer()
                 val longest =
@@ -255,6 +273,7 @@ private fun TextPreview(
                         content.lines,
                         style,
                         wrap = false,
+                        highlighter,
                         Modifier.fillMaxHeight().width(with(LocalDensity.current) { width.toDp() } + Spacing.m * 2),
                     )
                 }
@@ -268,9 +287,30 @@ private fun Lines(
     lines: List<PreviewLine>,
     style: TextStyle,
     wrap: Boolean,
+    highlighter: LineHighlighter?,
     modifier: Modifier,
 ) {
+    val colors = MaterialTheme.colorScheme
     LazyColumn(modifier, contentPadding = PaddingValues(Spacing.m)) {
-        items(lines.size) { Text(lines[it].text, Modifier.testTag(PREVIEW_LINE), style = style, softWrap = wrap) }
+        items(lines.size) { index ->
+            val text = lines[index].text
+            val styled =
+                remember(text, highlighter, colors, index) {
+                    AnnotatedString(
+                        text,
+                        highlighter?.tokens(index).orEmpty().map { AnnotatedString.Range(colors.tokenStyle(it.kind), it.start, it.end) },
+                    )
+                }
+            Text(styled, Modifier.testTag(PREVIEW_LINE), style = style, softWrap = wrap)
+        }
     }
 }
+
+internal fun ColorScheme.tokenStyle(kind: TokenKind): SpanStyle =
+    when (kind) {
+        TokenKind.KEYWORD -> SpanStyle(primary, fontWeight = FontWeight.SemiBold)
+        TokenKind.KEY, TokenKind.TAG -> SpanStyle(primary)
+        TokenKind.NUMBER, TokenKind.ATTRIBUTE -> SpanStyle(secondary)
+        TokenKind.STRING -> SpanStyle(tertiary)
+        TokenKind.COMMENT -> SpanStyle(onSurfaceVariant, fontStyle = FontStyle.Italic)
+    }

@@ -13,4 +13,5 @@ data class Entry(
 ) {
     val name: String get() = path.substringAfterLast('/')
     val parent: String get() = path.substringBeforeLast('/')
+    val extension: String get() = name.substringAfterLast('.', "").lowercase()
 }
