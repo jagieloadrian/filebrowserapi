@@ -274,8 +274,11 @@ Before the first rollout:
   no tag is bumped.
 * For the web client, set the repository variables `OIDC_ISSUER` (and `OIDC_CLIENT_ID` if not `filebrowser`).
 
-`devops.yml` validates every manifest in `.devops/helm`, listed or not, with kubeconform (Kubernetes and Flux
-schemas); it skips `kustomization.yaml`. The chart lives outside this repo, so CI does not render it with the patches.
+`devops.yml` validates `.devops/helm` with kubeconform (Kubernetes and Flux schemas) and renders both releases with
+homelab-infra `charts/app` (`helm template`, without the Flux `postRenderers` patches) through kubeconform. homelab-infra
+is private: the chart is fetched with a token of the deploy GitHub App, limited to homelab-infra and Contents: read, so
+the app must be installed on homelab-infra too (GitHub → Settings → GitHub Apps → the app → Configure → Repository
+access → add `homelab-infra`); without it the step fails with `Not Found`.
 
 ## Quality gate
     ./gradlew check build
