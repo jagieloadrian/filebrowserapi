@@ -97,21 +97,10 @@ tasks.check {
 
 tasks.register<BootRun>("runLocal") {
     group = "application"
-    description = "Runs the REST API without OIDC: .devops/application-local.yaml over application.yaml"
+    description = "Runs the API without OIDC (gRPC: --args='--spring.profiles.active=server,local'): .devops/application-local.yaml"
     mainClass = tasks.bootRun.flatMap { it.mainClass }
     classpath = tasks.bootRun.get().classpath
-    args("--spring.config.additional-location=file:${rootProject.file(".devops/application-local.yaml")}")
-}
-
-tasks.register<BootRun>("runLocalGrpc") {
-    group = "application"
-    description = "Runs the gRPC API without OIDC as user local: .devops/application-local.yaml over application.yaml"
-    mainClass = tasks.bootRun.flatMap { it.mainClass }
-    classpath = tasks.bootRun.get().classpath
-    args(
-        "--spring.config.additional-location=file:${rootProject.file(".devops/application-local.yaml")}",
-        "--spring.profiles.active=server,local",
-    )
+    systemProperty("spring.config.additional-location", "file:${rootProject.file(".devops/application-local.yaml")}")
 }
 
 val jibExtraDirectory = layout.buildDirectory.dir("jib-extra")

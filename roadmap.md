@@ -84,8 +84,8 @@ Done when: a push to `main` rolls the new image out to the cluster.
 ## Phase 6: FilebrowserUI, done 2026-11-15
 1. Done: Compose Multiplatform client for the desktop (JVM) and the browser (Wasm). The browser talks REST only;
    `-Ptransport=http|grpc` picks REST or gRPC for the desktop at build time.
-2. Done: CORS hosts from `application.cors.allowed-origins`; `runLocalGrpc` runs gRPC without OIDC. Local web dev
-   proxies `/api` and `/share` through the dev server, so it needs no CORS.
+2. Done: CORS hosts from `application.cors.allowed-origins`; `runLocal` with profiles `server,local` runs gRPC without
+   OIDC. Local web dev proxies `/api` and `/share` through the dev server, so it needs no CORS.
 3. Done: one HelmRelease per deployable unit, picked only by listing it in `.devops/helm/kustomization.yaml`:
    `filebrowser-app` (default, REST and the bundle from the Jib image) or `filebrowser-api` + `filebrowser-ui`
    (nginx, same-origin proxy), both at `filebrowser.home.arpa`; `filebrowser-api` alone has no web client;

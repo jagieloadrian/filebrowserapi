@@ -136,14 +136,19 @@ Local runs, without Authelia (the backend runs with the `local` profile):
 
     ./gradlew :FilebrowserBE:runLocal                         # REST on 8080
     ./gradlew :FilebrowserUI:wasmJsBrowserDevelopmentRun      # browser on http://localhost:8081
-    ./gradlew :FilebrowserBE:runLocalGrpc                     # gRPC on 9090, desktop with -Ptransport=grpc
 
 The dev server on 8081 proxies `/api` and `/share` to `http://localhost:8080`, so the page stays on one origin and needs
 no CORS. To run it like `filebrowser-app` (the backend serves the built UI on 8080):
 
     ./gradlew :FilebrowserUI:wasmJsBrowserDistribution
     SPRING_WEB_RESOURCES_STATIC_LOCATIONS="file:$PWD/FilebrowserUI/build/dist/wasmJs/productionExecutable/" \
-        ./gradlew :FilebrowserBE:runLocal The desktop app is packaged with `./gradlew [-Ptransport=grpc] :FilebrowserUI:createDistributable`
+        ./gradlew :FilebrowserBE:runLocal
+
+For the desktop app over gRPC on 9090, run the backend with the `server` profile:
+
+    ./gradlew :FilebrowserBE:runLocal --args='--spring.profiles.active=server,local'
+
+The desktop app is packaged with `./gradlew [-Ptransport=grpc] :FilebrowserUI:createDistributable`
 (`FilebrowserUI/build/compose/binaries/main/app`). A browser client on another origin needs that origin in
 `application.cors.allowed-origins`.
 
