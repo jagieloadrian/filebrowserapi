@@ -4,6 +4,18 @@ Last update: 2026-11-16, branch `feature-14/kmp-ui`.
 
 ## Completed
 
+### 2026-11-16, `feature-14/kmp-ui`: simplifications
+- gRPC responses use the generated Kotlin DSL builders instead of Java builder chains.
+- Paths: `formatResponsePath`, `mergePath`, `formatPath`, `extractMidPath`, `generatePathToRename` and
+  `OperationType` removed; `relativePath`, `resolve` and `resolveName` cover them. The not-found message is now
+  "Path <path> does not exist"; renaming with an empty source path answers 400 (`INVALID_ARGUMENT`), not 500.
+- File and directory controllers return plain bodies with `@ResponseStatus`, like the other controllers.
+- REST logger without no-op `super` calls; `TrashViewModel.refresh` is the loader itself.
+- `Palette`, `ThemeMode` and the navigation `Destination` derive ids and labels from enum names; stored values
+  unchanged.
+- Build: `runLocalGrpc` and the `filebrowserapi.jar` boot jar name removed; gRPC runs locally with
+  `./gradlew :FilebrowserBE:runLocal --args='--spring.profiles.active=server,local'`.
+
 ### 2026-11-16, `feature-14/kmp-ui`: preview limits, row menu, code highlighting
 - Images: Skia's `Codec` reads the size from the header first. Up to 4096 × 4096 pixels (16.7 Mpx) decode as before;
   bigger JPEG and WebP decode at 1/2, 1/4 or 1/8 into an N32 bitmap that fits, turned upright by the EXIF origin;
