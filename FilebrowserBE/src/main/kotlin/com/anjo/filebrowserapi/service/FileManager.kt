@@ -7,7 +7,6 @@ import com.anjo.filebrowserapi.model.OperationType.CREATE
 import com.anjo.filebrowserapi.model.OperationType.DELETE
 import com.anjo.filebrowserapi.model.OperationType.READ
 import com.anjo.filebrowserapi.repository.MetadataRepository
-import com.anjo.filebrowserapi.utils.formatResponsePath
 import org.springframework.stereotype.Service
 import java.io.File
 import java.io.InputStream
@@ -35,7 +34,7 @@ class FileManager(
         val mergePath = modifierUtils.mergePath(path)
         return File(mergePath)
             .walk()
-            .map { file -> formatResponsePath(file.path, defaultPath) }
+            .map { file -> modifierUtils.relativePath(file) }
             .drop(1)
             .sorted()
             .toList()
@@ -62,7 +61,7 @@ class FileManager(
             throw AlreadyExistsException("File $fileName already exists")
         }
 
-        return formatResponsePath(target.path, defaultPath)
+        return modifierUtils.relativePath(target)
     }
 
     fun getFile(
@@ -88,8 +87,8 @@ class FileManager(
         if (targetFile.exists()) throw AlreadyExistsException("File $newName already exists")
 
         Files.move(sourceFile.toPath(), targetFile.toPath())
-        val target = formatResponsePath(targetFile.path, defaultPath)
-        metadata.relocate(modifierUtils.currentUser(), formatResponsePath(sourceFile.path, defaultPath), target)
+        val target = modifierUtils.relativePath(targetFile)
+        metadata.relocate(modifierUtils.currentUser(), modifierUtils.relativePath(sourceFile), target)
         return target
     }
 
@@ -98,7 +97,7 @@ class FileManager(
         missingMessage: String,
     ) {
         if (!file.exists()) throw NotFoundException(missingMessage)
-        if (!file.isFile) throw BadInputException("Path ${formatResponsePath(file.path, defaultPath)} is not a file")
+        if (!file.isFile) throw BadInputException("Path ${modifierUtils.relativePath(file)} is not a file")
     }
 
     fun deleteFile(

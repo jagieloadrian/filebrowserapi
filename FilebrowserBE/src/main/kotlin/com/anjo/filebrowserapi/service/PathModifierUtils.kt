@@ -4,7 +4,6 @@ import com.anjo.filebrowserapi.configuration.AppConfiguration
 import com.anjo.filebrowserapi.exception.BadInputException
 import com.anjo.filebrowserapi.exception.NotFoundException
 import com.anjo.filebrowserapi.model.OperationType
-import com.anjo.filebrowserapi.utils.formatResponsePath
 import com.anjo.filebrowserapi.validation.NAME_RULE
 import com.anjo.filebrowserapi.validation.isValidName
 import com.anjo.filebrowserapi.validation.isValidSubject
@@ -70,7 +69,7 @@ class PathModifierUtils(
         owner: String,
     ): Path = Files.createDirectories(Path.of(properties.path, store, owner).toAbsolutePath().normalize())
 
-    fun relativePath(file: File): String = formatResponsePath(file.path, generateDefaultPath())
+    fun relativePath(file: File): String = file.path.substringAfter(generateDefaultPath())
 
     fun mergePath(path: String?): String = resolve(path).path
 
