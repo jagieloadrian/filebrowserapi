@@ -30,8 +30,6 @@ class TrashViewModel(
     val snackbar: Flow<Snack> = snacks.receiveAsFlow()
     private var loading: Job? = null
 
-    fun refresh() = load()
-
     fun restore(item: TrashItem) =
         act {
             api.restore(item)
@@ -60,11 +58,11 @@ class TrashViewModel(
             } finally {
                 mutableState.update { it.copy(working = it.working - 1) }
             }
-            load()
+            refresh()
         }
     }
 
-    private fun load() {
+    fun refresh() {
         loading?.cancel()
         loading =
             viewModelScope.launch {
