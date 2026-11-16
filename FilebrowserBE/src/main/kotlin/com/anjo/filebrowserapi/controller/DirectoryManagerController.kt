@@ -4,13 +4,13 @@ import com.anjo.filebrowserapi.service.DirectoryManager
 import com.anjo.filebrowserapi.validation.ValidName
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -22,36 +22,36 @@ class DirectoryManagerController(
     @GetMapping
     fun getDirectoriesTree(
         @RequestParam("path", required = false) path: String?,
-    ): ResponseEntity<List<String>> = ResponseEntity.ok(directoryManager.showDirectoriesTree(path))
+    ): List<String> = directoryManager.showDirectoriesTree(path)
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     fun addDirectory(
         @RequestParam("directoryName") @ValidName directoryName: String,
         @RequestParam("path", required = false) path: String?,
-    ): ResponseEntity<String> = ResponseEntity(directoryManager.addDirectory(directoryName, path), HttpStatus.CREATED)
+    ): String = directoryManager.addDirectory(directoryName, path)
 
     @PostMapping("/recursively")
+    @ResponseStatus(HttpStatus.CREATED)
     fun addDirectoriesRecursively(
         @RequestParam("path") pathMultiDirectories: String,
-    ): ResponseEntity<String> =
-        ResponseEntity(
-            directoryManager.addDirectoriesRecursively(pathMultiDirectories),
-            HttpStatus.CREATED,
-        )
+    ): String = directoryManager.addDirectoriesRecursively(pathMultiDirectories)
 
     @PatchMapping
     fun renameDirectory(
         @RequestParam("sourcePath") path: String,
         @RequestParam("newDirName") @ValidName newDirName: String,
-    ): ResponseEntity<String> = ResponseEntity.ok(directoryManager.renameDirectory(newDirName, path))
+    ): String = directoryManager.renameDirectory(newDirName, path)
 
     @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteDirectory(
         @RequestParam("path") path: String,
-    ): ResponseEntity<Unit> = ResponseEntity(directoryManager.deleteDirectory(path), HttpStatus.NO_CONTENT)
+    ) = directoryManager.deleteDirectory(path)
 
     @DeleteMapping("/recursively")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteDirectoryRecursively(
         @RequestParam("path") path: String,
-    ): ResponseEntity<Unit> = ResponseEntity(directoryManager.deleteDirectoryRecursively(path), HttpStatus.NO_CONTENT)
+    ) = directoryManager.deleteDirectoryRecursively(path)
 }

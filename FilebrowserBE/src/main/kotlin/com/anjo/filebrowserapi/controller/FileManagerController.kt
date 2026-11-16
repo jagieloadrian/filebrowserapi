@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
 import java.io.File
@@ -33,15 +34,14 @@ class FileManagerController(
     @GetMapping
     fun getFilesTree(
         @RequestParam("path", required = false)path: String?,
-    ): ResponseEntity<List<String>> = ResponseEntity.ok(fileManager.showFilesTree(path))
+    ): List<String> = fileManager.showFilesTree(path)
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun uploadFile(
         @RequestPart("uploadFile") uploadFile: MultipartFile,
         @RequestParam path: String?,
         @RequestParam(defaultValue = "false") overwrite: Boolean,
-    ): ResponseEntity<String> =
-        ResponseEntity.ok(fileManager.uploadFile(uploadFile.originalFilename, uploadFile.inputStream, uploadFile.size, path, overwrite))
+    ): String = fileManager.uploadFile(uploadFile.originalFilename, uploadFile.inputStream, uploadFile.size, path, overwrite)
 
     @GetMapping("/{filename:.+}")
     fun getFile(
@@ -53,13 +53,14 @@ class FileManagerController(
     fun renameFile(
         @RequestParam("sourcePath") path: String,
         @RequestParam("newFileName") @ValidName newFileName: String,
-    ): ResponseEntity<String> = ResponseEntity.ok(fileManager.renameFile(newFileName, path))
+    ): String = fileManager.renameFile(newFileName, path)
 
     @DeleteMapping("/{filename:.+}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteFile(
         @PathVariable filename: String,
         @RequestParam("path", required = false) path: String?,
-    ): ResponseEntity<Unit> = ResponseEntity(fileManager.deleteFile(filename, path), HttpStatus.NO_CONTENT)
+    ) = fileManager.deleteFile(filename, path)
 }
 
 internal fun File.download(): ResponseEntity<Resource> =
