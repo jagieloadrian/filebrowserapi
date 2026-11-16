@@ -114,10 +114,6 @@ tasks.register<BootRun>("runLocalGrpc") {
     )
 }
 
-tasks.bootJar {
-    archiveFileName.set("filebrowserapi.jar")
-}
-
 val jibExtraDirectory = layout.buildDirectory.dir("jib-extra")
 val webClientDirectory = rootProject.layout.projectDirectory.dir("FilebrowserUI/build/dist/wasmJs/productionExecutable")
 
