@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteForever
@@ -59,6 +61,8 @@ import com.anjo.filebrowser.ui.files.WorkIndicator
 import com.anjo.filebrowser.ui.model.TrashItem
 import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
+
+private const val DIALOG_NAME_LINES = 3
 
 internal sealed interface Purge {
     data object All : Purge
@@ -209,6 +213,9 @@ private fun TrashRow(
     }
 }
 
+internal fun emptyTrashText(count: Int): String =
+    "${if (count == 1) "1 item" else "All $count items"} will be deleted forever. This cannot be undone."
+
 @Composable
 internal fun PurgeDialog(
     request: Purge,
@@ -216,15 +223,33 @@ internal fun PurgeDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val (title, body, confirm) =
+    val (title, confirm) =
         when (request) {
-            Purge.All -> Triple("Empty trash?", "All $count items are deleted forever. This cannot be undone.", "Empty trash")
-            is Purge.One -> Triple("Delete ${request.item.name} forever?", "It cannot be restored afterwards.", "Delete forever")
+            Purge.All -> "Empty trash?" to "Empty trash"
+            is Purge.One -> "Delete forever?" to "Delete forever"
         }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { Text(body) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                when (request) {
+                    Purge.All -> {
+                        Text(emptyTrashText(count))
+                    }
+
+                    is Purge.One -> {
+                        Text(
+                            request.item.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = DIALOG_NAME_LINES,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text("It cannot be restored afterwards.")
+                    }
+                }
+            }
+        },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
