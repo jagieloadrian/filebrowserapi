@@ -21,12 +21,14 @@ import org.koin.dsl.module
 
 internal const val PHONE_WIDTH_DP = 360
 internal const val PHONE_HEIGHT_DP = 760
+internal const val COLUMNS_WIDTH_DP = 840
 internal const val MEDIUM_WIDTH_DP = 900
 internal const val MEDIUM_HEIGHT_DP = 700
 internal const val WIDE_WIDTH_DP = 1440
 internal const val WIDE_HEIGHT_DP = 900
 internal const val DIALOG_WIDTH_DP = 480
 internal const val DIALOG_HEIGHT_DP = 480
+internal const val LARGE_TEXT = 2f
 
 internal val PREVIEW_QUOTA = Quota(used = 7_730_941_133, limit = 10_737_418_240)
 

@@ -38,7 +38,7 @@ import org.koin.compose.koinInject
 import org.koin.dsl.koinConfiguration
 import org.koin.plugin.module.dsl.module
 
-private enum class Destination(
+internal enum class Destination(
     val icon: ImageVector,
     val selectedIcon: ImageVector,
 ) {
@@ -65,6 +65,15 @@ fun App() {
 @Composable
 internal fun Browser() {
     var destination by remember { mutableStateOf(Destination.FILES) }
+    BrowserShell(destination, onNavigate = { destination = it }) { Screen(destination) }
+}
+
+@Composable
+internal fun BrowserShell(
+    destination: Destination,
+    onNavigate: (Destination) -> Unit,
+    content: @Composable () -> Unit,
+) {
     BoxWithConstraints {
         if (maxWidth >= Spacing.wide) {
             Row {
@@ -72,22 +81,22 @@ internal fun Browser() {
                     Destination.entries.forEach {
                         NavigationRailItem(
                             selected = it == destination,
-                            onClick = { destination = it },
+                            onClick = { onNavigate(it) },
                             icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
                             label = { Text(it.label) },
                         )
                     }
                 }
-                Screen(destination)
+                content()
             }
         } else {
             Column {
-                Column(Modifier.weight(1f)) { Screen(destination) }
+                Column(Modifier.weight(1f)) { content() }
                 NavigationBar {
                     Destination.entries.forEach {
                         NavigationBarItem(
                             selected = it == destination,
-                            onClick = { destination = it },
+                            onClick = { onNavigate(it) },
                             icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
                             label = { Text(it.label) },
                         )

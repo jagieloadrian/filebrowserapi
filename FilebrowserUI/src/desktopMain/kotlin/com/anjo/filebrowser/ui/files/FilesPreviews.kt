@@ -13,8 +13,12 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import com.anjo.filebrowser.ui.BrowserShell
+import com.anjo.filebrowser.ui.COLUMNS_WIDTH_DP
 import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
+import com.anjo.filebrowser.ui.Destination
+import com.anjo.filebrowser.ui.LARGE_TEXT
 import com.anjo.filebrowser.ui.MEDIUM_HEIGHT_DP
 import com.anjo.filebrowser.ui.MEDIUM_WIDTH_DP
 import com.anjo.filebrowser.ui.PHONE_HEIGHT_DP
@@ -100,11 +104,7 @@ private fun photo(): ImageBitmap {
 }
 
 @Composable
-private fun Files(
-    state: FilesUiState,
-    palette: Palette = Palette.BLUE,
-    mode: ThemeMode = ThemeMode.LIGHT,
-) = PreviewTheme(palette, mode) {
+private fun StaticFiles(state: FilesUiState) =
     FilesContent(
         state = state,
         snackbarHost = remember { SnackbarHostState() },
@@ -119,15 +119,40 @@ private fun Files(
         onRename = { _, _ -> },
         onDelete = {},
     )
-}
+
+@Composable
+private fun Files(
+    state: FilesUiState,
+    palette: Palette = Palette.BLUE,
+    mode: ThemeMode = ThemeMode.LIGHT,
+) = PreviewTheme(palette, mode) { StaticFiles(state) }
+
+@Composable
+private fun AppShell() = PreviewTheme { BrowserShell(Destination.FILES, onNavigate = {}) { StaticFiles(LOADED) } }
+
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
+@Composable
+private fun AppShellPhonePreview() = AppShell()
+
+@Preview(widthDp = MEDIUM_WIDTH_DP, heightDp = MEDIUM_HEIGHT_DP)
+@Composable
+private fun AppShellMediumPreview() = AppShell()
+
+@Preview(widthDp = WIDE_WIDTH_DP, heightDp = WIDE_HEIGHT_DP)
+@Composable
+private fun AppShellWidePreview() = AppShell()
 
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable
 private fun FilesPhonePreview() = Files(LOADED)
 
-@Preview(widthDp = MEDIUM_WIDTH_DP, heightDp = MEDIUM_HEIGHT_DP)
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
 @Composable
-private fun FilesMediumPreview() = Files(LOADED)
+private fun FilesPhoneLargeTextPreview() = Files(LOADED)
+
+@Preview(widthDp = COLUMNS_WIDTH_DP, heightDp = MEDIUM_HEIGHT_DP)
+@Composable
+private fun FilesNarrowestColumnsPreview() = Files(LOADED)
 
 @Preview(widthDp = WIDE_WIDTH_DP, heightDp = WIDE_HEIGHT_DP)
 @Composable

@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
 import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
+import com.anjo.filebrowser.ui.LARGE_TEXT
 import com.anjo.filebrowser.ui.PHONE_HEIGHT_DP
 import com.anjo.filebrowser.ui.PHONE_WIDTH_DP
 import com.anjo.filebrowser.ui.PREVIEW_QUOTA
@@ -14,6 +15,7 @@ import com.anjo.filebrowser.ui.WIDE_HEIGHT_DP
 import com.anjo.filebrowser.ui.WIDE_WIDTH_DP
 import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.model.TrashItem
+import com.anjo.filebrowser.ui.theme.ThemeMode
 import ee.schimke.composeai.preview.SettledPreview
 import kotlin.time.Instant
 
@@ -37,21 +39,31 @@ private val ITEMS =
 private val LOADED = TrashUiState(items = Loadable.Ready(ITEMS), quota = PREVIEW_QUOTA)
 
 @Composable
-private fun Trash(state: TrashUiState) =
-    PreviewTheme {
-        TrashContent(
-            state = state,
-            snackbarHost = remember { SnackbarHostState() },
-            onRefresh = {},
-            onRestore = {},
-            onDeleteForever = {},
-            onEmptyTrash = {},
-        )
-    }
+private fun Trash(
+    state: TrashUiState,
+    mode: ThemeMode = ThemeMode.LIGHT,
+) = PreviewTheme(mode = mode) {
+    TrashContent(
+        state = state,
+        snackbarHost = remember { SnackbarHostState() },
+        onRefresh = {},
+        onRestore = {},
+        onDeleteForever = {},
+        onEmptyTrash = {},
+    )
+}
 
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable
 private fun TrashPhonePreview() = Trash(LOADED)
+
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
+@Composable
+private fun TrashPhoneLargeTextPreview() = Trash(LOADED)
+
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
+@Composable
+private fun TrashPhoneDarkPreview() = Trash(LOADED, ThemeMode.DARK)
 
 @Preview(widthDp = WIDE_WIDTH_DP, heightDp = WIDE_HEIGHT_DP)
 @Composable
@@ -65,7 +77,20 @@ private fun EmptyTrashDialogPreview() = PreviewTheme { PurgeDialog(Purge.All, co
 @SettledPreview
 @Preview(widthDp = DIALOG_WIDTH_DP, heightDp = DIALOG_HEIGHT_DP)
 @Composable
-private fun DeleteForeverDialogPreview() =
-    PreviewTheme {
+private fun DeleteForeverDialogPreview() = DeleteForeverDialog()
+
+@SettledPreview
+@Preview(widthDp = DIALOG_WIDTH_DP, heightDp = DIALOG_HEIGHT_DP)
+@Composable
+private fun DeleteForeverDialogDarkPreview() = DeleteForeverDialog(ThemeMode.DARK)
+
+@SettledPreview
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
+@Composable
+private fun DeleteForeverDialogLargeTextPreview() = DeleteForeverDialog()
+
+@Composable
+private fun DeleteForeverDialog(mode: ThemeMode = ThemeMode.LIGHT) =
+    PreviewTheme(mode = mode) {
         PurgeDialog(Purge.One(ARCHIVE), count = ITEMS.size, onConfirm = {}, onDismiss = {})
     }
