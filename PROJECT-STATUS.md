@@ -1,8 +1,21 @@
 # Project Status
 
-Last update: 2026-11-16, branch `feature-14/kmp-ui`.
+Last update: 2026-11-18, branch `feature-14/kmp-ui`.
 
 ## Completed
+
+### 2026-11-18, `feature-14/kmp-ui`: Compose previews
+- 18 `@Preview` functions in `FilebrowserUI/src/desktopMain` (`PreviewTheme.kt`, `files/FilesPreviews.kt`,
+  `trash/TrashPreviews.kt`, `auth/SignInPreviews.kt`): files list at 360, 900 and 1440 dp, dark, green palette,
+  empty, error and loading; trash; name, purge, text and image preview dialogs; sign-in.
+- Render them offscreen from the project root with `compose-preview show` (`--json` for paths, `--filter <name>`
+  for one); PNGs land in `FilebrowserUI/build/compose-previews/renders/`. No window opens.
+- `FilesScreen` and `TrashScreen` only wire the view model; `FilesContent` and `TrashContent` take the UI state
+  and event lambdas. `PreviewTheme` provides an isolated Koin context (`KoinApplicationPreview`).
+- `ui-tooling-preview` and `preview-annotations` (`@SettledPreview`, lets dialogs finish fading in) are
+  desktop-only dependencies; the wasm bundle carries no preview code.
+- Not previewed: the name dialog's validation error (shows only after blur or submit) and the signed-in account
+  menu (needs a real OIDC sign-in); open menus and snackbars need interaction.
 
 ### 2026-11-16, `feature-14/kmp-ui`: simplifications
 - gRPC responses use the generated Kotlin DSL builders instead of Java builder chains.
