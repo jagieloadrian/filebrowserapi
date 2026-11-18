@@ -170,8 +170,8 @@ class AppTest :
                 // then
                 onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH - NAVIGATION_RAIL)
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
-                onNodeWithText("2.0 KB", useUnmergedTree = true).assertIsDisplayed()
-                onNodeWithText("Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("2.0\u00A0KB", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("Modified 2026-11-13 10:00\u00A0UTC", useUnmergedTree = true).assertIsDisplayed()
             }
         }
 
@@ -192,7 +192,7 @@ class AppTest :
 
                 // then
                 onNodeWithText("PDF file", useUnmergedTree = true).assertDoesNotExist()
-                onNodeWithText("2.0 KB · Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("2.0\u00A0KB · Modified 2026-11-13 10:00\u00A0UTC", useUnmergedTree = true).assertIsDisplayed()
             }
         }
 

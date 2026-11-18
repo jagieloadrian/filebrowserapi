@@ -5,10 +5,11 @@ import kotlin.time.Instant
 
 private const val HOME = "Home"
 private const val STEP = 1024.0
+private const val NBSP = '\u00A0'
 private val UNITS = listOf("KB", "MB", "GB", "TB")
 
 fun formatSize(bytes: Long): String {
-    if (bytes < STEP) return "$bytes B"
+    if (bytes < STEP) return "$bytes${NBSP}B"
     var value = bytes / STEP
     var unit = 0
     while (value >= STEP && unit < UNITS.lastIndex) {
@@ -16,10 +17,10 @@ fun formatSize(bytes: Long): String {
         unit++
     }
     val tenths = (value * 10).roundToLong()
-    return "${tenths / 10}.${tenths % 10} ${UNITS[unit]}"
+    return "${tenths / 10}.${tenths % 10}$NBSP${UNITS[unit]}"
 }
 
-fun formatTime(instant: Instant): String = instant.toString().let { "${it.take(10)} ${it.substring(11, 16)} UTC" }
+fun formatTime(instant: Instant): String = instant.toString().let { "${it.take(10)} ${it.substring(11, 16)}${NBSP}UTC" }
 
 fun folderLabel(path: String): String = path.ifEmpty { HOME }
 
