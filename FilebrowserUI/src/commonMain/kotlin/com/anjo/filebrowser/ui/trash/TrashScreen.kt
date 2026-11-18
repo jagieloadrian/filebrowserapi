@@ -60,7 +60,7 @@ import com.anjo.filebrowser.ui.model.TrashItem
 import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
-private sealed interface Purge {
+internal sealed interface Purge {
     data object All : Purge
 
     data class One(
@@ -210,7 +210,7 @@ private fun TrashRow(
 }
 
 @Composable
-private fun PurgeDialog(
+internal fun PurgeDialog(
     request: Purge,
     count: Int,
     onConfirm: () -> Unit,
