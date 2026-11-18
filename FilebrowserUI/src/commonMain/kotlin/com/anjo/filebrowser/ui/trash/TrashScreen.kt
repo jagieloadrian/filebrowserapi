@@ -68,14 +68,33 @@ private sealed interface Purge {
     ) : Purge
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
-    var purge by remember { mutableStateOf<Purge?>(null) }
     LaunchedEffect(viewModel) { viewModel.refresh() }
     SnackbarEffect(viewModel.snackbar, snackbarHost)
+    TrashContent(
+        state = state,
+        snackbarHost = snackbarHost,
+        onRefresh = viewModel::refresh,
+        onRestore = viewModel::restore,
+        onDeleteForever = viewModel::deleteForever,
+        onEmptyTrash = viewModel::emptyTrash,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TrashContent(
+    state: TrashUiState,
+    snackbarHost: SnackbarHostState,
+    onRefresh: () -> Unit,
+    onRestore: (TrashItem) -> Unit,
+    onDeleteForever: (TrashItem) -> Unit,
+    onEmptyTrash: () -> Unit,
+) {
+    var purge by remember { mutableStateOf<Purge?>(null) }
     val items = (state.items as? Loadable.Ready)?.value.orEmpty()
 
     Scaffold(
@@ -89,7 +108,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) { Text("Empty trash") }
                     }
-                    IconButton(onClick = viewModel::refresh) {
+                    IconButton(onClick = onRefresh) {
                         Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
                     }
                     AppMenu()
@@ -117,7 +136,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
                 }
 
                 is Loadable.Failed -> {
-                    ErrorState(loaded.message, viewModel::refresh)
+                    ErrorState(loaded.message, onRefresh)
                 }
 
                 is Loadable.Ready -> {
@@ -128,7 +147,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
                             val wide = fitsColumns()
                             LazyColumn(Modifier.fillMaxSize()) {
                                 dividedItems(loaded.value, key = { it.id }) { item ->
-                                    TrashRow(item, wide, onRestore = { viewModel.restore(item) }, onPurge = { purge = Purge.One(item) })
+                                    TrashRow(item, wide, onRestore = { onRestore(item) }, onPurge = { purge = Purge.One(item) })
                                 }
                             }
                         }
@@ -145,8 +164,8 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
             onConfirm = {
                 purge = null
                 when (request) {
-                    Purge.All -> viewModel.emptyTrash()
-                    is Purge.One -> viewModel.deleteForever(request.item)
+                    Purge.All -> onEmptyTrash()
+                    is Purge.One -> onDeleteForever(request.item)
                 }
             },
             onDismiss = { purge = null },

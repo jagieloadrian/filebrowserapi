@@ -96,15 +96,45 @@ private sealed interface NameRequest {
     ) : NameRequest
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
-    var nameRequest by remember { mutableStateOf<NameRequest?>(null) }
     LaunchedEffect(viewModel) { viewModel.refresh() }
     SnackbarEffect(viewModel.snackbar, snackbarHost)
+    FilesContent(
+        state = state,
+        snackbarHost = snackbarHost,
+        onRefresh = viewModel::refresh,
+        onUpload = viewModel::uploadFromDevice,
+        onSearch = viewModel::search,
+        onOpen = viewModel::open,
+        onPreview = viewModel::preview,
+        onClosePreview = viewModel::closePreview,
+        onDownload = viewModel::download,
+        onCreateFolder = viewModel::createFolder,
+        onRename = viewModel::rename,
+        onDelete = viewModel::delete,
+    )
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun FilesContent(
+    state: FilesUiState,
+    snackbarHost: SnackbarHostState,
+    onRefresh: () -> Unit,
+    onUpload: () -> Unit,
+    onSearch: (String) -> Unit,
+    onOpen: (String) -> Unit,
+    onPreview: (Entry) -> Unit,
+    onClosePreview: () -> Unit,
+    onDownload: (Entry) -> Unit,
+    onCreateFolder: (String) -> Unit,
+    onRename: (Entry, String) -> Unit,
+    onDelete: (Entry) -> Unit,
+) {
+    var nameRequest by remember { mutableStateOf<NameRequest?>(null) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -113,7 +143,7 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
                     IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
                         Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
                     }
-                    IconButton(onClick = viewModel::refresh) {
+                    IconButton(onClick = onRefresh) {
                         Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
                     }
                     AppMenu()
@@ -122,7 +152,7 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = viewModel::uploadFromDevice,
+                onClick = onUpload,
                 icon = { Icon(Icons.Outlined.Upload, contentDescription = null) },
                 text = { Text("Upload file") },
             )
@@ -136,24 +166,30 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
         ) {
             WorkIndicator(state.working > 0)
             QuotaBar(state.quota)
-            SearchField(state.query, viewModel::search)
-            Breadcrumbs(state.path, viewModel::open)
+            SearchField(state.query, onSearch)
+            Breadcrumbs(state.path, onOpen)
             when (val entries = state.entries) {
                 Loadable.Loading -> {
                     SkeletonList()
                 }
 
                 is Loadable.Failed -> {
-                    ErrorState(entries.message, viewModel::refresh)
+                    ErrorState(entries.message, onRefresh)
                 }
 
                 is Loadable.Ready -> {
                     if (entries.value.isEmpty()) {
                         NoEntries(state.query)
                     } else {
-                        EntryList(entries.value, searching = state.query.isNotBlank(), viewModel) {
-                            nameRequest = NameRequest.Rename(it)
-                        }
+                        EntryList(
+                            entries = entries.value,
+                            searching = state.query.isNotBlank(),
+                            onOpen = onOpen,
+                            onPreview = onPreview,
+                            onDownload = onDownload,
+                            onRename = { nameRequest = NameRequest.Rename(it) },
+                            onDelete = onDelete,
+                        )
                     }
                 }
             }
@@ -163,16 +199,16 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
     state.preview?.let { preview ->
         PreviewDialog(
             preview,
-            onClose = viewModel::closePreview,
-            onRetry = { viewModel.preview(preview.entry) },
-            onDownload = { viewModel.download(preview.entry) },
+            onClose = onClosePreview,
+            onRetry = { onPreview(preview.entry) },
+            onDownload = { onDownload(preview.entry) },
             onRename = {
-                viewModel.closePreview()
+                onClosePreview()
                 nameRequest = NameRequest.Rename(preview.entry)
             },
             onDelete = {
-                viewModel.closePreview()
-                viewModel.delete(preview.entry)
+                onClosePreview()
+                onDelete(preview.entry)
             },
         )
     }
@@ -186,7 +222,7 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
             onDismiss = { nameRequest = null },
             onConfirm = { name ->
                 nameRequest = null
-                if (renamed == null) viewModel.createFolder(name) else viewModel.rename(renamed, name)
+                if (renamed == null) onCreateFolder(name) else onRename(renamed, name)
             },
         )
     }
@@ -262,8 +298,11 @@ private fun NoEntries(query: String) {
 private fun EntryList(
     entries: List<Entry>,
     searching: Boolean,
-    viewModel: FilesViewModel,
+    onOpen: (String) -> Unit,
+    onPreview: (Entry) -> Unit,
+    onDownload: (Entry) -> Unit,
     onRename: (Entry) -> Unit,
+    onDelete: (Entry) -> Unit,
 ) {
     BoxWithConstraints {
         val wide = fitsColumns()
@@ -273,11 +312,11 @@ private fun EntryList(
                     entry = entry,
                     searching = searching,
                     wide = wide,
-                    onOpen = { viewModel.open(entry.path) },
-                    onPreview = { viewModel.preview(entry) },
-                    onDownload = { viewModel.download(entry) },
+                    onOpen = { onOpen(entry.path) },
+                    onPreview = { onPreview(entry) },
+                    onDownload = { onDownload(entry) },
                     onRename = { onRename(entry) },
-                    onDelete = { viewModel.delete(entry) },
+                    onDelete = { onDelete(entry) },
                 )
             }
         }
