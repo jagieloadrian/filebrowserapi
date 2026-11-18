@@ -320,6 +320,28 @@ class AppTest :
             }
         }
 
+        context("should tell screen readers a row is a folder once") {
+            withTests(nameFn = { it.first }, "wide" to WIDE_WIDTH, "compact" to NARROWEST_WIDTH) { (_, width) ->
+                // given
+                val session = signedIn()
+                api.entries += folder("/Documents")
+
+                runComposeUiTest {
+                    // when
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(width, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // then
+                    onNodeWithText("Documents")
+                        .assert(hasText("Folder", substring = true))
+                        .assert(!hasContentDescription("Folder"))
+                }
+            }
+        }
+
         context("should preview a file when its row is clicked") {
             withTests(
                 nameFn = { it.name },

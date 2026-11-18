@@ -359,7 +359,7 @@ private fun EntryRow(
     val leading: @Composable () -> Unit = {
         Icon(
             if (entry.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
-            contentDescription = if (entry.directory) "Folder" else "File",
+            contentDescription = if (entry.directory || wide) null else "File",
         )
     }
     val trailing: @Composable () -> Unit = {
