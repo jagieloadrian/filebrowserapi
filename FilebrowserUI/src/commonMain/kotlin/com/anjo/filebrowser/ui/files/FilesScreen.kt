@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -268,7 +270,11 @@ private fun Breadcrumbs(
     val parts = path.split('/').filter { it.isNotEmpty() }
     val crumbs = listOf("" to folderLabel("")) + parts.indices.map { i -> "/" + parts.take(i + 1).joinToString("/") to parts[i] }
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Spacing.s, vertical = Spacing.xs),
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.s, vertical = Spacing.xs)
+            .heightIn(min = LocalMinimumInteractiveComponentSize.current),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         crumbs.forEachIndexed { index, (target, label) ->

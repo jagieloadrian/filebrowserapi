@@ -504,6 +504,27 @@ class AppTest :
             }
         }
 
+        test("should keep the breadcrumb row height when the path grows from Home to a folder") {
+            // given
+            val session = signedIn()
+            api.entries += folder("/Documents")
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                val home = onNode(isHeading() and hasText("Home")).getUnclippedBoundsInRoot()
+
+                // when
+                onNodeWithText("Documents").performClick()
+
+                // then
+                val documents = onNode(isHeading() and hasText("Documents")).getUnclippedBoundsInRoot()
+                documents.top shouldBe home.top
+            }
+        }
+
         test("should mark the empty folder title as a heading") {
             // given
             val session = signedIn()
