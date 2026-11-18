@@ -46,10 +46,12 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.anjo.filebrowser.ui.common.AppMenu
+import com.anjo.filebrowser.ui.common.ColumnsHeader
 import com.anjo.filebrowser.ui.common.ColumnsRow
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
+import com.anjo.filebrowser.ui.common.FileName
 import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.common.QuotaBar
 import com.anjo.filebrowser.ui.common.SIZE_COLUMN
@@ -158,6 +160,9 @@ internal fun TrashContent(
                         if (loaded.value.isEmpty()) {
                             EmptyState(Icons.Outlined.Delete, "Trash is empty", "Files and folders you delete appear here.")
                         } else {
+                            if (wide) {
+                                ColumnsHeader(listOf("Original location" to FOLDER_COLUMN, "Size" to SIZE_COLUMN, "Deleted" to TIME_COLUMN))
+                            }
                             LazyColumn(Modifier.fillMaxSize()) {
                                 dividedItems(loaded.value, key = { it.id }) { item ->
                                     TrashRow(item, wide, onRestore = { onRestore(item) }, onPurge = { purge = Purge.One(item) })
@@ -194,9 +199,7 @@ private fun TrashRow(
     onPurge: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
-    val folder = "From ${folderLabel(item.parent)}"
     val size = if (item.directory) null else formatSize(item.size)
-    val deleted = "Deleted ${formatTime(item.deletedAt)}"
     val leading: @Composable () -> Unit = {
         Icon(
             if (item.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
@@ -227,15 +230,17 @@ private fun TrashRow(
     if (wide) {
         ColumnsRow(
             item.name,
-            listOf(folder to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, deleted to TIME_COLUMN),
+            listOf(folderLabel(item.parent) to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, formatTime(item.deletedAt) to TIME_COLUMN),
             leading,
             trailing,
             Modifier.semantics(mergeDescendants = true) {},
         )
     } else {
         ListItem(
-            headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            supportingContent = { Text(listOfNotNull(folder, size, deleted).joinToString(" · ")) },
+            headlineContent = { FileName(item.name, maxLines = 2) },
+            supportingContent = {
+                Text(listOfNotNull("From ${folderLabel(item.parent)}", size, "Deleted ${formatTime(item.deletedAt)}").joinToString(" · "))
+            },
             leadingContent = leading,
             trailingContent = trailing,
         )

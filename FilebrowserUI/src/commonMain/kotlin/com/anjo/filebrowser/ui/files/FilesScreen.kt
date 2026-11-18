@@ -61,13 +61,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anjo.filebrowser.ui.common.AppMenu
+import com.anjo.filebrowser.ui.common.ColumnsHeader
 import com.anjo.filebrowser.ui.common.ColumnsRow
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
+import com.anjo.filebrowser.ui.common.FileName
 import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.common.NameDialog
 import com.anjo.filebrowser.ui.common.QuotaBar
@@ -306,18 +307,30 @@ private fun EntryList(
 ) {
     BoxWithConstraints {
         val wide = fitsColumns()
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
-            dividedItems(entries, key = { it.path }) { entry ->
-                EntryRow(
-                    entry = entry,
-                    searching = searching,
-                    wide = wide,
-                    onOpen = { onOpen(entry.path) },
-                    onPreview = { onPreview(entry) },
-                    onDownload = { onDownload(entry) },
-                    onRename = { onRename(entry) },
-                    onDelete = { onDelete(entry) },
+        Column {
+            if (wide) {
+                ColumnsHeader(
+                    listOfNotNull(
+                        ("Folder" to FOLDER_COLUMN).takeIf { searching },
+                        "Type" to TYPE_COLUMN,
+                        "Size" to SIZE_COLUMN,
+                        "Modified" to TIME_COLUMN,
+                    ),
                 )
+            }
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
+                dividedItems(entries, key = { it.path }) { entry ->
+                    EntryRow(
+                        entry = entry,
+                        searching = searching,
+                        wide = wide,
+                        onOpen = { onOpen(entry.path) },
+                        onPreview = { onPreview(entry) },
+                        onDownload = { onDownload(entry) },
+                        onRename = { onRename(entry) },
+                        onDelete = { onDelete(entry) },
+                    )
+                }
             }
         }
     }
@@ -336,9 +349,7 @@ private fun EntryRow(
 ) {
     var menu by remember { mutableStateOf(false) }
     val previewable = previewKind(entry) != null
-    val folder = if (searching) "In ${folderLabel(entry.parent)}" else null
     val size = if (entry.directory) null else formatSize(entry.size)
-    val modified = "Modified ${formatTime(entry.modified)}"
     val leading: @Composable () -> Unit = {
         Icon(
             if (entry.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
@@ -398,10 +409,10 @@ private fun EntryRow(
         ColumnsRow(
             entry.name,
             listOfNotNull(
-                folder?.let { it to FOLDER_COLUMN },
+                (folderLabel(entry.parent) to FOLDER_COLUMN).takeIf { searching },
                 (if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN,
                 size.orEmpty() to SIZE_COLUMN,
-                modified to TIME_COLUMN,
+                formatTime(entry.modified) to TIME_COLUMN,
             ),
             leading,
             trailing,
@@ -409,8 +420,11 @@ private fun EntryRow(
         )
     } else {
         ListItem(
-            headlineContent = { Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            supportingContent = { Text(listOfNotNull(folder, size ?: "Folder", modified).joinToString(" · ")) },
+            headlineContent = { FileName(entry.name, maxLines = 2) },
+            supportingContent = {
+                val folder = if (searching) "In ${folderLabel(entry.parent)}" else null
+                Text(listOfNotNull(folder, size ?: "Folder", "Modified ${formatTime(entry.modified)}").joinToString(" · "))
+            },
             leadingContent = leading,
             trailingContent = trailing,
             modifier = modifier,

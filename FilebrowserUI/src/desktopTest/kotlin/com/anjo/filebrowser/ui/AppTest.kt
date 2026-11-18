@@ -29,10 +29,12 @@ import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -78,6 +80,7 @@ private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
 private const val PREVIEW_TIMEOUT_MS = 5_000L
 private const val MAX_COMPOSED_LINES = 100
+private const val TOOLTIP_DELAY_MS = 100L
 
 private data class Dividers(
     val layout: String,
@@ -172,7 +175,7 @@ class AppTest :
                 onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH - NAVIGATION_RAIL)
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2.0\u00A0KB", useUnmergedTree = true).assertIsDisplayed()
-                onNodeWithText("Modified 2026-11-13 10:00\u00A0UTC", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("2026-11-13 10:00\u00A0UTC", useUnmergedTree = true).assertIsDisplayed()
             }
         }
 
@@ -197,12 +200,34 @@ class AppTest :
             }
         }
 
+        test("should show the whole name in a tooltip when the mouse rests on a name cut short by its column") {
+            // given
+            val session = signedIn()
+            val name = "quarterly-report-".repeat(10) + "final.pdf"
+            api.entries += file("/$name")
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                mainClock.autoAdvance = false
+
+                // when
+                onNodeWithText(name, useUnmergedTree = true).performMouseInput { moveTo(center) }
+                mainClock.advanceTimeBy(TOOLTIP_DELAY_MS)
+
+                // then
+                onAllNodesWithText(name, useUnmergedTree = true).fetchSemanticsNodes() shouldHaveSize 2
+            }
+        }
+
         context("should separate the rows with one divider fewer than rows and the columns only when the window is wide") {
             withTests(
                 nameFn = { it.layout },
-                Dividers("files wide", "Files", WIDE_WIDTH, columnDividers = 9),
+                Dividers("files wide", "Files", WIDE_WIDTH, columnDividers = 12),
                 Dividers("files compact", "Files", NARROWEST_WIDTH, columnDividers = 0),
-                Dividers("trash wide", "Trash", WIDE_WIDTH, columnDividers = 9),
+                Dividers("trash wide", "Trash", WIDE_WIDTH, columnDividers = 12),
                 Dividers("trash compact", "Trash", NARROWEST_WIDTH, columnDividers = 0),
             ) { case ->
                 // given
@@ -242,8 +267,8 @@ class AppTest :
                 // then
                 val rowHeight = onNodeWithText("report.pdf").getUnclippedBoundsInRoot().height
                 val dividers = onAllNodesWithTag(COLUMN_DIVIDER, useUnmergedTree = true)
-                dividers.fetchSemanticsNodes() shouldHaveSize 3
-                repeat(3) { dividers[it].assertHeightIsEqualTo(rowHeight) }
+                dividers.fetchSemanticsNodes() shouldHaveSize 6
+                (3 until 6).forEach { dividers[it].assertHeightIsEqualTo(rowHeight) }
             }
         }
 
