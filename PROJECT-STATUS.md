@@ -4,6 +4,24 @@ Last update: 2026-11-18, branch `feature-14/kmp-ui`.
 
 ## Completed
 
+### 2026-11-18, `feature-14/kmp-ui`: design review fixes, app-shell previews
+- Delete-forever dialog: title "Delete forever?", the name (three lines at most) in the scrolling text, so the
+  buttons stay in view at font scale 2.0. Empty trash: "will be deleted forever", "1 item" in the singular.
+- Trash rows: Restore and Delete forever in a per-row overflow menu at every width, like the files rows; below the
+  column width "Empty trash" is an icon button; the title keeps one line.
+- Screen readers: trash menu items read "Restore <name>" and "Delete <name> forever", the wide trash row is one
+  merged node; the folder or file icon in files rows is decorative where the row text already says the kind.
+- Columns: a header row (Name, Type, Size, Modified; Folder while searching; trash: Original location, Size,
+  Deleted) replaces the cell prefixes; the time column is 168sp (was 232sp), the name takes the rest. Names cut
+  short show the whole name in a tooltip on hover or long press; single-column lists give names two lines.
+- Sizes and times join number and unit with a non-breaking space ("742 B", "15:32 UTC" no longer wrap inside).
+- Text preview: Wrap lines and Highlight code are outlined icon toggle buttons (filled when on).
+- Breadcrumbs keep the height of their text buttons when only "Home" shows, so the list no longer jumps.
+- Previews (27): `BrowserShell` takes the destination, a navigate lambda and the content; the shell is previewed
+  with the files list at 360x760, 900x700 (rail, single column) and 1440x900. Font scale 2.0 for the files and
+  trash phone lists and the delete-forever dialog; dark trash, delete-forever dialog and sign-in.
+  `FilesMediumPreview` became `FilesNarrowestColumnsPreview` (840dp content, the narrowest with columns).
+
 ### 2026-11-18, `feature-14/kmp-ui`: Compose previews
 - 18 `@Preview` functions in `FilebrowserUI/src/desktopMain` (`PreviewTheme.kt`, `files/FilesPreviews.kt`,
   `trash/TrashPreviews.kt`, `auth/SignInPreviews.kt`): files list at 360, 900 and 1440 dp, dark, green palette,
