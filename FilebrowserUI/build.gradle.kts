@@ -65,6 +65,7 @@ kotlin {
         named("desktopMain") {
             dependencies {
                 implementation(compose.desktop.currentOs)
+                implementation(libs.compose.ui.tooling.preview)
                 implementation(libs.coroutines.swing)
                 implementation(libs.ktor.client.cio)
                 implementation(project(":FilebrowserProto"))
