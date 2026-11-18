@@ -1,9 +1,9 @@
 package com.anjo.filebrowser.ui.trash
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -13,11 +13,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RestoreFromTrash
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,7 +40,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -57,6 +60,7 @@ import com.anjo.filebrowser.ui.common.fitsColumns
 import com.anjo.filebrowser.ui.common.folderLabel
 import com.anjo.filebrowser.ui.common.formatSize
 import com.anjo.filebrowser.ui.common.formatTime
+import com.anjo.filebrowser.ui.files.MenuItem
 import com.anjo.filebrowser.ui.files.WorkIndicator
 import com.anjo.filebrowser.ui.model.TrashItem
 import com.anjo.filebrowser.ui.theme.Spacing
@@ -101,54 +105,58 @@ internal fun TrashContent(
     var purge by remember { mutableStateOf<Purge?>(null) }
     val items = (state.items as? Loadable.Ready)?.value.orEmpty()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Trash", Modifier.semantics { heading() }) },
-                actions = {
-                    if (items.isNotEmpty()) {
-                        TextButton(
-                            onClick = { purge = Purge.All },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        ) { Text("Empty trash") }
+    BoxWithConstraints {
+        val wide = fitsColumns()
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Trash", Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    actions = {
+                        if (items.isNotEmpty() && wide) {
+                            TextButton(
+                                onClick = { purge = Purge.All },
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            ) { Text("Empty trash") }
+                        } else if (items.isNotEmpty()) {
+                            IconButton(onClick = { purge = Purge.All }) {
+                                Icon(Icons.Outlined.DeleteSweep, contentDescription = "Empty trash", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        IconButton(onClick = onRefresh) {
+                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                        }
+                        AppMenu()
+                    },
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHost) },
+        ) { padding ->
+            Column(
+                Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
+            ) {
+                WorkIndicator(state.working > 0)
+                QuotaBar(state.quota)
+                Text(
+                    "Deleted items stay here for 30 days. They count toward your storage until they are deleted forever.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s).widthIn(max = Spacing.content),
+                )
+                when (val loaded = state.items) {
+                    Loadable.Loading -> {
+                        SkeletonList()
                     }
-                    IconButton(onClick = onRefresh) {
-                        Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+
+                    is Loadable.Failed -> {
+                        ErrorState(loaded.message, onRefresh)
                     }
-                    AppMenu()
-                },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHost) },
-    ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .fillMaxSize(),
-        ) {
-            WorkIndicator(state.working > 0)
-            QuotaBar(state.quota)
-            Text(
-                "Deleted items stay here for 30 days. They count toward your storage until they are deleted forever.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s).widthIn(max = Spacing.content),
-            )
-            when (val loaded = state.items) {
-                Loadable.Loading -> {
-                    SkeletonList()
-                }
 
-                is Loadable.Failed -> {
-                    ErrorState(loaded.message, onRefresh)
-                }
-
-                is Loadable.Ready -> {
-                    if (loaded.value.isEmpty()) {
-                        EmptyState(Icons.Outlined.Delete, "Trash is empty", "Files and folders you delete appear here.")
-                    } else {
-                        BoxWithConstraints {
-                            val wide = fitsColumns()
+                    is Loadable.Ready -> {
+                        if (loaded.value.isEmpty()) {
+                            EmptyState(Icons.Outlined.Delete, "Trash is empty", "Files and folders you delete appear here.")
+                        } else {
                             LazyColumn(Modifier.fillMaxSize()) {
                                 dividedItems(loaded.value, key = { it.id }) { item ->
                                     TrashRow(item, wide, onRestore = { onRestore(item) }, onPurge = { purge = Purge.One(item) })
@@ -184,6 +192,7 @@ private fun TrashRow(
     onRestore: () -> Unit,
     onPurge: () -> Unit,
 ) {
+    var menu by remember { mutableStateOf(false) }
     val folder = "From ${folderLabel(item.parent)}"
     val size = if (item.directory) null else formatSize(item.size)
     val deleted = "Deleted ${formatTime(item.deletedAt)}"
@@ -194,10 +203,19 @@ private fun TrashRow(
         )
     }
     val trailing: @Composable () -> Unit = {
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onRestore) { Text("Restore") }
-            IconButton(onClick = onPurge) {
-                Icon(Icons.Outlined.DeleteForever, contentDescription = "Delete ${item.name} forever")
+        Box {
+            IconButton(onClick = { menu = true }) {
+                Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${item.name}")
+            }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                MenuItem("Restore", Icons.Outlined.RestoreFromTrash) {
+                    menu = false
+                    onRestore()
+                }
+                MenuItem("Delete forever", Icons.Outlined.DeleteForever) {
+                    menu = false
+                    onPurge()
+                }
             }
         }
     }
