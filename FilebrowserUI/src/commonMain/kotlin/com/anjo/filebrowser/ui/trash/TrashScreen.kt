@@ -41,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -208,11 +209,15 @@ private fun TrashRow(
                 Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${item.name}")
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                MenuItem("Restore", Icons.Outlined.RestoreFromTrash) {
+                MenuItem("Restore", Icons.Outlined.RestoreFromTrash, Modifier.semantics { contentDescription = "Restore ${item.name}" }) {
                     menu = false
                     onRestore()
                 }
-                MenuItem("Delete forever", Icons.Outlined.DeleteForever) {
+                MenuItem(
+                    "Delete forever",
+                    Icons.Outlined.DeleteForever,
+                    Modifier.semantics { contentDescription = "Delete ${item.name} forever" },
+                ) {
                     menu = false
                     onPurge()
                 }
@@ -220,7 +225,13 @@ private fun TrashRow(
         }
     }
     if (wide) {
-        ColumnsRow(item.name, listOf(folder to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, deleted to TIME_COLUMN), leading, trailing)
+        ColumnsRow(
+            item.name,
+            listOf(folder to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, deleted to TIME_COLUMN),
+            leading,
+            trailing,
+            Modifier.semantics(mergeDescendants = true) {},
+        )
     } else {
         ListItem(
             headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },

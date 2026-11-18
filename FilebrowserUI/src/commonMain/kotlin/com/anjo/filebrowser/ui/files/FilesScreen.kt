@@ -422,11 +422,13 @@ private fun EntryRow(
 internal fun MenuItem(
     label: String,
     icon: ImageVector,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     DropdownMenuItem(
         text = { Text(label) },
         leadingIcon = { Icon(icon, contentDescription = null) },
         onClick = onClick,
+        modifier = modifier,
     )
 }

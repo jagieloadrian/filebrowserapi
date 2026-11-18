@@ -12,6 +12,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOn
@@ -267,6 +268,29 @@ class AppTest :
 
                     // then
                     onNodeWithText(name).fetchSemanticsNode().config[SemanticsActions.OnClick].label shouldBe expected
+                }
+            }
+        }
+
+        context("should name the trashed item in its row and in its actions for screen readers") {
+            withTests(nameFn = { it.first }, "wide" to WIDE_WIDTH, "compact" to NARROWEST_WIDTH) { (_, width) ->
+                // given
+                val session = signedIn()
+                runComposeUiTest {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(width, HEIGHT)) { Browser() }
+                        }
+                    }
+                    destination("Trash").performClick()
+
+                    // when
+                    onNodeWithContentDescription("Actions for a.txt").performClick()
+
+                    // then
+                    onNodeWithText("a.txt").assert(hasText("2026-11-13 10:00\u00A0UTC", substring = true))
+                    onNodeWithContentDescription("Restore a.txt").assertIsDisplayed()
+                    onNodeWithContentDescription("Delete a.txt forever").assertIsDisplayed()
                 }
             }
         }
