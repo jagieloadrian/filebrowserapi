@@ -91,6 +91,7 @@ import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
 private val UPLOAD_BUTTON_CLEARANCE = 88.dp
+private val TYPE_COLUMN_MIN_WIDTH = 1000.dp
 
 private sealed interface NameRequest {
     data object NewFolder : NameRequest
@@ -179,6 +180,7 @@ internal fun FilesContent(
             WorkIndicator(state.working > 0)
             BoxWithConstraints {
                 val wide = fitsColumns()
+                val typed = fitsColumns(TYPE_COLUMN_MIN_WIDTH)
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
                     item { QuotaBar(state.quota) }
                     item { SearchField(state.query, onSearch) }
@@ -200,6 +202,7 @@ internal fun FilesContent(
                                     entries = entries.value,
                                     searching = state.query.isNotBlank(),
                                     wide = wide,
+                                    typed = typed,
                                     onOpen = onOpen,
                                     onPreview = onPreview,
                                     onDownload = onDownload,
@@ -320,6 +323,7 @@ private fun LazyListScope.entryRows(
     entries: List<Entry>,
     searching: Boolean,
     wide: Boolean,
+    typed: Boolean,
     onOpen: (String) -> Unit,
     onPreview: (Entry) -> Unit,
     onDownload: (Entry) -> Unit,
@@ -331,7 +335,7 @@ private fun LazyListScope.entryRows(
             ColumnsHeader(
                 listOfNotNull(
                     ("Folder" to FOLDER_COLUMN).takeIf { searching },
-                    "Type" to TYPE_COLUMN,
+                    ("Type" to TYPE_COLUMN).takeIf { typed },
                     "Size" to SIZE_COLUMN,
                     "Modified" to TIME_COLUMN,
                 ),
@@ -343,6 +347,7 @@ private fun LazyListScope.entryRows(
             entry = entry,
             searching = searching,
             wide = wide,
+            typed = typed,
             onOpen = { onOpen(entry.path) },
             onPreview = { onPreview(entry) },
             onDownload = { onDownload(entry) },
@@ -357,6 +362,7 @@ private fun EntryRow(
     entry: Entry,
     searching: Boolean,
     wide: Boolean,
+    typed: Boolean,
     onOpen: () -> Unit,
     onPreview: () -> Unit,
     onDownload: () -> Unit,
@@ -426,7 +432,7 @@ private fun EntryRow(
             entry.name,
             listOfNotNull(
                 (folderLabel(entry.parent) to FOLDER_COLUMN).takeIf { searching },
-                (if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN,
+                ((if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN).takeIf { typed },
                 size.orEmpty() to SIZE_COLUMN,
                 formatTime(entry.modified) to TIME_COLUMN,
             ),

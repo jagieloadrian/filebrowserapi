@@ -74,6 +74,7 @@ import org.koin.dsl.module
 private val NARROWEST_WIDTH = 320.dp
 private val HEIGHT = 640.dp
 private val WIDE_WIDTH = 1000.dp
+private val MEDIUM_WIDTH = 900.dp
 private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
@@ -176,6 +177,26 @@ class AppTest :
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2.0\u00A0KB", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2026-11-13 10:00\u00A0UTC", useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+
+        test("should leave the type column out when the columns fit but the window is narrower than 1000dp") {
+            // given
+            val session = signedIn()
+            api.entries += file("/report.pdf", size = 2048)
+
+            runComposeUiTest {
+                // when
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(MEDIUM_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+
+                // then
+                onNodeWithText("Size", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("Type", useUnmergedTree = true).assertDoesNotExist()
+                onNodeWithText("PDF file", useUnmergedTree = true).assertDoesNotExist()
             }
         }
 

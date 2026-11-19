@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,7 +56,7 @@ private val ROW_MIN_HEIGHT = 56.dp
 private val ICON_SIZE = 24.dp
 
 @Composable
-fun BoxWithConstraintsScope.fitsColumns(): Boolean = maxWidth >= Spacing.expanded * LocalDensity.current.fontScale
+fun BoxWithConstraintsScope.fitsColumns(minWidth: Dp = Spacing.expanded): Boolean = maxWidth >= minWidth * LocalDensity.current.fontScale
 
 fun <T : Any> LazyListScope.dividedItems(
     items: List<T>,
