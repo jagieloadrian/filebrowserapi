@@ -568,6 +568,27 @@ class AppTest :
             }
         }
 
+        test("should scroll the breadcrumbs to the current folder when the path grows wider than the window") {
+            // given
+            val session = signedIn()
+            api.entries += listOf(folder("/Quarterly reports 2026"), folder("/Quarterly reports 2026/Northern region final"))
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                onNodeWithText("Quarterly reports 2026").performClick()
+
+                // when
+                onNodeWithText("Northern region final").performClick()
+
+                // then
+                onNode(isHeading() and hasText("Northern region final")).getUnclippedBoundsInRoot().right shouldBeLessThanOrEqualTo
+                    NARROWEST_WIDTH
+            }
+        }
+
         test("should mark the empty folder title as a heading") {
             // given
             val session = signedIn()

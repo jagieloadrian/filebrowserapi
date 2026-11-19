@@ -296,10 +296,12 @@ private fun Breadcrumbs(
 ) {
     val parts = path.split('/').filter { it.isNotEmpty() }
     val crumbs = listOf("" to folderLabel("")) + parts.indices.map { i -> "/" + parts.take(i + 1).joinToString("/") to parts[i] }
+    val scroll = rememberScrollState()
+    LaunchedEffect(path, scroll.maxValue) { scroll.scrollTo(scroll.maxValue) }
     Row(
         Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .horizontalScroll(scroll)
             .padding(horizontal = Spacing.s, vertical = Spacing.xs)
             .heightIn(min = LocalMinimumInteractiveComponentSize.current),
         verticalAlignment = Alignment.CenterVertically,
