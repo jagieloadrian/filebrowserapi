@@ -100,17 +100,19 @@ fun FileName(
 }
 
 @Composable
-fun ColumnsHeader(columns: List<Pair<String, TextUnit>>) =
-    Column {
-        ColumnsRow(
-            "Name",
-            columns,
-            leading = { Spacer(Modifier.size(ICON_SIZE)) },
-            trailing = { Spacer(Modifier.minimumInteractiveComponentSize()) },
-            header = true,
-        )
-        HorizontalDivider(Modifier.padding(horizontal = Spacing.m), color = MaterialTheme.colorScheme.outlineVariant)
-    }
+fun ColumnsHeader(
+    columns: List<Pair<String, TextUnit>>,
+    trailing: @Composable () -> Unit = { Spacer(Modifier.minimumInteractiveComponentSize()) },
+) = Column {
+    ColumnsRow(
+        "Name",
+        columns,
+        leading = { Spacer(Modifier.size(ICON_SIZE)) },
+        trailing = trailing,
+        header = true,
+    )
+    HorizontalDivider(Modifier.padding(horizontal = Spacing.m), color = MaterialTheme.colorScheme.outlineVariant)
+}
 
 @Composable
 fun ColumnsRow(

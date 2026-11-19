@@ -1,11 +1,15 @@
 package com.anjo.filebrowser.ui.trash
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +37,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,10 +46,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import com.anjo.filebrowser.ui.common.AppMenu
 import com.anjo.filebrowser.ui.common.ColumnsHeader
 import com.anjo.filebrowser.ui.common.ColumnsRow
@@ -70,6 +77,7 @@ import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val DIALOG_NAME_LINES = 3
+private val RESTORE_BUTTON = 120.sp
 
 internal sealed interface Purge {
     data object All : Purge
@@ -161,7 +169,13 @@ internal fun TrashContent(
                             EmptyState(Icons.Outlined.Delete, "Trash is empty", "Files and folders you delete appear here.")
                         } else {
                             if (wide) {
-                                ColumnsHeader(listOf("Original location" to FOLDER_COLUMN, "Size" to SIZE_COLUMN, "Deleted" to TIME_COLUMN))
+                                ColumnsHeader(
+                                    listOf("Original location" to FOLDER_COLUMN, "Size" to SIZE_COLUMN, "Deleted" to TIME_COLUMN),
+                                    trailing = {
+                                        Spacer(Modifier.width(restoreWidth()))
+                                        Spacer(Modifier.minimumInteractiveComponentSize())
+                                    },
+                                )
                             }
                             LazyColumn(Modifier.fillMaxSize()) {
                                 dividedItems(loaded.value, key = { it.id }) { item ->
@@ -200,21 +214,24 @@ private fun TrashRow(
 ) {
     var menu by remember { mutableStateOf(false) }
     val size = if (item.directory) null else formatSize(item.size)
+    val restoreLabel = "Restore ${item.name}"
     val leading: @Composable () -> Unit = {
         Icon(
             if (item.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
             contentDescription = if (item.directory) "Folder" else "File",
         )
     }
-    val trailing: @Composable () -> Unit = {
+    val overflow: @Composable () -> Unit = {
         Box {
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${item.name}")
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                MenuItem("Restore", Icons.Outlined.RestoreFromTrash, Modifier.semantics { contentDescription = "Restore ${item.name}" }) {
-                    menu = false
-                    onRestore()
+                if (!wide) {
+                    MenuItem("Restore", Icons.Outlined.RestoreFromTrash, Modifier.semantics { contentDescription = restoreLabel }) {
+                        menu = false
+                        onRestore()
+                    }
                 }
                 MenuItem(
                     "Delete forever",
@@ -227,13 +244,25 @@ private fun TrashRow(
             }
         }
     }
+    val modifier = Modifier.clickable(onClickLabel = "Show actions") { menu = true }
     if (wide) {
         ColumnsRow(
             item.name,
             listOf(folderLabel(item.parent) to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, formatTime(item.deletedAt) to TIME_COLUMN),
             leading,
-            trailing,
-            Modifier.semantics(mergeDescendants = true) {},
+            trailing = {
+                TextButton(
+                    onClick = onRestore,
+                    modifier = Modifier.width(restoreWidth()).semantics { contentDescription = restoreLabel },
+                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                ) {
+                    Icon(Icons.Outlined.RestoreFromTrash, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Restore", maxLines = 1)
+                }
+                overflow()
+            },
+            modifier,
         )
     } else {
         ListItem(
@@ -242,10 +271,14 @@ private fun TrashRow(
                 Text(listOfNotNull("From ${folderLabel(item.parent)}", size, "Deleted ${formatTime(item.deletedAt)}").joinToString(" · "))
             },
             leadingContent = leading,
-            trailingContent = trailing,
+            trailingContent = overflow,
+            modifier = modifier,
         )
     }
 }
+
+@Composable
+private fun restoreWidth() = with(LocalDensity.current) { RESTORE_BUTTON.toDp() }
 
 internal fun emptyTrashText(count: Int): String =
     "${if (count == 1) "1 item" else "All $count items"} will be deleted forever. This cannot be undone."
