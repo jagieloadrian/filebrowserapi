@@ -148,36 +148,40 @@ internal fun TrashContent(
                     .fillMaxSize(),
             ) {
                 WorkIndicator(state.working > 0)
-                QuotaBar(state.quota)
-                Text(
-                    "Deleted items stay here for 30 days. They count toward your storage until they are deleted forever.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s).widthIn(max = Spacing.content),
-                )
-                when (val loaded = state.items) {
-                    Loadable.Loading -> {
-                        SkeletonList()
+                LazyColumn(Modifier.fillMaxSize()) {
+                    item { QuotaBar(state.quota) }
+                    item {
+                        Text(
+                            "Deleted items stay here for 30 days. They count toward your storage until they are deleted forever.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s).widthIn(max = Spacing.content),
+                        )
                     }
+                    when (val loaded = state.items) {
+                        Loadable.Loading -> {
+                            item { SkeletonList() }
+                        }
 
-                    is Loadable.Failed -> {
-                        ErrorState(loaded.message, onRefresh)
-                    }
+                        is Loadable.Failed -> {
+                            item { ErrorState(loaded.message, onRefresh) }
+                        }
 
-                    is Loadable.Ready -> {
-                        if (loaded.value.isEmpty()) {
-                            EmptyState(Icons.Outlined.Delete, "Trash is empty", "Files and folders you delete appear here.")
-                        } else {
-                            if (wide) {
-                                ColumnsHeader(
-                                    listOf("Original location" to FOLDER_COLUMN, "Size" to SIZE_COLUMN, "Deleted" to TIME_COLUMN),
-                                    trailing = {
-                                        Spacer(Modifier.width(restoreWidth()))
-                                        Spacer(Modifier.minimumInteractiveComponentSize())
-                                    },
-                                )
-                            }
-                            LazyColumn(Modifier.fillMaxSize()) {
+                        is Loadable.Ready -> {
+                            if (loaded.value.isEmpty()) {
+                                item { EmptyState(Icons.Outlined.Delete, "Trash is empty", "Files and folders you delete appear here.") }
+                            } else {
+                                if (wide) {
+                                    stickyHeader {
+                                        ColumnsHeader(
+                                            listOf("Original location" to FOLDER_COLUMN, "Size" to SIZE_COLUMN, "Deleted" to TIME_COLUMN),
+                                            trailing = {
+                                                Spacer(Modifier.width(restoreWidth()))
+                                                Spacer(Modifier.minimumInteractiveComponentSize())
+                                            },
+                                        )
+                                    }
+                                }
                                 dividedItems(loaded.value, key = { it.id }) { item ->
                                     TrashRow(item, wide, onRestore = { onRestore(item) }, onPurge = { purge = Purge.One(item) })
                                 }

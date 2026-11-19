@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -168,31 +169,37 @@ internal fun FilesContent(
                 .fillMaxSize(),
         ) {
             WorkIndicator(state.working > 0)
-            QuotaBar(state.quota)
-            SearchField(state.query, onSearch)
-            Breadcrumbs(state.path, onOpen)
-            when (val entries = state.entries) {
-                Loadable.Loading -> {
-                    SkeletonList()
-                }
+            BoxWithConstraints {
+                val wide = fitsColumns()
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
+                    item { QuotaBar(state.quota) }
+                    item { SearchField(state.query, onSearch) }
+                    item { Breadcrumbs(state.path, onOpen) }
+                    when (val entries = state.entries) {
+                        Loadable.Loading -> {
+                            item { SkeletonList() }
+                        }
 
-                is Loadable.Failed -> {
-                    ErrorState(entries.message, onRefresh)
-                }
+                        is Loadable.Failed -> {
+                            item { ErrorState(entries.message, onRefresh) }
+                        }
 
-                is Loadable.Ready -> {
-                    if (entries.value.isEmpty()) {
-                        NoEntries(state.query)
-                    } else {
-                        EntryList(
-                            entries = entries.value,
-                            searching = state.query.isNotBlank(),
-                            onOpen = onOpen,
-                            onPreview = onPreview,
-                            onDownload = onDownload,
-                            onRename = { nameRequest = NameRequest.Rename(it) },
-                            onDelete = onDelete,
-                        )
+                        is Loadable.Ready -> {
+                            if (entries.value.isEmpty()) {
+                                item { NoEntries(state.query) }
+                            } else {
+                                entryRows(
+                                    entries = entries.value,
+                                    searching = state.query.isNotBlank(),
+                                    wide = wide,
+                                    onOpen = onOpen,
+                                    onPreview = onPreview,
+                                    onDownload = onDownload,
+                                    onRename = { nameRequest = NameRequest.Rename(it) },
+                                    onDelete = onDelete,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -301,44 +308,39 @@ private fun NoEntries(query: String) {
     }
 }
 
-@Composable
-private fun EntryList(
+private fun LazyListScope.entryRows(
     entries: List<Entry>,
     searching: Boolean,
+    wide: Boolean,
     onOpen: (String) -> Unit,
     onPreview: (Entry) -> Unit,
     onDownload: (Entry) -> Unit,
     onRename: (Entry) -> Unit,
     onDelete: (Entry) -> Unit,
 ) {
-    BoxWithConstraints {
-        val wide = fitsColumns()
-        Column {
-            if (wide) {
-                ColumnsHeader(
-                    listOfNotNull(
-                        ("Folder" to FOLDER_COLUMN).takeIf { searching },
-                        "Type" to TYPE_COLUMN,
-                        "Size" to SIZE_COLUMN,
-                        "Modified" to TIME_COLUMN,
-                    ),
-                )
-            }
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
-                dividedItems(entries, key = { it.path }) { entry ->
-                    EntryRow(
-                        entry = entry,
-                        searching = searching,
-                        wide = wide,
-                        onOpen = { onOpen(entry.path) },
-                        onPreview = { onPreview(entry) },
-                        onDownload = { onDownload(entry) },
-                        onRename = { onRename(entry) },
-                        onDelete = { onDelete(entry) },
-                    )
-                }
-            }
+    if (wide) {
+        stickyHeader {
+            ColumnsHeader(
+                listOfNotNull(
+                    ("Folder" to FOLDER_COLUMN).takeIf { searching },
+                    "Type" to TYPE_COLUMN,
+                    "Size" to SIZE_COLUMN,
+                    "Modified" to TIME_COLUMN,
+                ),
+            )
         }
+    }
+    dividedItems(entries, key = { it.path }) { entry ->
+        EntryRow(
+            entry = entry,
+            searching = searching,
+            wide = wide,
+            onOpen = { onOpen(entry.path) },
+            onPreview = { onPreview(entry) },
+            onDownload = { onDownload(entry) },
+            onRename = { onRename(entry) },
+            onDelete = { onDelete(entry) },
+        )
     }
 }
 

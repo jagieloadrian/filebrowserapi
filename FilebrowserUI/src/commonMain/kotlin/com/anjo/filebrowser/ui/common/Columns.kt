@@ -1,5 +1,6 @@
 package com.anjo.filebrowser.ui.common
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
@@ -103,7 +104,7 @@ fun FileName(
 fun ColumnsHeader(
     columns: List<Pair<String, TextUnit>>,
     trailing: @Composable () -> Unit = { Spacer(Modifier.minimumInteractiveComponentSize()) },
-) = Column {
+) = Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
     ColumnsRow(
         "Name",
         columns,

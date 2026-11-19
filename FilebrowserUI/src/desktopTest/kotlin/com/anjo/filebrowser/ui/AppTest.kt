@@ -81,6 +81,7 @@ private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
 private const val PREVIEW_TIMEOUT_MS = 5_000L
 private const val MAX_COMPOSED_LINES = 100
 private const val TOOLTIP_DELAY_MS = 100L
+private const val FILES_LEADING_ITEMS = 3
 
 private data class Dividers(
     val layout: String,
@@ -576,7 +577,7 @@ class AppTest :
                 }
 
                 // when
-                onNode(hasScrollToIndexAction()).performScrollToIndex(19)
+                onNode(hasScrollToIndexAction()).performScrollToIndex(FILES_LEADING_ITEMS + 19)
 
                 // then
                 val lastActions = onNodeWithContentDescription("Actions for file-29.txt").getUnclippedBoundsInRoot()
@@ -586,6 +587,27 @@ class AppTest :
                         useUnmergedTree = true,
                     ).getUnclippedBoundsInRoot()
                 lastActions.bottom shouldBeLessThanOrEqualTo upload.top
+            }
+        }
+
+        test("should scroll the quota, the search field and the breadcrumbs away with the file list") {
+            // given
+            val session = signedIn()
+            api.entries += (10..29).map { file("/file-$it.txt") }
+            runComposeUiTest {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                onNodeWithText("Search in this folder").assertIsDisplayed()
+
+                // when
+                onNode(hasScrollToIndexAction()).performScrollToIndex(FILES_LEADING_ITEMS + 19)
+
+                // then
+                onNodeWithText("Search in this folder").assertDoesNotExist()
+                onNode(isHeading() and hasText("Home")).assertDoesNotExist()
             }
         }
 
