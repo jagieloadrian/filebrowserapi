@@ -76,7 +76,6 @@ import com.anjo.filebrowser.ui.model.TrashItem
 import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
-private const val DIALOG_NAME_LINES = 3
 private val RESTORE_BUTTON = 120.sp
 
 internal sealed interface Purge {
@@ -310,12 +309,7 @@ internal fun PurgeDialog(
                     }
 
                     is Purge.One -> {
-                        Text(
-                            request.item.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = DIALOG_NAME_LINES,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Text(request.item.name, style = MaterialTheme.typography.titleMedium)
                         Text("It cannot be restored afterwards.")
                     }
                 }
