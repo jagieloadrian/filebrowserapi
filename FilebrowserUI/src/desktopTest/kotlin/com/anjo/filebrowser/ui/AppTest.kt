@@ -74,7 +74,6 @@ import org.koin.dsl.module
 private val NARROWEST_WIDTH = 320.dp
 private val HEIGHT = 640.dp
 private val WIDE_WIDTH = 1000.dp
-private val NAVIGATION_RAIL = 80.dp
 private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
@@ -173,7 +172,7 @@ class AppTest :
                 }
 
                 // then
-                onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH - NAVIGATION_RAIL)
+                onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH)
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2.0\u00A0KB", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2026-11-13 10:00\u00A0UTC", useUnmergedTree = true).assertIsDisplayed()

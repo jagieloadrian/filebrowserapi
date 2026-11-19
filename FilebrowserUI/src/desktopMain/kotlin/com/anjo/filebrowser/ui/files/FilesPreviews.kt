@@ -13,11 +13,11 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
-import com.anjo.filebrowser.ui.BrowserShell
 import com.anjo.filebrowser.ui.COLUMNS_WIDTH_DP
 import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
 import com.anjo.filebrowser.ui.Destination
+import com.anjo.filebrowser.ui.DestinationTabs
 import com.anjo.filebrowser.ui.LARGE_TEXT
 import com.anjo.filebrowser.ui.MEDIUM_HEIGHT_DP
 import com.anjo.filebrowser.ui.MEDIUM_WIDTH_DP
@@ -104,21 +104,24 @@ private fun photo(): ImageBitmap {
 }
 
 @Composable
-private fun StaticFiles(state: FilesUiState) =
-    FilesContent(
-        state = state,
-        snackbarHost = remember { SnackbarHostState() },
-        onRefresh = {},
-        onUpload = {},
-        onSearch = {},
-        onOpen = {},
-        onPreview = {},
-        onClosePreview = {},
-        onDownload = {},
-        onCreateFolder = {},
-        onRename = { _, _ -> },
-        onDelete = {},
-    )
+private fun StaticFiles(
+    state: FilesUiState,
+    tabs: @Composable () -> Unit = {},
+) = FilesContent(
+    state = state,
+    snackbarHost = remember { SnackbarHostState() },
+    tabs = tabs,
+    onRefresh = {},
+    onUpload = {},
+    onSearch = {},
+    onOpen = {},
+    onPreview = {},
+    onClosePreview = {},
+    onDownload = {},
+    onCreateFolder = {},
+    onRename = { _, _ -> },
+    onDelete = {},
+)
 
 @Composable
 private fun Files(
@@ -128,7 +131,7 @@ private fun Files(
 ) = PreviewTheme(palette, mode) { StaticFiles(state) }
 
 @Composable
-private fun AppShell() = PreviewTheme { BrowserShell(Destination.FILES, onNavigate = {}) { StaticFiles(LOADED) } }
+private fun AppShell() = PreviewTheme { StaticFiles(LOADED, tabs = { DestinationTabs(Destination.FILES, onNavigate = {}) }) }
 
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable

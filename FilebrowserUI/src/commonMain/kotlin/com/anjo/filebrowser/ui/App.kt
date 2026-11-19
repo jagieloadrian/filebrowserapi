@@ -1,8 +1,5 @@
 package com.anjo.filebrowser.ui
 
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -10,11 +7,9 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,7 +26,6 @@ import com.anjo.filebrowser.ui.auth.SigningIn
 import com.anjo.filebrowser.ui.common.label
 import com.anjo.filebrowser.ui.files.FilesScreen
 import com.anjo.filebrowser.ui.theme.FilebrowserTheme
-import com.anjo.filebrowser.ui.theme.Spacing
 import com.anjo.filebrowser.ui.trash.TrashScreen
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
@@ -65,52 +59,26 @@ fun App() {
 @Composable
 internal fun Browser() {
     var destination by remember { mutableStateOf(Destination.FILES) }
-    BrowserShell(destination, onNavigate = { destination = it }) { Screen(destination) }
-}
-
-@Composable
-internal fun BrowserShell(
-    destination: Destination,
-    onNavigate: (Destination) -> Unit,
-    content: @Composable () -> Unit,
-) {
-    BoxWithConstraints {
-        if (maxWidth >= Spacing.wide) {
-            Row {
-                NavigationRail {
-                    Destination.entries.forEach {
-                        NavigationRailItem(
-                            selected = it == destination,
-                            onClick = { onNavigate(it) },
-                            icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
-                            label = { Text(it.label) },
-                        )
-                    }
-                }
-                content()
-            }
-        } else {
-            Column {
-                Column(Modifier.weight(1f)) { content() }
-                NavigationBar {
-                    Destination.entries.forEach {
-                        NavigationBarItem(
-                            selected = it == destination,
-                            onClick = { onNavigate(it) },
-                            icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
-                            label = { Text(it.label) },
-                        )
-                    }
-                }
-            }
-        }
+    val tabs = @Composable { DestinationTabs(destination, onNavigate = { destination = it }) }
+    when (destination) {
+        Destination.FILES -> FilesScreen(tabs)
+        Destination.TRASH -> TrashScreen(tabs)
     }
 }
 
 @Composable
-private fun Screen(destination: Destination) {
-    when (destination) {
-        Destination.FILES -> FilesScreen()
-        Destination.TRASH -> TrashScreen()
+internal fun DestinationTabs(
+    destination: Destination,
+    onNavigate: (Destination) -> Unit,
+) {
+    PrimaryTabRow(selectedTabIndex = destination.ordinal) {
+        Destination.entries.forEach {
+            Tab(
+                selected = it == destination,
+                onClick = { onNavigate(it) },
+                text = { Text(it.label) },
+                icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
+            )
+        }
     }
 }

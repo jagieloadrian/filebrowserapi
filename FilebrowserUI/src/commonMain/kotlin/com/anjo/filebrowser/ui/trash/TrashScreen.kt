@@ -87,7 +87,10 @@ internal sealed interface Purge {
 }
 
 @Composable
-fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
+fun TrashScreen(
+    tabs: @Composable () -> Unit,
+    viewModel: TrashViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
     LaunchedEffect(viewModel) { viewModel.refresh() }
@@ -95,6 +98,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
     TrashContent(
         state = state,
         snackbarHost = snackbarHost,
+        tabs = tabs,
         onRefresh = viewModel::refresh,
         onRestore = viewModel::restore,
         onDeleteForever = viewModel::deleteForever,
@@ -107,6 +111,7 @@ fun TrashScreen(viewModel: TrashViewModel = koinViewModel()) {
 internal fun TrashContent(
     state: TrashUiState,
     snackbarHost: SnackbarHostState,
+    tabs: @Composable () -> Unit,
     onRefresh: () -> Unit,
     onRestore: (TrashItem) -> Unit,
     onDeleteForever: (TrashItem) -> Unit,
@@ -119,25 +124,32 @@ internal fun TrashContent(
         val wide = fitsColumns()
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("Trash", Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    actions = {
-                        if (items.isNotEmpty() && wide) {
-                            TextButton(
-                                onClick = { purge = Purge.All },
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                            ) { Text("Empty trash") }
-                        } else if (items.isNotEmpty()) {
-                            IconButton(onClick = { purge = Purge.All }) {
-                                Icon(Icons.Outlined.DeleteSweep, contentDescription = "Empty trash", tint = MaterialTheme.colorScheme.error)
+                Column {
+                    TopAppBar(
+                        title = { Text("Trash", Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        actions = {
+                            if (items.isNotEmpty() && wide) {
+                                TextButton(
+                                    onClick = { purge = Purge.All },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                ) { Text("Empty trash") }
+                            } else if (items.isNotEmpty()) {
+                                IconButton(onClick = { purge = Purge.All }) {
+                                    Icon(
+                                        Icons.Outlined.DeleteSweep,
+                                        contentDescription = "Empty trash",
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                }
                             }
-                        }
-                        IconButton(onClick = onRefresh) {
-                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
-                        }
-                        AppMenu()
-                    },
-                )
+                            IconButton(onClick = onRefresh) {
+                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                            }
+                            AppMenu()
+                        },
+                    )
+                    tabs()
+                }
             },
             snackbarHost = { SnackbarHost(snackbarHost) },
         ) { padding ->

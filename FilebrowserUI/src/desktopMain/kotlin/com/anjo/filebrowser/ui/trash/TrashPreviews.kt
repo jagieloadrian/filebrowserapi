@@ -46,6 +46,7 @@ private fun Trash(
     TrashContent(
         state = state,
         snackbarHost = remember { SnackbarHostState() },
+        tabs = {},
         onRefresh = {},
         onRestore = {},
         onDeleteForever = {},

@@ -101,7 +101,10 @@ private sealed interface NameRequest {
 }
 
 @Composable
-fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
+fun FilesScreen(
+    tabs: @Composable () -> Unit,
+    viewModel: FilesViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
     LaunchedEffect(viewModel) { viewModel.refresh() }
@@ -109,6 +112,7 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
     FilesContent(
         state = state,
         snackbarHost = snackbarHost,
+        tabs = tabs,
         onRefresh = viewModel::refresh,
         onUpload = viewModel::uploadFromDevice,
         onSearch = viewModel::search,
@@ -127,6 +131,7 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
 internal fun FilesContent(
     state: FilesUiState,
     snackbarHost: SnackbarHostState,
+    tabs: @Composable () -> Unit,
     onRefresh: () -> Unit,
     onUpload: () -> Unit,
     onSearch: (String) -> Unit,
@@ -141,18 +146,21 @@ internal fun FilesContent(
     var nameRequest by remember { mutableStateOf<NameRequest?>(null) }
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Files", Modifier.semantics { heading() }) },
-                actions = {
-                    IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
-                        Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
-                    }
-                    IconButton(onClick = onRefresh) {
-                        Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
-                    }
-                    AppMenu()
-                },
-            )
+            Column {
+                TopAppBar(
+                    title = { Text("Files", Modifier.semantics { heading() }) },
+                    actions = {
+                        IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
+                            Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
+                        }
+                        IconButton(onClick = onRefresh) {
+                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                        }
+                        AppMenu()
+                    },
+                )
+                tabs()
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
