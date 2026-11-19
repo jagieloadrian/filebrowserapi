@@ -80,6 +80,7 @@ import com.anjo.filebrowser.ui.common.SkeletonList
 import com.anjo.filebrowser.ui.common.SnackbarEffect
 import com.anjo.filebrowser.ui.common.TIME_COLUMN
 import com.anjo.filebrowser.ui.common.TYPE_COLUMN
+import com.anjo.filebrowser.ui.common.Tooltip
 import com.anjo.filebrowser.ui.common.dividedItems
 import com.anjo.filebrowser.ui.common.fileType
 import com.anjo.filebrowser.ui.common.fitsColumns
@@ -151,11 +152,15 @@ internal fun FilesContent(
                 TopAppBar(
                     title = { Text("Files", Modifier.semantics { heading() }) },
                     actions = {
-                        IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
-                            Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
+                        Tooltip("New folder") {
+                            IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
+                                Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
+                            }
                         }
-                        IconButton(onClick = onRefresh) {
-                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                        Tooltip("Refresh") {
+                            IconButton(onClick = onRefresh) {
+                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                            }
                         }
                         AppMenu()
                     },
@@ -272,7 +277,11 @@ private fun SearchField(
             if (query.isEmpty()) {
                 null
             } else {
-                { IconButton(onClick = { onSearch("") }) { Icon(Icons.Outlined.Close, contentDescription = "Clear search") } }
+                {
+                    Tooltip("Clear search") {
+                        IconButton(onClick = { onSearch("") }) { Icon(Icons.Outlined.Close, contentDescription = "Clear search") }
+                    }
+                }
             },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -380,8 +389,9 @@ private fun EntryRow(
     }
     val trailing: @Composable () -> Unit = {
         Box {
-            IconButton(onClick = { menu = true }) {
-                Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${entry.name}")
+            val label = "Actions for ${entry.name}"
+            Tooltip(label) {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = label) }
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (previewable) {

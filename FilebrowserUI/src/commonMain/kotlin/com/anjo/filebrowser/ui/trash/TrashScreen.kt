@@ -65,6 +65,7 @@ import com.anjo.filebrowser.ui.common.SIZE_COLUMN
 import com.anjo.filebrowser.ui.common.SkeletonList
 import com.anjo.filebrowser.ui.common.SnackbarEffect
 import com.anjo.filebrowser.ui.common.TIME_COLUMN
+import com.anjo.filebrowser.ui.common.Tooltip
 import com.anjo.filebrowser.ui.common.dividedItems
 import com.anjo.filebrowser.ui.common.fitsColumns
 import com.anjo.filebrowser.ui.common.folderLabel
@@ -134,16 +135,20 @@ internal fun TrashContent(
                                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                 ) { Text("Empty trash") }
                             } else if (items.isNotEmpty()) {
-                                IconButton(onClick = { purge = Purge.All }) {
-                                    Icon(
-                                        Icons.Outlined.DeleteSweep,
-                                        contentDescription = "Empty trash",
-                                        tint = MaterialTheme.colorScheme.error,
-                                    )
+                                Tooltip("Empty trash") {
+                                    IconButton(onClick = { purge = Purge.All }) {
+                                        Icon(
+                                            Icons.Outlined.DeleteSweep,
+                                            contentDescription = "Empty trash",
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
                                 }
                             }
-                            IconButton(onClick = onRefresh) {
-                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                            Tooltip("Refresh") {
+                                IconButton(onClick = onRefresh) {
+                                    Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                                }
                             }
                             AppMenu()
                         },
@@ -238,8 +243,9 @@ private fun TrashRow(
     }
     val overflow: @Composable () -> Unit = {
         Box {
-            IconButton(onClick = { menu = true }) {
-                Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${item.name}")
+            val label = "Actions for ${item.name}"
+            Tooltip(label) {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = label) }
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (!wide) {

@@ -62,11 +62,10 @@ fun AppMenu(
     val user = (auth as? AuthState.SignedIn)?.let { it.user ?: ACCOUNT }
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) {
-            if (user == null) {
-                Icon(Icons.Outlined.Settings, contentDescription = "Settings")
-            } else {
-                Icon(Icons.Outlined.AccountCircle, contentDescription = "Account menu for $user")
+        val label = if (user == null) "Settings" else "Account menu for $user"
+        Tooltip(label) {
+            IconButton(onClick = { open = true }) {
+                Icon(if (user == null) Icons.Outlined.Settings else Icons.Outlined.AccountCircle, contentDescription = label)
             }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
