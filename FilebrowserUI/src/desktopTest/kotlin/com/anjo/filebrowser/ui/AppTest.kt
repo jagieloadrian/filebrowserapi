@@ -51,6 +51,7 @@ import com.anjo.filebrowser.ui.auth.FakeIdentityProvider
 import com.anjo.filebrowser.ui.auth.settled
 import com.anjo.filebrowser.ui.common.COLUMN_DIVIDER
 import com.anjo.filebrowser.ui.common.ROW_DIVIDER
+import com.anjo.filebrowser.ui.common.formatTime
 import com.anjo.filebrowser.ui.files.FilesViewModel
 import com.anjo.filebrowser.ui.files.PREVIEW_LINE
 import com.anjo.filebrowser.ui.theme.AppearanceSettings
@@ -70,6 +71,7 @@ import org.koin.core.context.stopKoin
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
+import kotlin.time.Instant
 
 private val NARROWEST_WIDTH = 320.dp
 private val HEIGHT = 640.dp
@@ -82,6 +84,7 @@ private const val PREVIEW_TIMEOUT_MS = 5_000L
 private const val MAX_COMPOSED_LINES = 100
 private const val TOOLTIP_DELAY_MS = 100L
 private const val FILES_LEADING_ITEMS = 3
+private val TIME = formatTime(Instant.parse("2026-11-13T10:00:00Z"))
 
 private data class Dividers(
     val layout: String,
@@ -176,7 +179,7 @@ class AppTest :
                 onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH)
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2.0\u00A0KB", useUnmergedTree = true).assertIsDisplayed()
-                onNodeWithText("2026-11-13 10:00\u00A0UTC", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText(TIME, useUnmergedTree = true).assertIsDisplayed()
             }
         }
 
@@ -217,7 +220,7 @@ class AppTest :
 
                 // then
                 onNodeWithText("PDF file", useUnmergedTree = true).assertDoesNotExist()
-                onNodeWithText("2.0\u00A0KB · Modified 2026-11-13 10:00\u00A0UTC", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("2.0\u00A0KB · Modified $TIME", useUnmergedTree = true).assertIsDisplayed()
             }
         }
 
@@ -334,7 +337,7 @@ class AppTest :
                     onNodeWithContentDescription("Actions for a.txt").performClick()
 
                     // then
-                    onNodeWithText("a.txt").assert(hasText("2026-11-13 10:00\u00A0UTC", substring = true))
+                    onNodeWithText("a.txt").assert(hasText(TIME, substring = true))
                     onNodeWithContentDescription("Restore a.txt").assertIsDisplayed()
                     onNodeWithContentDescription("Delete a.txt forever").assertIsDisplayed()
                 }

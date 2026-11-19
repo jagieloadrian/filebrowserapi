@@ -1,6 +1,7 @@
 package com.anjo.filebrowser.ui.common
 
 import kotlin.math.roundToLong
+import kotlin.time.Duration
 import kotlin.time.Instant
 
 private const val HOME = "Home"
@@ -20,7 +21,12 @@ fun formatSize(bytes: Long): String {
     return "${tenths / 10}.${tenths % 10}$NBSP${UNITS[unit]}"
 }
 
-fun formatTime(instant: Instant): String = instant.toString().let { "${it.take(10)} ${it.substring(11, 16)}${NBSP}UTC" }
+expect fun localOffset(instant: Instant): Duration
+
+fun formatTime(
+    instant: Instant,
+    offset: Duration = localOffset(instant),
+): String = (instant + offset).toString().let { "${it.take(10)}$NBSP${it.substring(11, 16)}" }
 
 fun folderLabel(path: String): String = path.ifEmpty { HOME }
 
