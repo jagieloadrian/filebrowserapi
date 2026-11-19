@@ -80,8 +80,14 @@ class FormatTest :
             }
         }
 
-        test("should name the root folder Home") {
-            folderLabel("") shouldBe "Home"
-            folderLabel("/Docs") shouldBe "/Docs"
+        context("folderLabel") {
+            withTests(
+                nameFn = { "should name the folder '${it.first}' ${it.second}" },
+                "" to "Home",
+                "/Docs" to "Home / Docs",
+                "/Work/Reports" to "Home / Work / Reports",
+            ) { (path, expected) ->
+                folderLabel(path) shouldBe expected
+            }
         }
     })

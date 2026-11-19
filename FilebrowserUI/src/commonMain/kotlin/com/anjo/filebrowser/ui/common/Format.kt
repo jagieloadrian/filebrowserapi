@@ -28,7 +28,7 @@ fun formatTime(
     offset: Duration = localOffset(instant),
 ): String = (instant + offset).toString().let { "${it.take(10)}$NBSP${it.substring(11, 16)}" }
 
-fun folderLabel(path: String): String = path.ifEmpty { HOME }
+fun folderLabel(path: String): String = (listOf(HOME) + path.split('/').filter(String::isNotEmpty)).joinToString(" / ")
 
 internal val Enum<*>.label: String get() = name.lowercase().replaceFirstChar(Char::uppercase)
 
