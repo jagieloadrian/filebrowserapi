@@ -1,16 +1,21 @@
 package com.anjo.filebrowser.ui.trash
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
 import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
+import com.anjo.filebrowser.ui.Destination
+import com.anjo.filebrowser.ui.DestinationTabs
 import com.anjo.filebrowser.ui.LARGE_TEXT
+import com.anjo.filebrowser.ui.MEDIUM_TEXT
 import com.anjo.filebrowser.ui.PHONE_HEIGHT_DP
 import com.anjo.filebrowser.ui.PHONE_WIDTH_DP
 import com.anjo.filebrowser.ui.PREVIEW_QUOTA
 import com.anjo.filebrowser.ui.PreviewTheme
+import com.anjo.filebrowser.ui.ROW_MENU_HEIGHT_DP
 import com.anjo.filebrowser.ui.WIDE_HEIGHT_DP
 import com.anjo.filebrowser.ui.WIDE_WIDTH_DP
 import com.anjo.filebrowser.ui.common.Loadable
@@ -42,11 +47,12 @@ private val LOADED = TrashUiState(items = Loadable.Ready(ITEMS), quota = PREVIEW
 private fun Trash(
     state: TrashUiState,
     mode: ThemeMode = ThemeMode.LIGHT,
+    tabs: @Composable () -> Unit = {},
 ) = PreviewTheme(mode = mode) {
     TrashContent(
         state = state,
         snackbarHost = remember { SnackbarHostState() },
-        tabs = {},
+        tabs = tabs,
         onRefresh = {},
         onRestore = {},
         onDeleteForever = {},
@@ -58,9 +64,21 @@ private fun Trash(
 @Composable
 private fun TrashPhonePreview() = Trash(LOADED)
 
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = MEDIUM_TEXT)
+@Composable
+private fun TrashPhoneMediumTextPreview() = Trash(LOADED)
+
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
 @Composable
 private fun TrashPhoneLargeTextPreview() = Trash(LOADED)
+
+@SettledPreview
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = ROW_MENU_HEIGHT_DP)
+@Composable
+private fun TrashRowMenuPreview() =
+    PreviewTheme {
+        Column { TrashRow(ITEMS.first(), wide = false, onRestore = {}, onPurge = {}, initialMenuExpanded = true) }
+    }
 
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable
@@ -69,6 +87,10 @@ private fun TrashPhoneDarkPreview() = Trash(LOADED, ThemeMode.DARK)
 @Preview(widthDp = WIDE_WIDTH_DP, heightDp = WIDE_HEIGHT_DP)
 @Composable
 private fun TrashWidePreview() = Trash(LOADED)
+
+@Preview(widthDp = WIDE_WIDTH_DP, heightDp = WIDE_HEIGHT_DP)
+@Composable
+private fun AppShellTrashWidePreview() = Trash(LOADED, tabs = { DestinationTabs(Destination.TRASH, onNavigate = {}) })
 
 @SettledPreview
 @Preview(widthDp = DIALOG_WIDTH_DP, heightDp = DIALOG_HEIGHT_DP)

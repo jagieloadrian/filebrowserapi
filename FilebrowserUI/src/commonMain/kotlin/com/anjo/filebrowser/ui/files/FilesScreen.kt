@@ -369,7 +369,7 @@ private fun LazyListScope.entryRows(
 }
 
 @Composable
-private fun EntryRow(
+internal fun EntryRow(
     entry: Entry,
     searching: Boolean,
     wide: Boolean,
@@ -379,8 +379,9 @@ private fun EntryRow(
     onDownload: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    initialMenuExpanded: Boolean = false,
 ) {
-    var menu by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(initialMenuExpanded) }
     val previewable = previewKind(entry) != null
     val size = if (entry.directory) null else formatSize(entry.size)
     val leading: @Composable () -> Unit = {

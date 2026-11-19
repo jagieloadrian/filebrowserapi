@@ -1,8 +1,15 @@
 package com.anjo.filebrowser.ui.files
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -20,16 +27,19 @@ import com.anjo.filebrowser.ui.Destination
 import com.anjo.filebrowser.ui.DestinationTabs
 import com.anjo.filebrowser.ui.LARGE_TEXT
 import com.anjo.filebrowser.ui.MEDIUM_HEIGHT_DP
+import com.anjo.filebrowser.ui.MEDIUM_TEXT
 import com.anjo.filebrowser.ui.MEDIUM_WIDTH_DP
 import com.anjo.filebrowser.ui.PHONE_HEIGHT_DP
 import com.anjo.filebrowser.ui.PHONE_WIDTH_DP
 import com.anjo.filebrowser.ui.PREVIEW_QUOTA
 import com.anjo.filebrowser.ui.PreviewTheme
+import com.anjo.filebrowser.ui.ROW_MENU_HEIGHT_DP
 import com.anjo.filebrowser.ui.WIDE_HEIGHT_DP
 import com.anjo.filebrowser.ui.WIDE_WIDTH_DP
 import com.anjo.filebrowser.ui.api.ApiStatus
 import com.anjo.filebrowser.ui.common.Loadable
 import com.anjo.filebrowser.ui.common.NameDialog
+import com.anjo.filebrowser.ui.common.Tooltip
 import com.anjo.filebrowser.ui.model.Entry
 import com.anjo.filebrowser.ui.model.FilePreview
 import com.anjo.filebrowser.ui.model.PreviewContent
@@ -41,6 +51,8 @@ import kotlin.time.Instant
 private const val FOLDER = "/Work/Reports"
 private const val IMAGE_WIDTH = 640
 private const val IMAGE_HEIGHT = 400
+private const val TOOLTIP_WIDTH_DP = 240
+private const val TOOLTIP_HEIGHT_DP = 160
 
 private fun entry(
     name: String,
@@ -145,13 +157,53 @@ private fun AppShellMediumPreview() = AppShell()
 @Composable
 private fun AppShellWidePreview() = AppShell()
 
+@Preview(widthDp = WIDE_WIDTH_DP, heightDp = WIDE_HEIGHT_DP, fontScale = LARGE_TEXT)
+@Composable
+private fun AppShellWideLargeTextPreview() = AppShell()
+
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable
 private fun FilesPhonePreview() = Files(LOADED)
 
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = MEDIUM_TEXT)
+@Composable
+private fun FilesPhoneMediumTextPreview() = Files(LOADED)
+
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
 @Composable
 private fun FilesPhoneLargeTextPreview() = Files(LOADED)
+
+@SettledPreview
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = ROW_MENU_HEIGHT_DP)
+@Composable
+private fun FilesRowMenuPreview() =
+    PreviewTheme {
+        Column {
+            EntryRow(
+                entry = CODE_FILE,
+                searching = false,
+                wide = false,
+                typed = false,
+                onOpen = {},
+                onPreview = {},
+                onDownload = {},
+                onRename = {},
+                onDelete = {},
+                initialMenuExpanded = true,
+            )
+        }
+    }
+
+@Preview(widthDp = TOOLTIP_WIDTH_DP, heightDp = TOOLTIP_HEIGHT_DP)
+@Composable
+private fun TooltipPreview() =
+    PreviewTheme {
+        Box(contentAlignment = Alignment.Center) {
+            Tooltip("New folder", initiallyVisible = true) {
+                IconButton(onClick = {}) { Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder") }
+            }
+        }
+    }
 
 @Preview(widthDp = COLUMNS_WIDTH_DP, heightDp = MEDIUM_HEIGHT_DP)
 @Composable
@@ -203,7 +255,15 @@ private fun ImagePreviewDialogPreview() = Files(LOADED.copy(preview = FilePrevie
 @SettledPreview
 @Preview(widthDp = DIALOG_WIDTH_DP, heightDp = DIALOG_HEIGHT_DP)
 @Composable
-private fun NewFolderDialogPreview() =
+private fun NewFolderDialogPreview() = NewFolderDialog()
+
+@SettledPreview
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
+@Composable
+private fun NewFolderDialogLargeTextPreview() = NewFolderDialog()
+
+@Composable
+private fun NewFolderDialog() =
     PreviewTheme { NameDialog(title = "New folder", confirmLabel = "Create folder", initial = "", onConfirm = {}, onDismiss = {}) }
 
 @SettledPreview

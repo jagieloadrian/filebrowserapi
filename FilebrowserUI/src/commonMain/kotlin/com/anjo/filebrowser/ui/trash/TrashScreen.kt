@@ -226,13 +226,14 @@ internal fun TrashContent(
 }
 
 @Composable
-private fun TrashRow(
+internal fun TrashRow(
     item: TrashItem,
     wide: Boolean,
     onRestore: () -> Unit,
     onPurge: () -> Unit,
+    initialMenuExpanded: Boolean = false,
 ) {
-    var menu by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(initialMenuExpanded) }
     val size = if (item.directory) null else formatSize(item.size)
     val restoreLabel = "Restore ${item.name}"
     val leading: @Composable () -> Unit = {
