@@ -1,8 +1,28 @@
 # Project Status
 
-Last update: 2026-11-18, branch `feature-14/kmp-ui`.
+Last update: 2026-11-19, branch `feature-14/kmp-ui`.
 
 ## Completed
+
+### 2026-11-19, `feature-14/kmp-ui`: second design review fixes, tabs, accessibility tests
+- Trash: wide rows show a Restore text button, Delete forever stays in the row menu (compact: both in the menu);
+  a click on a trash row opens its menu at every width. The delete-forever dialog shows the whole name.
+- Quota, search, breadcrumbs and the 30-day note are leading items of the lists and scroll away; the column header
+  is a sticky header. Empty, error and loading states follow the breadcrumbs instead of being centred.
+- Files and Trash are tabs (`PrimaryTabRow`, icon and label) below the top app bar at every width; the navigation
+  bar and rail are gone (Material 3 wants 3 to 5 destinations for those). The content uses the full width.
+- Files columns: Type is left out below 1000dp (scaled by the font size), giving names about 130dp more.
+- Tooltips (`Tooltip`, Material 3 `PlainTooltip`) on every icon-only action. Breadcrumbs scroll to the current
+  folder. Times are local ("2026-11-17 16:32", no zone): `localOffset` is expect/actual on `java.time` and JS
+  `Date`, no kotlinx-datetime. Folder locations read like the breadcrumbs ("Home / Work / Reports").
+- Accessibility fixes found by the new tests: the Upload button had no accessible name (M3 clears the text's
+  semantics), and Tab visited the list before the top app bar (Scaffold places its body first; the top app bar
+  and tabs now head the body column).
+- Previews (36): open row menus (files, trash) through `initialMenuExpanded`, a tooltip through `initiallyVisible`,
+  the trash app shell, font scale 1.5 (files and trash phone) and 2.0 (wide app shell, sign-in, new folder).
+  Menus and tooltips render offscreen.
+- `AccessibilityTest`: every clickable or toggleable node in 15 screen, menu and dialog states has a label and
+  touch bounds of at least 48 x 48 dp; the Tab order from the top app bar to the rows; a trash row is one node.
 
 ### 2026-11-18, `feature-14/kmp-ui`: design review fixes, app-shell previews
 - Delete-forever dialog: title "Delete forever?", the name (three lines at most) in the scrolling text, so the
@@ -199,6 +219,7 @@ Project aligned with the coding standards from the `standards` MCP server:
 - 464 tests, all Kotest, gate green; a deliberate token leak makes the log-capture test fail.
 
 ## Decisions
+- 2026-11-19: Files and Trash are tabs below the top app bar, not a navigation bar or rail: two peer destinations.
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
 - REST error `error` field is the exception's simple name (e.g. `NotFoundException`).
@@ -305,6 +326,9 @@ Project aligned with the coding standards from the `standards` MCP server:
   attributes `secondary`, strings `tertiary`, comments italic `onSurfaceVariant`.
 
 ## Next steps and risks
+- Previews show times in the time zone of the machine that renders them, so renders in CI (UTC) and locally differ.
+- A click on a wide trash row opens a menu holding only Delete forever (Restore is the visible button); add Restore
+  to that menu too if users expect it there.
 - Preview, not checked in a real window or browser (offscreen desktop tests only, no Wasm test target): Escape and
   focus in the dialog, scrolling speed of 1 MiB of text in the browser, selection across lines, horizontal scroll
   with wrap off, the dialog sizes, scaled JPEG and WebP decoding on Wasm, `Range` through nginx. Jumping far into a
