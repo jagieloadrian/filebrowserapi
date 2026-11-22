@@ -5,10 +5,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
+import com.anjo.filebrowser.ui.BrowserShell
 import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
 import com.anjo.filebrowser.ui.Destination
-import com.anjo.filebrowser.ui.DestinationTabs
 import com.anjo.filebrowser.ui.LARGE_TEXT
 import com.anjo.filebrowser.ui.MEDIUM_TEXT
 import com.anjo.filebrowser.ui.PHONE_HEIGHT_DP
@@ -44,21 +44,24 @@ private val ITEMS =
 private val LOADED = TrashUiState(items = Loadable.Ready(ITEMS), quota = PREVIEW_QUOTA)
 
 @Composable
+private fun StaticTrash(
+    state: TrashUiState,
+    tabs: @Composable () -> Unit = {},
+) = TrashContent(
+    state = state,
+    snackbarHost = remember { SnackbarHostState() },
+    tabs = tabs,
+    onRefresh = {},
+    onRestore = {},
+    onDeleteForever = {},
+    onEmptyTrash = {},
+)
+
+@Composable
 private fun Trash(
     state: TrashUiState,
     mode: ThemeMode = ThemeMode.LIGHT,
-    tabs: @Composable () -> Unit = {},
-) = PreviewTheme(mode = mode) {
-    TrashContent(
-        state = state,
-        snackbarHost = remember { SnackbarHostState() },
-        tabs = tabs,
-        onRefresh = {},
-        onRestore = {},
-        onDeleteForever = {},
-        onEmptyTrash = {},
-    )
-}
+) = PreviewTheme(mode = mode) { StaticTrash(state) }
 
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable
@@ -98,7 +101,8 @@ private fun TrashWidePreview() = Trash(LOADED)
 
 @Preview(widthDp = WIDE_WIDTH_DP, heightDp = WIDE_HEIGHT_DP)
 @Composable
-private fun AppShellTrashWidePreview() = Trash(LOADED, tabs = { DestinationTabs(Destination.TRASH, onNavigate = {}) })
+private fun AppShellTrashWidePreview() =
+    PreviewTheme { BrowserShell(Destination.TRASH, onNavigate = {}) { StaticTrash(LOADED, tabs = it) } }
 
 @SettledPreview
 @Preview(widthDp = DIALOG_WIDTH_DP, heightDp = DIALOG_HEIGHT_DP)

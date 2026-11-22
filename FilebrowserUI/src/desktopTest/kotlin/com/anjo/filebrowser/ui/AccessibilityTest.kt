@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.SemanticsNode
@@ -25,7 +26,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.pressKey
-import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -52,13 +53,24 @@ import org.koin.dsl.koinConfiguration
 import kotlin.time.Instant
 
 private val COMPACT_WIDTH = 320.dp
-private val WIDE_WIDTH = 1000.dp
+private val WIDE_WIDTH = 1200.dp
 private val HEIGHT = 760.dp
+private val WINDOW = Size(WIDE_WIDTH.value, HEIGHT.value)
 private val MIN_TARGET = 48.dp
 private const val USER = "alice"
 private const val ACCOUNT_MENU = "Account menu for $USER"
 private const val PREVIEW_TIMEOUT_MS = 5_000L
-private const val FOCUS_STOPS = 12
+
+private val TOP_BAR = listOf("New folder", "Refresh", ACCOUNT_MENU)
+private val DESTINATIONS = listOf("Files", "Trash")
+private val FOLDER =
+    listOf("Search in this folder", "Home", "budget.xlsx", "Actions for budget.xlsx", "plan.md", "Actions for plan.md", "Upload file")
+
+private data class FocusOrder(
+    val layout: String,
+    val width: Dp,
+    val stops: List<String>,
+)
 
 @OptIn(ExperimentalTestApi::class)
 private data class Screen(
@@ -142,7 +154,7 @@ class AccessibilityTest :
             ) { screen ->
                 // given
                 val session = signedIn()
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(screen.width, HEIGHT)) { Browser() }
@@ -167,44 +179,36 @@ class AccessibilityTest :
             }
         }
 
-        test("should move the keyboard focus down the files screen from the top app bar to the rows") {
-            // given
-            api.entries += listOf(file("/Work/budget.xlsx"), file("/Work/plan.md"))
-            val session = signedIn()
-            runComposeUiTest {
-                lateinit var focus: FocusManager
-                setContent {
-                    focus = LocalFocusManager.current
-                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
-                        Box(Modifier.requiredSize(COMPACT_WIDTH, HEIGHT)) { Browser() }
+        context("should move the keyboard focus through the destinations, the top app bar and the rows of the files screen") {
+            withTests(
+                nameFn = { it.layout },
+                FocusOrder("tabs below the top app bar", COMPACT_WIDTH, TOP_BAR + DESTINATIONS + FOLDER),
+                FocusOrder("rail before the top app bar", WIDE_WIDTH, DESTINATIONS + TOP_BAR + FOLDER),
+            ) { order ->
+                // given
+                api.entries += listOf(file("/Work/budget.xlsx"), file("/Work/plan.md"))
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    lateinit var focus: FocusManager
+                    setContent {
+                        focus = LocalFocusManager.current
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(order.width, HEIGHT)) { Browser() }
+                        }
                     }
+                    onNodeWithText("Work").performClick()
+                    runOnIdle { focus.clearFocus() }
+
+                    // when
+                    val visited =
+                        order.stops.map {
+                            onAllNodes(isRoot()).onFirst().performKeyInput { pressKey(Key.Tab) }
+                            onNode(isFocused()).fetchSemanticsNode().name()
+                        }
+
+                    // then
+                    visited shouldBe order.stops
                 }
-                onNodeWithText("Work").performClick()
-                runOnIdle { focus.clearFocus() }
-
-                // when
-                val visited =
-                    List(FOCUS_STOPS) {
-                        onAllNodes(isRoot()).onFirst().performKeyInput { pressKey(Key.Tab) }
-                        onNode(isFocused()).fetchSemanticsNode().name()
-                    }
-
-                // then
-                visited shouldBe
-                    listOf(
-                        "New folder",
-                        "Refresh",
-                        ACCOUNT_MENU,
-                        "Files",
-                        "Trash",
-                        "Search in this folder",
-                        "Home",
-                        "budget.xlsx",
-                        "Actions for budget.xlsx",
-                        "plan.md",
-                        "Actions for plan.md",
-                        "Upload file",
-                    )
             }
         }
 
@@ -212,7 +216,7 @@ class AccessibilityTest :
             withTests(nameFn = { it.first }, "wide" to WIDE_WIDTH, "compact" to COMPACT_WIDTH) { (_, width) ->
                 // given
                 val session = signedIn()
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(width, HEIGHT)) { Browser() }

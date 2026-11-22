@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -39,7 +40,7 @@ import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.pressKey
-import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.compose.ui.unit.Density
@@ -61,6 +62,7 @@ import com.anjo.filebrowser.ui.trash.TrashViewModel
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.comparables.shouldBeGreaterThanOrEqualTo
 import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
 import io.kotest.matchers.ints.shouldBeInRange
 import io.kotest.matchers.shouldBe
@@ -77,8 +79,10 @@ import kotlin.time.Instant
 
 private val NARROWEST_WIDTH = 320.dp
 private val HEIGHT = 640.dp
-private val WIDE_WIDTH = 1000.dp
-private val MEDIUM_WIDTH = 900.dp
+private val WIDE_WIDTH = 1200.dp
+private val MEDIUM_WIDTH = 1000.dp
+private val RAIL_WIDTH = 80.dp
+private val WINDOW = Size(WIDE_WIDTH.value, HEIGHT.value)
 private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
@@ -87,6 +91,12 @@ private const val MAX_COMPOSED_LINES = 100
 private const val TOOLTIP_DELAY_MS = 100L
 private const val FILES_LEADING_ITEMS = 3
 private val TIME = formatTime(Instant.parse("2026-11-13T10:00:00Z"))
+
+private data class Layout(
+    val name: String,
+    val width: Dp,
+    val rail: Boolean,
+)
 
 private data class Dividers(
     val layout: String,
@@ -144,23 +154,38 @@ class AppTest :
                     signIn()
                 }.also { it.settled() }
 
-        test("should switch between files and trash when the window has its narrowest width") {
-            val session = signedIn()
-            runComposeUiTest {
-                // given
-                setContent {
-                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
-                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+        context("should switch between files and trash with tabs below 840dp and a navigation rail from 840dp") {
+            withTests(
+                nameFn = { it.name },
+                Layout("tabs at the narrowest width", NARROWEST_WIDTH, rail = false),
+                Layout("tabs just below 840dp", 839.dp, rail = false),
+                Layout("rail at 840dp", 840.dp, rail = true),
+                Layout("rail when wide", WIDE_WIDTH, rail = true),
+            ) { layout ->
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    // given
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(layout.width, HEIGHT)) { Browser() }
+                        }
+                    }
+                    destination("Files").assertIsDisplayed().assertIsSelected()
+
+                    // when
+                    destination("Trash").assertIsDisplayed().performClick()
+
+                    // then
+                    destination("Trash").assertIsSelected()
+                    action("Empty trash").assertIsDisplayed()
+                    val title = onNode(isHeading() and hasText(APP_NAME)).getUnclippedBoundsInRoot()
+                    val trash = destination("Trash").getUnclippedBoundsInRoot()
+                    if (layout.rail) {
+                        trash.right shouldBeLessThanOrEqualTo title.left
+                    } else {
+                        trash.top shouldBeGreaterThanOrEqualTo title.bottom
                     }
                 }
-                destination("Files").assertIsDisplayed().assertIsSelected()
-
-                // when
-                destination("Trash").assertIsDisplayed().performClick()
-
-                // then
-                destination("Trash").assertIsSelected()
-                action("Empty trash").assertIsDisplayed()
             }
         }
 
@@ -169,7 +194,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/report.pdf", size = 2048)
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -178,19 +203,19 @@ class AppTest :
                 }
 
                 // then
-                onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH)
+                onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH - RAIL_WIDTH)
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText("2.0\u00A0KB", useUnmergedTree = true).assertIsDisplayed()
                 onNodeWithText(TIME, useUnmergedTree = true).assertIsDisplayed()
             }
         }
 
-        test("should leave the type column out when the columns fit but the window is narrower than 1000dp") {
+        test("should leave the type column out when the columns fit but the list beside the rail is narrower than 1000dp") {
             // given
             val session = signedIn()
             api.entries += file("/report.pdf", size = 2048)
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -210,7 +235,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/report.pdf", size = 2048)
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -231,7 +256,7 @@ class AppTest :
             val session = signedIn()
             val name = "quarterly-report-".repeat(10) + "final.pdf"
             api.entries += file("/$name")
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -260,7 +285,7 @@ class AppTest :
                 val session = signedIn()
                 api.entries += listOf(folder("/Documents"), file("/a.txt"), file("/b.txt"))
                 api.trashItems += listOf(trashed("2", "/b.txt"), trashed("3", "/c.txt"))
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(case.width, HEIGHT)) { Browser() }
@@ -282,7 +307,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/report.pdf", size = 2048)
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -309,7 +334,7 @@ class AppTest :
                 val session = signedIn()
                 api.entries += listOf(folder("/Documents"), file("/notes.txt"), file("/archive.zip"))
 
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     // when
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -327,7 +352,7 @@ class AppTest :
             withTests(nameFn = { it.first }, "wide" to WIDE_WIDTH, "compact" to NARROWEST_WIDTH) { (_, width) ->
                 // given
                 val session = signedIn()
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(width, HEIGHT)) { Browser() }
@@ -353,7 +378,7 @@ class AppTest :
                 val session = signedIn()
                 api.entries += folder("/Documents")
 
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     // when
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -383,7 +408,7 @@ class AppTest :
                 val session = signedIn()
                 api.entries += file("/${case.name}", size = case.bytes.size.toLong())
                 api.contents["/${case.name}"] = case.bytes
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -408,7 +433,7 @@ class AppTest :
                 val text = ("x".repeat(63) + "\n").repeat(16_384).encodeToByteArray()
                 api.entries += file("/big.log", size = text.size.toLong())
                 api.contents["/big.log"] = text
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -435,7 +460,7 @@ class AppTest :
                 // given
                 val session = signedIn()
                 api.entries += file("/$name")
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -461,7 +486,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/notes.txt", size = 11)
             api.contents["/notes.txt"] = "hello world".encodeToByteArray()
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -484,7 +509,7 @@ class AppTest :
             val code = "fun main() = println(\"hi\") // greet".encodeToByteArray()
             api.entries += file("/Main.kt", size = code.size.toLong())
             api.contents["/Main.kt"] = code
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -513,7 +538,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/notes.txt")
             api.downloadGate = CompletableDeferred()
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -536,7 +561,7 @@ class AppTest :
             // given
             val session = signedIn()
             api.entries += file("/huge.png", size = 21L * 1024 * 1024)
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -557,7 +582,7 @@ class AppTest :
             // given
             val session = signedIn()
             api.entries += folder("/Documents")
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -578,7 +603,7 @@ class AppTest :
             // given
             val session = signedIn()
             api.entries += listOf(folder("/Quarterly reports 2026"), folder("/Quarterly reports 2026/Northern region final"))
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -599,7 +624,7 @@ class AppTest :
             // given
             val session = signedIn()
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -616,7 +641,7 @@ class AppTest :
             // given
             val session = signedIn()
             api.entries += (10..29).map { file("/file-$it.txt") }
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -641,7 +666,7 @@ class AppTest :
             // given
             val session = signedIn()
             api.entries += (10..29).map { file("/file-$it.txt") }
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -665,7 +690,7 @@ class AppTest :
                 TopBar("Trash", listOf("Empty trash", "Refresh", ACCOUNT_MENU)),
             ) { topBar ->
                 val session = signedIn()
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     // given
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {

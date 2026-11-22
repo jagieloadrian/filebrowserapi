@@ -24,6 +24,7 @@ import kotlin.time.Duration
 
 internal const val PHONE_WIDTH_DP = 360
 internal const val PHONE_HEIGHT_DP = 760
+internal const val TABLET_WIDTH_DP = 700
 internal const val COLUMNS_WIDTH_DP = 840
 internal const val MEDIUM_WIDTH_DP = 900
 internal const val MEDIUM_HEIGHT_DP = 700

@@ -22,11 +22,11 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import com.anjo.filebrowser.ui.BrowserShell
 import com.anjo.filebrowser.ui.COLUMNS_WIDTH_DP
 import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
 import com.anjo.filebrowser.ui.Destination
-import com.anjo.filebrowser.ui.DestinationTabs
 import com.anjo.filebrowser.ui.LARGE_TEXT
 import com.anjo.filebrowser.ui.MEDIUM_HEIGHT_DP
 import com.anjo.filebrowser.ui.MEDIUM_TEXT
@@ -36,6 +36,7 @@ import com.anjo.filebrowser.ui.PHONE_WIDTH_DP
 import com.anjo.filebrowser.ui.PREVIEW_QUOTA
 import com.anjo.filebrowser.ui.PreviewTheme
 import com.anjo.filebrowser.ui.ROW_MENU_HEIGHT_DP
+import com.anjo.filebrowser.ui.TABLET_WIDTH_DP
 import com.anjo.filebrowser.ui.WIDE_HEIGHT_DP
 import com.anjo.filebrowser.ui.WIDE_WIDTH_DP
 import com.anjo.filebrowser.ui.api.ApiStatus
@@ -148,11 +149,15 @@ private fun Files(
 ) = PreviewTheme(palette, mode) { StaticFiles(state) }
 
 @Composable
-private fun AppShell() = PreviewTheme { StaticFiles(LOADED, tabs = { DestinationTabs(Destination.FILES, onNavigate = {}) }) }
+private fun AppShell() = PreviewTheme { BrowserShell(Destination.FILES, onNavigate = {}) { StaticFiles(LOADED, tabs = it) } }
 
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable
 private fun AppShellPhonePreview() = AppShell()
+
+@Preview(widthDp = TABLET_WIDTH_DP, heightDp = MEDIUM_HEIGHT_DP)
+@Composable
+private fun AppShellTabletPreview() = AppShell()
 
 @Preview(widthDp = MEDIUM_WIDTH_DP, heightDp = MEDIUM_HEIGHT_DP)
 @Composable
