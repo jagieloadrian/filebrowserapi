@@ -4,6 +4,19 @@ Last update: 2026-11-22, branch `feature-14/kmp-ui`.
 
 ## Completed
 
+### 2026-11-22, `feature-14/kmp-ui`: navigation rail, trash name width, large-text title
+- Navigation, owner's option B: below 840dp of window width Files and Trash stay tabs under the top app bar; from
+  840dp a `NavigationRail` on the left holds them (filled icon, indicator and label when selected). `BrowserShell`
+  decides with `BoxWithConstraints` (`currentWindowAdaptiveInfo()` needs material3-adaptive, not added). The rail's
+  80dp come off the content, so 900dp shows no columns. Tab order with the rail: rail, top app bar, list.
+- Trash: columns from 900dp of list width, the Restore button from 1040dp, so names keep 200dp or more beside the
+  columns (5dp at 840dp before). Below 900dp the stacked rows show everything; Restore is in the row menu at every
+  width.
+- Top app bar (`AppBar`, shared by both screens): below 240dp times the font scale the screen actions move into the
+  app menu, which becomes "More options"; "Filebrowser" shows in full at 2.0 on a 360dp phone.
+- Previews (40): app shell at 700dp (tabs), trash at 900dp (narrowest columns). UI tests run in a 1200dp test
+  window; 280 desktop tests.
+
 ### 2026-11-22, `feature-14/kmp-ui`: third design review fixes
 - Trash row menu: Restore first, Delete forever (error colour) second at every width; wide rows keep the Restore
   button. The delete-forever dialog says "This cannot be undone.", like the empty-trash dialog.
@@ -230,7 +243,8 @@ Project aligned with the coding standards from the `standards` MCP server:
 - 464 tests, all Kotest, gate green; a deliberate token leak makes the log-capture test fail.
 
 ## Decisions
-- 2026-11-19: Files and Trash are tabs below the top app bar, not a navigation bar or rail: two peer destinations.
+- 2026-11-22: Files and Trash are tabs below the top app bar below 840dp of window width and a navigation rail from
+  840dp (owner's option B); no navigation bar.
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
 - REST error `error` field is the exception's simple name (e.g. `NotFoundException`).
@@ -337,9 +351,6 @@ Project aligned with the coding standards from the `standards` MCP server:
   attributes `secondary`, strings `tertiary`, comments italic `onSurfaceVariant`.
 
 ## Next steps and risks
-- Trash rows from 840 dp to about 950 dp leave the name almost no width (the columns, Restore and the menu take
-  about 835 dp); the files list drops its Type column below 1000 dp for the same reason.
-- At font scale 2.0 on a 360 dp phone the top app bar title is cut to "Filebro...".
 - Preview, not checked in a real window or browser (offscreen desktop tests only, no Wasm test target): Escape and
   focus in the dialog, scrolling speed of 1 MiB of text in the browser, selection across lines, horizontal scroll
   with wrap off, the dialog sizes, scaled JPEG and WebP decoding on Wasm, `Range` through nginx. Jumping far into a
