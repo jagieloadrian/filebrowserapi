@@ -128,6 +128,11 @@ private data class TopBar(
     val actions: List<String>,
 )
 
+private data class TitleFit(
+    val width: Dp,
+    val fontScale: Float,
+)
+
 internal fun backend(
     api: FilebrowserApi,
     session: AuthSession,
@@ -142,6 +147,16 @@ internal fun backend(
 private fun SemanticsNodeInteractionsProvider.destination(label: String) = onNode(isSelectable() and hasText(label))
 
 private fun SemanticsNodeInteractionsProvider.action(label: String) = onNode(hasText(label) or hasContentDescription(label))
+
+private fun SemanticsNodeInteractionsProvider.titleCutShort(): Boolean {
+    val title = mutableListOf<TextLayoutResult>()
+    onNode(isHeading() and hasText(APP_NAME))
+        .fetchSemanticsNode()
+        .config[SemanticsActions.GetTextLayoutResult]
+        .action
+        ?.invoke(title)
+    return title.single().run { multiParagraph.intrinsics.maxIntrinsicWidth > size.width }
+}
 
 @OptIn(ExperimentalTestApi::class)
 class AppTest :
@@ -777,14 +792,33 @@ class AppTest :
                     onNodeWithContentDescription("More options").performClick()
 
                     // then
-                    val title = mutableListOf<TextLayoutResult>()
-                    onNode(isHeading() and hasText(APP_NAME))
-                        .fetchSemanticsNode()
-                        .config[SemanticsActions.GetTextLayoutResult]
-                        .action
-                        ?.invoke(title)
-                    title.single().isLineEllipsized(0) shouldBe false
+                    titleCutShort() shouldBe false
                     topBar.actions.forEach { onNode(hasAnyAncestor(isPopup()) and hasText(it)).performScrollTo().assertIsDisplayed() }
+                }
+            }
+        }
+
+        context("should show the whole app name in the top app bar at every font scale on a phone") {
+            withTests(
+                nameFn = { "${it.width} at font scale ${it.fontScale}" },
+                TitleFit(NARROWEST_WIDTH, 1f),
+                TitleFit(NARROWEST_WIDTH, 1.3f),
+                TitleFit(PHONE_WIDTH, 1.5f),
+            ) { case ->
+                // given
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    // when
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, case.fontScale)) {
+                                Box(Modifier.requiredSize(case.width, HEIGHT)) { Browser() }
+                            }
+                        }
+                    }
+
+                    // then
+                    titleCutShort() shouldBe false
                 }
             }
         }

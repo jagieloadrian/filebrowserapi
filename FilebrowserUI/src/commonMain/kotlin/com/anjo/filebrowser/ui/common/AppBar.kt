@@ -19,7 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anjo.filebrowser.ui.APP_NAME
 
-private val ACTION_ICONS_MIN_WIDTH = 240.dp
+private val ACTION_ICONS_MIN_WIDTH = 252.dp
 
 class BarAction(
     val label: String,
