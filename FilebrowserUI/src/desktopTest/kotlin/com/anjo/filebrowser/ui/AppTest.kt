@@ -160,7 +160,7 @@ class AppTest :
 
                 // then
                 destination("Trash").assertIsSelected()
-                onNode(isHeading() and hasText("Trash")).assertIsDisplayed()
+                action("Empty trash").assertIsDisplayed()
             }
         }
 
@@ -658,7 +658,7 @@ class AppTest :
             }
         }
 
-        context("should keep the title and every top bar action reachable when the window has its narrowest width") {
+        context("should keep the app name and every top bar action reachable when the window has its narrowest width") {
             withTests(
                 nameFn = { it.destination },
                 TopBar("Files", listOf("New folder", "Refresh", ACCOUNT_MENU)),
@@ -677,7 +677,7 @@ class AppTest :
                     destination(topBar.destination).performClick()
 
                     // then
-                    onNode(isHeading() and hasText(topBar.destination)).assertIsDisplayed()
+                    onNode(isHeading() and hasText(APP_NAME)).assertIsDisplayed()
                     topBar.actions.forEach { action(it).assertIsDisplayed() }
                     onNodeWithContentDescription(ACCOUNT_MENU).performClick()
                     onNodeWithText("Sign out").assertIsDisplayed()

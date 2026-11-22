@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import com.anjo.filebrowser.ui.APP_NAME
 import com.anjo.filebrowser.ui.theme.Spacing
 
 @Composable
@@ -32,7 +33,7 @@ fun SignInScreen(
     onSignIn: () -> Unit,
 ) {
     Centered {
-        Text("Filebrowser", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
+        Text(APP_NAME, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
         Text(
             "Sign in to see and manage your files.",
             style = MaterialTheme.typography.bodyLarge,

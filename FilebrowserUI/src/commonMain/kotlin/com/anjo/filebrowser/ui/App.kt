@@ -32,6 +32,8 @@ import org.koin.compose.koinInject
 import org.koin.dsl.koinConfiguration
 import org.koin.plugin.module.dsl.module
 
+const val APP_NAME = "Filebrowser"
+
 internal enum class Destination(
     val icon: ImageVector,
     val selectedIcon: ImageVector,

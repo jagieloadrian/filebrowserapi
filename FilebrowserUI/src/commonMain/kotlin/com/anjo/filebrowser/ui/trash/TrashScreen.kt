@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import com.anjo.filebrowser.ui.APP_NAME
 import com.anjo.filebrowser.ui.common.AppMenu
 import com.anjo.filebrowser.ui.common.ColumnsHeader
 import com.anjo.filebrowser.ui.common.ColumnsRow
@@ -132,7 +133,7 @@ internal fun TrashContent(
                     .fillMaxSize(),
             ) {
                 TopAppBar(
-                    title = { Text("Trash", Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    title = { Text(APP_NAME, Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     actions = {
                         if (items.isNotEmpty() && wide) {
                             TextButton(
