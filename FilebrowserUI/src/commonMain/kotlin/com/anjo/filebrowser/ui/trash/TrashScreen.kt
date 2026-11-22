@@ -245,11 +245,9 @@ internal fun TrashRow(
                 IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = label) }
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                if (!wide) {
-                    MenuItem("Restore", Icons.Outlined.RestoreFromTrash, Modifier.semantics { contentDescription = restoreLabel }) {
-                        menu = false
-                        onRestore()
-                    }
+                MenuItem("Restore", Icons.Outlined.RestoreFromTrash, Modifier.semantics { contentDescription = restoreLabel }) {
+                    menu = false
+                    onRestore()
                 }
                 MenuItem(
                     "Delete forever",

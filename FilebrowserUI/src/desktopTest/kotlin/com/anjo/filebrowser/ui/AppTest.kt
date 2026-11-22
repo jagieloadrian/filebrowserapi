@@ -19,6 +19,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -27,6 +28,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isHeading
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -321,7 +323,7 @@ class AppTest :
             }
         }
 
-        context("should name the trashed item in its row and in its actions for screen readers") {
+        context("should name the trashed item in its row and in its menu actions for screen readers") {
             withTests(nameFn = { it.first }, "wide" to WIDE_WIDTH, "compact" to NARROWEST_WIDTH) { (_, width) ->
                 // given
                 val session = signedIn()
@@ -338,8 +340,9 @@ class AppTest :
 
                     // then
                     onNodeWithText("a.txt").assert(hasText(TIME, substring = true))
-                    onNodeWithContentDescription("Restore a.txt").assertIsDisplayed()
-                    onNodeWithContentDescription("Delete a.txt forever").assertIsDisplayed()
+                    listOf("Restore a.txt", "Delete a.txt forever").forEach {
+                        onNode(hasAnyAncestor(isPopup()) and hasContentDescription(it)).assertIsDisplayed()
+                    }
                 }
             }
         }

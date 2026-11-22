@@ -80,6 +80,14 @@ private fun TrashRowMenuPreview() =
         Column { TrashRow(ITEMS.first(), wide = false, onRestore = {}, onPurge = {}, initialMenuExpanded = true) }
     }
 
+@SettledPreview
+@Preview(widthDp = WIDE_WIDTH_DP, heightDp = ROW_MENU_HEIGHT_DP)
+@Composable
+private fun TrashRowMenuWidePreview() =
+    PreviewTheme {
+        Column { TrashRow(ITEMS.first(), wide = true, onRestore = {}, onPurge = {}, initialMenuExpanded = true) }
+    }
+
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable
 private fun TrashPhoneDarkPreview() = Trash(LOADED, ThemeMode.DARK)
