@@ -38,11 +38,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.test.waitUntilExactlyOneExists
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -84,6 +86,7 @@ private val WIDE_WIDTH = 1200.dp
 private val MEDIUM_WIDTH = 1000.dp
 private val RAIL_WIDTH = 80.dp
 private val MIN_NAME_WIDTH = 200.dp
+private val PHONE_WIDTH = 360.dp
 private val WINDOW = Size(WIDE_WIDTH.value, HEIGHT.value)
 private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
@@ -748,6 +751,40 @@ class AppTest :
                     topBar.actions.forEach { action(it).assertIsDisplayed() }
                     onNodeWithContentDescription(ACCOUNT_MENU).performClick()
                     onNodeWithText("Sign out").assertIsDisplayed()
+                }
+            }
+        }
+
+        context("should show the whole app name and every top bar action under More options at font scale 2.0 on a 360dp phone") {
+            withTests(
+                nameFn = { it.destination },
+                TopBar("Files", listOf("New folder", "Refresh", "Sign out")),
+                TopBar("Trash", listOf("Empty trash", "Refresh", "Sign out")),
+            ) { topBar ->
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    // given
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = LARGE_TEXT)) {
+                                Box(Modifier.requiredSize(PHONE_WIDTH, HEIGHT)) { Browser() }
+                            }
+                        }
+                    }
+                    destination(topBar.destination).performClick()
+
+                    // when
+                    onNodeWithContentDescription("More options").performClick()
+
+                    // then
+                    val title = mutableListOf<TextLayoutResult>()
+                    onNode(isHeading() and hasText(APP_NAME))
+                        .fetchSemanticsNode()
+                        .config[SemanticsActions.GetTextLayoutResult]
+                        .action
+                        ?.invoke(title)
+                    title.single().isLineEllipsized(0) shouldBe false
+                    topBar.actions.forEach { onNode(hasAnyAncestor(isPopup()) and hasText(it)).performScrollTo().assertIsDisplayed() }
                 }
             }
         }

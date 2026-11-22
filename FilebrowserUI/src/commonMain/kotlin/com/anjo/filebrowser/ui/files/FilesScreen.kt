@@ -53,7 +53,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -71,8 +70,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.anjo.filebrowser.ui.APP_NAME
-import com.anjo.filebrowser.ui.common.AppMenu
+import com.anjo.filebrowser.ui.common.AppBar
+import com.anjo.filebrowser.ui.common.BarAction
 import com.anjo.filebrowser.ui.common.ColumnsHeader
 import com.anjo.filebrowser.ui.common.ColumnsRow
 import com.anjo.filebrowser.ui.common.EmptyState
@@ -137,7 +136,6 @@ fun FilesScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FilesContent(
     state: FilesUiState,
@@ -172,21 +170,11 @@ internal fun FilesContent(
                 .padding(padding)
                 .fillMaxSize(),
         ) {
-            TopAppBar(
-                title = { Text(APP_NAME, Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                actions = {
-                    Tooltip("New folder") {
-                        IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
-                            Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
-                        }
-                    }
-                    Tooltip("Refresh") {
-                        IconButton(onClick = onRefresh) {
-                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
-                        }
-                    }
-                    AppMenu()
-                },
+            AppBar(
+                listOf(
+                    BarAction("New folder", Icons.Outlined.CreateNewFolder) { nameRequest = NameRequest.NewFolder },
+                    BarAction("Refresh", Icons.Outlined.Refresh, onClick = onRefresh),
+                ),
             )
             tabs()
             WorkIndicator(state.working > 0)

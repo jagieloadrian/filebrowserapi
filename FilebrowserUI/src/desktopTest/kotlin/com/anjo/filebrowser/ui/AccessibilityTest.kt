@@ -2,10 +2,12 @@ package com.anjo.filebrowser.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -28,6 +30,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.anjo.filebrowser.ui.auth.AuthSession
@@ -55,6 +58,8 @@ import kotlin.time.Instant
 private val COMPACT_WIDTH = 320.dp
 private val WIDE_WIDTH = 1200.dp
 private val HEIGHT = 760.dp
+private val PHONE_WIDTH = 360.dp
+private const val LARGE_TEXT = 2f
 private val WINDOW = Size(WIDE_WIDTH.value, HEIGHT.value)
 private val MIN_TARGET = 48.dp
 private const val USER = "alice"
@@ -76,6 +81,7 @@ private data class FocusOrder(
 private data class Screen(
     val name: String,
     val width: Dp,
+    val fontScale: Float = 1f,
     val open: ComposeUiTest.() -> Unit = {},
 )
 
@@ -147,6 +153,13 @@ class AccessibilityTest :
                     onNodeWithContentDescription("Actions for a.txt").performClick()
                     onNodeWithText("Delete forever").performClick()
                 },
+                Screen("files more options at large text", PHONE_WIDTH, LARGE_TEXT) {
+                    onNodeWithContentDescription("More options").performClick()
+                },
+                Screen("trash more options at large text", PHONE_WIDTH, LARGE_TEXT) {
+                    openTrash()
+                    onNodeWithContentDescription("More options").performClick()
+                },
                 Screen("empty trash dialog", WIDE_WIDTH) {
                     openTrash()
                     onNodeWithText("Empty trash").performClick()
@@ -157,7 +170,9 @@ class AccessibilityTest :
                 runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
-                            Box(Modifier.requiredSize(screen.width, HEIGHT)) { Browser() }
+                            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, screen.fontScale)) {
+                                Box(Modifier.requiredSize(screen.width, HEIGHT)) { Browser() }
+                            }
                         }
                     }
 

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -36,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.AuthState
+import com.anjo.filebrowser.ui.files.MenuItem
 import com.anjo.filebrowser.ui.theme.AppearanceSettings
 import com.anjo.filebrowser.ui.theme.Palette
 import com.anjo.filebrowser.ui.theme.Spacing
@@ -43,6 +45,7 @@ import com.anjo.filebrowser.ui.theme.ThemeMode
 import org.koin.compose.koinInject
 
 private const val ACCOUNT = "Account"
+private const val MORE_OPTIONS = "More options"
 
 private val ThemeMode.icon: ImageVector
     get() =
@@ -56,19 +59,30 @@ private val ThemeMode.icon: ImageVector
 fun AppMenu(
     session: AuthSession = koinInject(),
     settings: AppearanceSettings = koinInject(),
+    actions: List<BarAction> = emptyList(),
 ) {
     val auth by session.state.collectAsState()
     val appearance by settings.state.collectAsState()
     val user = (auth as? AuthState.SignedIn)?.let { it.user ?: ACCOUNT }
     var open by remember { mutableStateOf(false) }
     Box {
-        val label = if (user == null) "Settings" else "Account menu for $user"
-        Tooltip(label) {
-            IconButton(onClick = { open = true }) {
-                Icon(if (user == null) Icons.Outlined.Settings else Icons.Outlined.AccountCircle, contentDescription = label)
+        val (label, icon) =
+            when {
+                actions.isNotEmpty() -> MORE_OPTIONS to Icons.Outlined.MoreVert
+                user == null -> "Settings" to Icons.Outlined.Settings
+                else -> "Account menu for $user" to Icons.Outlined.AccountCircle
             }
+        Tooltip(label) {
+            IconButton(onClick = { open = true }) { Icon(icon, contentDescription = label) }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            actions.forEach {
+                MenuItem(it.label, it.icon, color = it.color) {
+                    open = false
+                    it.onClick()
+                }
+            }
+            if (actions.isNotEmpty()) HorizontalDivider()
             user?.let { MenuHeading("Signed in as $it") }
             MenuHeading("Color theme")
             Palette.entries.forEach { palette ->

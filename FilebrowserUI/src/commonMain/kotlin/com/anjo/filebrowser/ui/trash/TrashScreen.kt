@@ -36,7 +36,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,8 +52,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.anjo.filebrowser.ui.APP_NAME
-import com.anjo.filebrowser.ui.common.AppMenu
+import com.anjo.filebrowser.ui.common.AppBar
+import com.anjo.filebrowser.ui.common.BarAction
 import com.anjo.filebrowser.ui.common.ColumnsHeader
 import com.anjo.filebrowser.ui.common.ColumnsRow
 import com.anjo.filebrowser.ui.common.EmptyState
@@ -84,6 +83,7 @@ private val RESTORE_BUTTON = 120.sp
 private val COLUMNS_MIN_WIDTH = 900.dp
 private val RESTORE_BUTTON_MIN_WIDTH = 1040.dp
 private const val CANNOT_UNDO = "This cannot be undone."
+private const val EMPTY_TRASH = "Empty trash"
 
 internal sealed interface Purge {
     data object All : Purge
@@ -113,7 +113,6 @@ fun TrashScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TrashContent(
     state: TrashUiState,
@@ -138,31 +137,19 @@ internal fun TrashContent(
                     .padding(padding)
                     .fillMaxSize(),
             ) {
-                TopAppBar(
-                    title = { Text(APP_NAME, Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    actions = {
+                AppBar(
+                    listOfNotNull(
+                        BarAction(EMPTY_TRASH, Icons.Outlined.DeleteSweep, MaterialTheme.colorScheme.error) { purge = Purge.All }
+                            .takeIf { items.isNotEmpty() && !wide },
+                        BarAction("Refresh", Icons.Outlined.Refresh, onClick = onRefresh),
+                    ),
+                    leading = {
                         if (items.isNotEmpty() && wide) {
                             TextButton(
                                 onClick = { purge = Purge.All },
                                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                            ) { Text("Empty trash") }
-                        } else if (items.isNotEmpty()) {
-                            Tooltip("Empty trash") {
-                                IconButton(onClick = { purge = Purge.All }) {
-                                    Icon(
-                                        Icons.Outlined.DeleteSweep,
-                                        contentDescription = "Empty trash",
-                                        tint = MaterialTheme.colorScheme.error,
-                                    )
-                                }
-                            }
+                            ) { Text(EMPTY_TRASH) }
                         }
-                        Tooltip("Refresh") {
-                            IconButton(onClick = onRefresh) {
-                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
-                            }
-                        }
-                        AppMenu()
                     },
                 )
                 tabs()
