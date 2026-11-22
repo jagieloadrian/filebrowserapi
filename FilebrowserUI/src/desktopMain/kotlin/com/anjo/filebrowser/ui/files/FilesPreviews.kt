@@ -2,6 +2,8 @@ package com.anjo.filebrowser.ui.files
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.Icon
@@ -53,6 +55,7 @@ private const val IMAGE_WIDTH = 640
 private const val IMAGE_HEIGHT = 400
 private const val TOOLTIP_WIDTH_DP = 240
 private const val TOOLTIP_HEIGHT_DP = 160
+private const val FIRST_ROW_INDEX = 3
 
 private fun entry(
     name: String,
@@ -119,6 +122,7 @@ private fun photo(): ImageBitmap {
 private fun StaticFiles(
     state: FilesUiState,
     tabs: @Composable () -> Unit = {},
+    listState: LazyListState = rememberLazyListState(),
 ) = FilesContent(
     state = state,
     snackbarHost = remember { SnackbarHostState() },
@@ -133,6 +137,7 @@ private fun StaticFiles(
     onCreateFolder = {},
     onRename = { _, _ -> },
     onDelete = {},
+    listState = listState,
 )
 
 @Composable
@@ -172,6 +177,11 @@ private fun FilesPhoneMediumTextPreview() = Files(LOADED)
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
 @Composable
 private fun FilesPhoneLargeTextPreview() = Files(LOADED)
+
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
+@Composable
+private fun FilesPhoneLargeTextScrolledPreview() =
+    PreviewTheme { StaticFiles(LOADED, listState = rememberLazyListState(initialFirstVisibleItemIndex = FIRST_ROW_INDEX)) }
 
 @SettledPreview
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = ROW_MENU_HEIGHT_DP)

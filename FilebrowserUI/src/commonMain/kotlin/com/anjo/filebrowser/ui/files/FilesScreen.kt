@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -151,6 +153,7 @@ internal fun FilesContent(
     onCreateFolder: (String) -> Unit,
     onRename: (Entry, String) -> Unit,
     onDelete: (Entry) -> Unit,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     var nameRequest by remember { mutableStateOf<NameRequest?>(null) }
     Scaffold(
@@ -190,7 +193,7 @@ internal fun FilesContent(
             BoxWithConstraints {
                 val wide = fitsColumns()
                 val typed = fitsColumns(TYPE_COLUMN_MIN_WIDTH)
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
+                LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
                     item { QuotaBar(state.quota) }
                     item { SearchField(state.query, onSearch) }
                     item { Breadcrumbs(state.path, onOpen) }
