@@ -80,6 +80,7 @@ import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
 private val RESTORE_BUTTON = 120.sp
+private const val CANNOT_UNDO = "This cannot be undone."
 
 internal sealed interface Purge {
     data object All : Purge
@@ -301,7 +302,7 @@ internal fun TrashRow(
 private fun restoreWidth() = with(LocalDensity.current) { RESTORE_BUTTON.toDp() }
 
 internal fun emptyTrashText(count: Int): String =
-    "${if (count == 1) "1 item" else "All $count items"} will be deleted forever. This cannot be undone."
+    "${if (count == 1) "1 item" else "All $count items"} will be deleted forever. $CANNOT_UNDO"
 
 @Composable
 internal fun PurgeDialog(
@@ -327,7 +328,7 @@ internal fun PurgeDialog(
 
                     is Purge.One -> {
                         Text(request.item.name, style = MaterialTheme.typography.titleMedium)
-                        Text("It cannot be restored afterwards.")
+                        Text(CANNOT_UNDO)
                     }
                 }
             }
