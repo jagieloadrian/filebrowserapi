@@ -19,7 +19,7 @@ spec:
         name: flux-system
         namespace: flux-system
   values:
-    image: ghcr.io/jagieloadrian/filebrowserapi-ui:main-20261113214612-8183131
+    image: ghcr.io/jagieloadrian/filebrowserapi-ui:main-20261122223524-7f47802
     port: 8080
     tmpSize: 64Mi
     nodeSelector:

@@ -20,7 +20,7 @@ spec:
         namespace: flux-system
   values:
     secrets: true
-    image: ghcr.io/jagieloadrian/filebrowserapi:main-20261113214612-8183131
+    image: ghcr.io/jagieloadrian/filebrowserapi:main-20261122223524-7f47802
     port: 8080
     tmpSize: 2Gi
     nodeSelector:
