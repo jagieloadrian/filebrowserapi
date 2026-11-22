@@ -117,6 +117,12 @@ private data class Dividers(
     val columnDividers: Int,
 )
 
+private data class NameTooltip(
+    val case: String,
+    val name: String,
+    val copies: Int,
+)
+
 private data class Preview(
     val name: String,
     val bytes: ByteArray,
@@ -278,25 +284,30 @@ class AppTest :
             }
         }
 
-        test("should show the whole name in a tooltip when the mouse rests on a name cut short by its column") {
-            // given
-            val session = signedIn()
-            val name = "quarterly-report-".repeat(10) + "final.pdf"
-            api.entries += file("/$name")
-            runSkikoComposeUiTest(WINDOW) {
-                setContent {
-                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
-                        Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+        context("should show the whole name in a tooltip only when the mouse rests on a name cut short by its column") {
+            withTests(
+                nameFn = { it.case },
+                NameTooltip("tooltip for a name cut short", "quarterly-report-".repeat(10) + "final.pdf", copies = 2),
+                NameTooltip("no tooltip for a name that fits", "report.pdf", copies = 1),
+            ) { case ->
+                // given
+                val session = signedIn()
+                api.entries += file("/${case.name}")
+                runSkikoComposeUiTest(WINDOW) {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                        }
                     }
+                    mainClock.autoAdvance = false
+
+                    // when
+                    onNodeWithText(case.name, useUnmergedTree = true).performMouseInput { moveTo(center) }
+                    mainClock.advanceTimeBy(TOOLTIP_DELAY_MS)
+
+                    // then
+                    onAllNodesWithText(case.name, useUnmergedTree = true).fetchSemanticsNodes() shouldHaveSize case.copies
                 }
-                mainClock.autoAdvance = false
-
-                // when
-                onNodeWithText(name, useUnmergedTree = true).performMouseInput { moveTo(center) }
-                mainClock.advanceTimeBy(TOOLTIP_DELAY_MS)
-
-                // then
-                onAllNodesWithText(name, useUnmergedTree = true).fetchSemanticsNodes() shouldHaveSize 2
             }
         }
 

@@ -13,6 +13,8 @@ Last update: 2026-11-22, branch `feature-14/kmp-ui`.
 - Previews (42): `LargeText` forces font scale 2.0 through `LocalDensity`, since the render daemon dropped the
   `@Preview` scale for the scrolled files phone preview; the More options menu open at 2.0 on a 360dp phone
   (files and trash, `initialMenuExpanded`). 284 desktop tests.
+- Name tooltip: `hasVisualOverflow` in `FileName` is false for names that fit (wide, compact, trash, scale 1 to 2), so
+  no fix; a test now hovers a fitting name and checks no tooltip appears. 285 desktop tests.
 
 ### 2026-11-22, `feature-14/kmp-ui`: navigation rail, trash name width, large-text title
 - Navigation, owner's option B: below 840dp of window width Files and Trash stay tabs under the top app bar; from
