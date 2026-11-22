@@ -104,7 +104,7 @@ private data class TopBar(
     val actions: List<String>,
 )
 
-private fun backend(
+internal fun backend(
     api: FilebrowserApi,
     session: AuthSession,
 ) = module {
