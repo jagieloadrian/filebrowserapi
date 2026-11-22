@@ -4,6 +4,16 @@ Last update: 2026-11-22, branch `feature-14/kmp-ui`.
 
 ## Completed
 
+### 2026-11-22, `feature-14/kmp-ui`: fourth design review fixes
+- Top app bar: the screen actions stay icons from 252dp times the font scale (was 240dp), so "Filebrowser" is
+  never cut short at 320dp or 360dp (it was between 1.29 and 1.33 at 320dp). `isLineEllipsized` is always false
+  on Skiko; the tests compare the title's intrinsic width with its laid-out width instead.
+- Trash: from 964dp of list width (was 900dp) the columns show with a 48dp Restore icon (tooltip "Restore",
+  label "Restore <name>") before the row menu; the Restore text button from 1040dp. Names keep 200dp or more.
+- Previews (42): `LargeText` forces font scale 2.0 through `LocalDensity`, since the render daemon dropped the
+  `@Preview` scale for the scrolled files phone preview; the More options menu open at 2.0 on a 360dp phone
+  (files and trash, `initialMenuExpanded`). 284 desktop tests.
+
 ### 2026-11-22, `feature-14/kmp-ui`: navigation rail, trash name width, large-text title
 - Navigation, owner's option B: below 840dp of window width Files and Trash stay tabs under the top app bar; from
   840dp a `NavigationRail` on the left holds them (filled icon, indicator and label when selected). `BrowserShell`
