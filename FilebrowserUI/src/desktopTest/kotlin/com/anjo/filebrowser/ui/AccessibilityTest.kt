@@ -57,6 +57,7 @@ import kotlin.time.Instant
 
 private val COMPACT_WIDTH = 320.dp
 private val WIDE_WIDTH = 1200.dp
+private val MEDIUM_WIDTH = 1080.dp
 private val HEIGHT = 760.dp
 private val PHONE_WIDTH = 360.dp
 private const val LARGE_TEXT = 2f
@@ -139,6 +140,7 @@ class AccessibilityTest :
                     waitUntilAtLeastOneExists(hasTestTag(PREVIEW_LINE), PREVIEW_TIMEOUT_MS)
                 },
                 Screen("trash wide", WIDE_WIDTH) { openTrash() },
+                Screen("trash medium", MEDIUM_WIDTH) { openTrash() },
                 Screen("trash compact", COMPACT_WIDTH) { openTrash() },
                 Screen("trash row menu wide", WIDE_WIDTH) {
                     openTrash()

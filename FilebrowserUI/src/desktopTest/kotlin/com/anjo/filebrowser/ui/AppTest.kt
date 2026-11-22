@@ -329,13 +329,13 @@ class AppTest :
             }
         }
 
-        context("should keep trash names at least 200dp wide beside the columns and show Restore as a button only when it fits") {
+        context("should keep trash names at least 200dp wide beside the columns and the Restore icon or text button") {
             withTests(
                 nameFn = { it.name },
-                TrashWidth("no columns below 900dp of list", RAIL_WIDTH + 899.dp, columns = false, restoreButton = false),
-                TrashWidth("columns without the button from 900dp of list", RAIL_WIDTH + 900.dp, columns = true, restoreButton = false),
-                TrashWidth("columns without the button below 1040dp of list", RAIL_WIDTH + 1039.dp, columns = true, restoreButton = false),
-                TrashWidth("columns and the button from 1040dp of list", RAIL_WIDTH + 1040.dp, columns = true, restoreButton = true),
+                TrashWidth("no columns below 964dp of list", RAIL_WIDTH + 963.dp, columns = false, restoreButton = false),
+                TrashWidth("columns and the icon from 964dp of list", RAIL_WIDTH + 964.dp, columns = true, restoreButton = false),
+                TrashWidth("columns and the icon below 1040dp of list", RAIL_WIDTH + 1039.dp, columns = true, restoreButton = false),
+                TrashWidth("columns and the text button from 1040dp of list", RAIL_WIDTH + 1040.dp, columns = true, restoreButton = true),
             ) { case ->
                 // given
                 val session = signedIn()
@@ -356,7 +356,9 @@ class AppTest :
                     } else {
                         name.assertDoesNotExist()
                     }
-                    val button = onNodeWithContentDescription("Restore a.txt")
+                    val restore = onNodeWithContentDescription("Restore a.txt")
+                    if (case.columns) restore.assertIsDisplayed() else restore.assertDoesNotExist()
+                    val button = onNode(hasContentDescription("Restore a.txt") and hasText("Restore"))
                     if (case.restoreButton) button.assertIsDisplayed() else button.assertDoesNotExist()
                 }
             }

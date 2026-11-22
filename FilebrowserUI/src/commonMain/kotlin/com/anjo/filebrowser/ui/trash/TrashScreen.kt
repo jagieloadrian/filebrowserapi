@@ -80,7 +80,7 @@ import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
 private val RESTORE_BUTTON = 120.sp
-private val COLUMNS_MIN_WIDTH = 900.dp
+private val COLUMNS_MIN_WIDTH = 964.dp
 private val RESTORE_BUTTON_MIN_WIDTH = 1040.dp
 private const val CANNOT_UNDO = "This cannot be undone."
 private const val EMPTY_TRASH = "Empty trash"
@@ -182,7 +182,13 @@ internal fun TrashContent(
                                         ColumnsHeader(
                                             listOf("Original location" to FOLDER_COLUMN, "Size" to SIZE_COLUMN, "Deleted" to TIME_COLUMN),
                                             trailing = {
-                                                if (restoreButton) Spacer(Modifier.width(restoreWidth()))
+                                                Spacer(
+                                                    if (restoreButton) {
+                                                        Modifier.width(restoreWidth())
+                                                    } else {
+                                                        Modifier.minimumInteractiveComponentSize()
+                                                    },
+                                                )
                                                 Spacer(Modifier.minimumInteractiveComponentSize())
                                             },
                                         )
@@ -279,6 +285,10 @@ internal fun TrashRow(
                         Icon(Icons.Outlined.RestoreFromTrash, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                         Text("Restore", maxLines = 1)
+                    }
+                } else {
+                    Tooltip("Restore") {
+                        IconButton(onClick = onRestore) { Icon(Icons.Outlined.RestoreFromTrash, contentDescription = restoreLabel) }
                     }
                 }
                 overflow()
