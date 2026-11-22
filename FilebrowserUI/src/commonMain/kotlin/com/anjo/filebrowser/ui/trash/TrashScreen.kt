@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anjo.filebrowser.ui.APP_NAME
 import com.anjo.filebrowser.ui.common.AppMenu
@@ -80,6 +81,8 @@ import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
 private val RESTORE_BUTTON = 120.sp
+private val COLUMNS_MIN_WIDTH = 900.dp
+private val RESTORE_BUTTON_MIN_WIDTH = 1040.dp
 private const val CANNOT_UNDO = "This cannot be undone."
 
 internal sealed interface Purge {
@@ -125,7 +128,8 @@ internal fun TrashContent(
     val items = (state.items as? Loadable.Ready)?.value.orEmpty()
 
     BoxWithConstraints {
-        val wide = fitsColumns()
+        val wide = fitsColumns(COLUMNS_MIN_WIDTH)
+        val restoreButton = fitsColumns(RESTORE_BUTTON_MIN_WIDTH)
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHost) },
         ) { padding ->
@@ -191,14 +195,20 @@ internal fun TrashContent(
                                         ColumnsHeader(
                                             listOf("Original location" to FOLDER_COLUMN, "Size" to SIZE_COLUMN, "Deleted" to TIME_COLUMN),
                                             trailing = {
-                                                Spacer(Modifier.width(restoreWidth()))
+                                                if (restoreButton) Spacer(Modifier.width(restoreWidth()))
                                                 Spacer(Modifier.minimumInteractiveComponentSize())
                                             },
                                         )
                                     }
                                 }
                                 dividedItems(loaded.value, key = { it.id }) { item ->
-                                    TrashRow(item, wide, onRestore = { onRestore(item) }, onPurge = { purge = Purge.One(item) })
+                                    TrashRow(
+                                        item,
+                                        wide,
+                                        restoreButton,
+                                        onRestore = { onRestore(item) },
+                                        onPurge = { purge = Purge.One(item) },
+                                    )
                                 }
                             }
                         }
@@ -228,6 +238,7 @@ internal fun TrashContent(
 internal fun TrashRow(
     item: TrashItem,
     wide: Boolean,
+    restoreButton: Boolean,
     onRestore: () -> Unit,
     onPurge: () -> Unit,
     initialMenuExpanded: Boolean = false,
@@ -272,14 +283,16 @@ internal fun TrashRow(
             listOf(folderLabel(item.parent) to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, deleted to TIME_COLUMN),
             leading,
             trailing = {
-                TextButton(
-                    onClick = onRestore,
-                    modifier = Modifier.width(restoreWidth()).semantics { contentDescription = restoreLabel },
-                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                ) {
-                    Icon(Icons.Outlined.RestoreFromTrash, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Restore", maxLines = 1)
+                if (restoreButton) {
+                    TextButton(
+                        onClick = onRestore,
+                        modifier = Modifier.width(restoreWidth()).semantics { contentDescription = restoreLabel },
+                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                    ) {
+                        Icon(Icons.Outlined.RestoreFromTrash, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("Restore", maxLines = 1)
+                    }
                 }
                 overflow()
             },

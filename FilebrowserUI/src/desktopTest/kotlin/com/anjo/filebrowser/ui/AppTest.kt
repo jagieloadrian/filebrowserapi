@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import com.anjo.filebrowser.ui.api.FilebrowserApi
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.FakeBrowser
@@ -82,6 +83,7 @@ private val HEIGHT = 640.dp
 private val WIDE_WIDTH = 1200.dp
 private val MEDIUM_WIDTH = 1000.dp
 private val RAIL_WIDTH = 80.dp
+private val MIN_NAME_WIDTH = 200.dp
 private val WINDOW = Size(WIDE_WIDTH.value, HEIGHT.value)
 private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
@@ -96,6 +98,13 @@ private data class Layout(
     val name: String,
     val width: Dp,
     val rail: Boolean,
+)
+
+private data class TrashWidth(
+    val name: String,
+    val width: Dp,
+    val columns: Boolean,
+    val restoreButton: Boolean,
 )
 
 private data class Dividers(
@@ -298,6 +307,39 @@ class AppTest :
                     // then
                     onAllNodesWithTag(ROW_DIVIDER, useUnmergedTree = true).fetchSemanticsNodes() shouldHaveSize 2
                     onAllNodesWithTag(COLUMN_DIVIDER, useUnmergedTree = true).fetchSemanticsNodes() shouldHaveSize case.columnDividers
+                }
+            }
+        }
+
+        context("should keep trash names at least 200dp wide beside the columns and show Restore as a button only when it fits") {
+            withTests(
+                nameFn = { it.name },
+                TrashWidth("no columns below 900dp of list", RAIL_WIDTH + 899.dp, columns = false, restoreButton = false),
+                TrashWidth("columns without the button from 900dp of list", RAIL_WIDTH + 900.dp, columns = true, restoreButton = false),
+                TrashWidth("columns without the button below 1040dp of list", RAIL_WIDTH + 1039.dp, columns = true, restoreButton = false),
+                TrashWidth("columns and the button from 1040dp of list", RAIL_WIDTH + 1040.dp, columns = true, restoreButton = true),
+            ) { case ->
+                // given
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(case.width, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // when
+                    destination("Trash").performClick()
+
+                    // then
+                    val name = onNodeWithText("Name", useUnmergedTree = true)
+                    if (case.columns) {
+                        name.getUnclippedBoundsInRoot().width shouldBeGreaterThanOrEqualTo MIN_NAME_WIDTH
+                    } else {
+                        name.assertDoesNotExist()
+                    }
+                    val button = onNodeWithContentDescription("Restore a.txt")
+                    if (case.restoreButton) button.assertIsDisplayed() else button.assertDoesNotExist()
                 }
             }
         }

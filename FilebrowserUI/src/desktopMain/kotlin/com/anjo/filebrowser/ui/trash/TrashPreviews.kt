@@ -10,12 +10,14 @@ import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
 import com.anjo.filebrowser.ui.Destination
 import com.anjo.filebrowser.ui.LARGE_TEXT
+import com.anjo.filebrowser.ui.MEDIUM_HEIGHT_DP
 import com.anjo.filebrowser.ui.MEDIUM_TEXT
 import com.anjo.filebrowser.ui.PHONE_HEIGHT_DP
 import com.anjo.filebrowser.ui.PHONE_WIDTH_DP
 import com.anjo.filebrowser.ui.PREVIEW_QUOTA
 import com.anjo.filebrowser.ui.PreviewTheme
 import com.anjo.filebrowser.ui.ROW_MENU_HEIGHT_DP
+import com.anjo.filebrowser.ui.TRASH_COLUMNS_WIDTH_DP
 import com.anjo.filebrowser.ui.WIDE_HEIGHT_DP
 import com.anjo.filebrowser.ui.WIDE_WIDTH_DP
 import com.anjo.filebrowser.ui.common.Loadable
@@ -80,7 +82,7 @@ private fun TrashPhoneLargeTextPreview() = Trash(LOADED)
 @Composable
 private fun TrashRowMenuPreview() =
     PreviewTheme {
-        Column { TrashRow(ITEMS.first(), wide = false, onRestore = {}, onPurge = {}, initialMenuExpanded = true) }
+        Column { TrashRow(ITEMS.first(), wide = false, restoreButton = false, onRestore = {}, onPurge = {}, initialMenuExpanded = true) }
     }
 
 @SettledPreview
@@ -88,12 +90,16 @@ private fun TrashRowMenuPreview() =
 @Composable
 private fun TrashRowMenuWidePreview() =
     PreviewTheme {
-        Column { TrashRow(ITEMS.first(), wide = true, onRestore = {}, onPurge = {}, initialMenuExpanded = true) }
+        Column { TrashRow(ITEMS.first(), wide = true, restoreButton = true, onRestore = {}, onPurge = {}, initialMenuExpanded = true) }
     }
 
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP)
 @Composable
 private fun TrashPhoneDarkPreview() = Trash(LOADED, ThemeMode.DARK)
+
+@Preview(widthDp = TRASH_COLUMNS_WIDTH_DP, heightDp = MEDIUM_HEIGHT_DP)
+@Composable
+private fun TrashNarrowestColumnsPreview() = Trash(LOADED)
 
 @Preview(widthDp = WIDE_WIDTH_DP, heightDp = WIDE_HEIGHT_DP)
 @Composable

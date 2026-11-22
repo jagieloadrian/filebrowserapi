@@ -25,7 +25,7 @@ class PreviewThemeTest :
                 // when
                 setContent {
                     CompositionLocalProvider(LocalTimeOffset provides { 2.hours }) {
-                        PreviewTheme { TrashRow(item, wide = false, onRestore = {}, onPurge = {}) }
+                        PreviewTheme { TrashRow(item, wide = false, restoreButton = false, onRestore = {}, onPurge = {}) }
                     }
                 }
 
