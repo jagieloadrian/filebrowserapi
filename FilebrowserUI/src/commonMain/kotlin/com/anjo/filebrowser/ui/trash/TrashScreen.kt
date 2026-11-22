@@ -256,6 +256,7 @@ internal fun TrashRow(
                     "Delete forever",
                     Icons.Outlined.DeleteForever,
                     Modifier.semantics { contentDescription = "Delete ${item.name} forever" },
+                    MaterialTheme.colorScheme.error,
                 ) {
                     menu = false
                     onPurge()

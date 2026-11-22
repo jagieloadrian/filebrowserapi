@@ -44,6 +44,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -60,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -475,6 +477,7 @@ internal fun MenuItem(
     label: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
     onClick: () -> Unit,
 ) {
     DropdownMenuItem(
@@ -482,5 +485,6 @@ internal fun MenuItem(
         leadingIcon = { Icon(icon, contentDescription = null) },
         onClick = onClick,
         modifier = modifier,
+        colors = MenuDefaults.itemColors(textColor = color, leadingIconColor = color),
     )
 }
