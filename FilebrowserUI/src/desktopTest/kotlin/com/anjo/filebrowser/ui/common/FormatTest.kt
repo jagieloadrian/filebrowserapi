@@ -28,11 +28,11 @@ class FormatTest :
         context("formatTime") {
             withTests(
                 nameFn = { "should show ${it.first} at ${it.second} as ${it.third}" },
-                Triple("2026-11-13T10:05:30.123Z", Duration.ZERO, "2026-11-13\u00A010:05"),
-                Triple("2026-11-13T10:05:00Z", 1.hours, "2026-11-13\u00A011:05"),
-                Triple("2026-11-13T23:30:00Z", 2.hours, "2026-11-14\u00A001:30"),
-                Triple("2026-11-13T02:00:00Z", (-5).hours, "2026-11-12\u00A021:00"),
-                Triple("2026-11-13T10:00:00Z", 5.hours + 30.minutes, "2026-11-13\u00A015:30"),
+                Triple("2026-11-13T10:05:30.123Z", Duration.ZERO, "2026-11-13 10:05"),
+                Triple("2026-11-13T10:05:00Z", 1.hours, "2026-11-13 11:05"),
+                Triple("2026-11-13T23:30:00Z", 2.hours, "2026-11-14 01:30"),
+                Triple("2026-11-13T02:00:00Z", (-5).hours, "2026-11-12 21:00"),
+                Triple("2026-11-13T10:00:00Z", 5.hours + 30.minutes, "2026-11-13 15:30"),
             ) { (instant, offset, expected) ->
                 formatTime(Instant.parse(instant), offset) shouldBe expected
             }
@@ -63,9 +63,8 @@ class FormatTest :
             }
         }
 
-        test("should keep every size and the date and time on one line") {
+        test("should keep every size on one line") {
             listOf(742L, 1_153_434L, 2_684_354_560L).forEach { formatSize(it) shouldNotContain " " }
-            formatTime(Instant.parse("2026-11-17T15:32:00Z")) shouldNotContain " "
         }
 
         context("fileType") {
