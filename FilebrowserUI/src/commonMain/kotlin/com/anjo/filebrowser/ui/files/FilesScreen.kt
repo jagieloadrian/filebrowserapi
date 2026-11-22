@@ -61,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -91,6 +92,7 @@ import com.anjo.filebrowser.ui.model.Entry
 import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
+private const val UPLOAD = "Upload file"
 private val UPLOAD_BUTTON_CLEARANCE = 88.dp
 private val TYPE_COLUMN_MIN_WIDTH = 1000.dp
 
@@ -172,7 +174,8 @@ internal fun FilesContent(
             ExtendedFloatingActionButton(
                 onClick = onUpload,
                 icon = { Icon(Icons.Outlined.Upload, contentDescription = null) },
-                text = { Text("Upload file") },
+                text = { Text(UPLOAD) },
+                modifier = Modifier.semantics { contentDescription = UPLOAD },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHost) },
