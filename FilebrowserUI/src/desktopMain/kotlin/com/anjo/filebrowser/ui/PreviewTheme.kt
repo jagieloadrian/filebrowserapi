@@ -5,6 +5,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.LoopbackBrowser
 import com.anjo.filebrowser.ui.common.LocalTimeOffset
@@ -70,3 +72,7 @@ internal fun PreviewTheme(
         }
     }
 }
+
+@Composable
+internal fun LargeText(content: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, LARGE_TEXT), content = content)

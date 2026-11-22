@@ -28,6 +28,7 @@ import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
 import com.anjo.filebrowser.ui.Destination
 import com.anjo.filebrowser.ui.LARGE_TEXT
+import com.anjo.filebrowser.ui.LargeText
 import com.anjo.filebrowser.ui.MEDIUM_HEIGHT_DP
 import com.anjo.filebrowser.ui.MEDIUM_TEXT
 import com.anjo.filebrowser.ui.MEDIUM_WIDTH_DP
@@ -186,7 +187,9 @@ private fun FilesPhoneLargeTextPreview() = Files(LOADED)
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
 @Composable
 private fun FilesPhoneLargeTextScrolledPreview() =
-    PreviewTheme { StaticFiles(LOADED, listState = rememberLazyListState(initialFirstVisibleItemIndex = FIRST_ROW_INDEX)) }
+    LargeText {
+        PreviewTheme { StaticFiles(LOADED, listState = rememberLazyListState(initialFirstVisibleItemIndex = FIRST_ROW_INDEX)) }
+    }
 
 @SettledPreview
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = ROW_MENU_HEIGHT_DP)
