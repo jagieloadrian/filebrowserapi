@@ -1,8 +1,95 @@
 # Project Status
 
-Last update: 2026-11-16, branch `feature-14/kmp-ui`.
+Last update: 2026-11-22, branch `feature-14/kmp-ui`.
 
 ## Completed
+
+### 2026-11-22, `feature-14/kmp-ui`: fourth design review fixes
+- Top app bar: the screen actions stay icons from 252dp times the font scale (was 240dp), so "Filebrowser" is
+  never cut short at 320dp or 360dp (it was between 1.29 and 1.33 at 320dp). `isLineEllipsized` is always false
+  on Skiko; the tests compare the title's intrinsic width with its laid-out width instead.
+- Trash: from 964dp of list width (was 900dp) the columns show with a 48dp Restore icon (tooltip "Restore",
+  label "Restore <name>") before the row menu; the Restore text button from 1040dp. Names keep 200dp or more.
+- Previews (42): `LargeText` forces font scale 2.0 through `LocalDensity`, since the render daemon dropped the
+  `@Preview` scale for the scrolled files phone preview; the More options menu open at 2.0 on a 360dp phone
+  (files and trash, `initialMenuExpanded`). 284 desktop tests.
+- Name tooltip: `hasVisualOverflow` in `FileName` is false for names that fit (wide, compact, trash, scale 1 to 2), so
+  no fix; a test now hovers a fitting name and checks no tooltip appears. 285 desktop tests.
+
+### 2026-11-22, `feature-14/kmp-ui`: navigation rail, trash name width, large-text title
+- Navigation, owner's option B: below 840dp of window width Files and Trash stay tabs under the top app bar; from
+  840dp a `NavigationRail` on the left holds them (filled icon, indicator and label when selected). `BrowserShell`
+  decides with `BoxWithConstraints` (`currentWindowAdaptiveInfo()` needs material3-adaptive, not added). The rail's
+  80dp come off the content, so 900dp shows no columns. Tab order with the rail: rail, top app bar, list.
+- Trash: columns from 900dp of list width, the Restore button from 1040dp, so names keep 200dp or more beside the
+  columns (5dp at 840dp before). Below 900dp the stacked rows show everything; Restore is in the row menu at every
+  width.
+- Top app bar (`AppBar`, shared by both screens): below 240dp times the font scale the screen actions move into the
+  app menu, which becomes "More options"; "Filebrowser" shows in full at 2.0 on a 360dp phone.
+- Previews (40): app shell at 700dp (tabs), trash at 900dp (narrowest columns). UI tests run in a 1200dp test
+  window; 280 desktop tests.
+
+### 2026-11-22, `feature-14/kmp-ui`: third design review fixes
+- Trash row menu: Restore first, Delete forever (error colour) second at every width; wide rows keep the Restore
+  button. The delete-forever dialog says "This cannot be undone.", like the empty-trash dialog.
+- The top app bar shows the app name (`APP_NAME`, "Filebrowser", also the window title and sign-in heading)
+  instead of the destination, which the tabs already show.
+- Times join date and time with a plain space, so they wrap between them at font scale 2.0 (sizes keep the NBSP).
+- Rows read the time offset from `LocalTimeOffset` (default `localOffset`); `PreviewTheme` provides UTC, so
+  preview renders match between machines and CI.
+- Previews (38): the wide trash row menu open; the files phone list at 2.0 scrolled to the first row
+  (`FilesContent` takes a hoisted `LazyListState`).
+
+### 2026-11-19, `feature-14/kmp-ui`: second design review fixes, tabs, accessibility tests
+- Trash: wide rows show a Restore text button, Delete forever stays in the row menu (compact: both in the menu);
+  a click on a trash row opens its menu at every width. The delete-forever dialog shows the whole name.
+- Quota, search, breadcrumbs and the 30-day note are leading items of the lists and scroll away; the column header
+  is a sticky header. Empty, error and loading states follow the breadcrumbs instead of being centred.
+- Files and Trash are tabs (`PrimaryTabRow`, icon and label) below the top app bar at every width; the navigation
+  bar and rail are gone (Material 3 wants 3 to 5 destinations for those). The content uses the full width.
+- Files columns: Type is left out below 1000dp (scaled by the font size), giving names about 130dp more.
+- Tooltips (`Tooltip`, Material 3 `PlainTooltip`) on every icon-only action. Breadcrumbs scroll to the current
+  folder. Times are local ("2026-11-17 16:32", no zone): `localOffset` is expect/actual on `java.time` and JS
+  `Date`, no kotlinx-datetime. Folder locations read like the breadcrumbs ("Home / Work / Reports").
+- Accessibility fixes found by the new tests: the Upload button had no accessible name (M3 clears the text's
+  semantics), and Tab visited the list before the top app bar (Scaffold places its body first; the top app bar
+  and tabs now head the body column).
+- Previews (36): open row menus (files, trash) through `initialMenuExpanded`, a tooltip through `initiallyVisible`,
+  the trash app shell, font scale 1.5 (files and trash phone) and 2.0 (wide app shell, sign-in, new folder).
+  Menus and tooltips render offscreen.
+- `AccessibilityTest`: every clickable or toggleable node in 15 screen, menu and dialog states has a label and
+  touch bounds of at least 48 x 48 dp; the Tab order from the top app bar to the rows; a trash row is one node.
+
+### 2026-11-18, `feature-14/kmp-ui`: design review fixes, app-shell previews
+- Delete-forever dialog: title "Delete forever?", the name (three lines at most) in the scrolling text, so the
+  buttons stay in view at font scale 2.0. Empty trash: "will be deleted forever", "1 item" in the singular.
+- Trash rows: Restore and Delete forever in a per-row overflow menu at every width, like the files rows; below the
+  column width "Empty trash" is an icon button; the title keeps one line.
+- Screen readers: trash menu items read "Restore <name>" and "Delete <name> forever", the wide trash row is one
+  merged node; the folder or file icon in files rows is decorative where the row text already says the kind.
+- Columns: a header row (Name, Type, Size, Modified; Folder while searching; trash: Original location, Size,
+  Deleted) replaces the cell prefixes; the time column is 168sp (was 232sp), the name takes the rest. Names cut
+  short show the whole name in a tooltip on hover or long press; single-column lists give names two lines.
+- Sizes and times join number and unit with a non-breaking space ("742 B", "15:32 UTC" no longer wrap inside).
+- Text preview: Wrap lines and Highlight code are outlined icon toggle buttons (filled when on).
+- Breadcrumbs keep the height of their text buttons when only "Home" shows, so the list no longer jumps.
+- Previews (27): `BrowserShell` takes the destination, a navigate lambda and the content; the shell is previewed
+  with the files list at 360x760, 900x700 (rail, single column) and 1440x900. Font scale 2.0 for the files and
+  trash phone lists and the delete-forever dialog; dark trash, delete-forever dialog and sign-in.
+  `FilesMediumPreview` became `FilesNarrowestColumnsPreview` (840dp content, the narrowest with columns).
+
+### 2026-11-18, `feature-14/kmp-ui`: Compose previews
+- 18 `@Preview` functions in `FilebrowserUI/src/desktopMain` (`PreviewTheme.kt`, `files/FilesPreviews.kt`,
+  `trash/TrashPreviews.kt`, `auth/SignInPreviews.kt`): files list at 360, 900 and 1440 dp, dark, green palette,
+  empty, error and loading; trash; name, purge, text and image preview dialogs; sign-in.
+- Render them offscreen from the project root with `compose-preview show` (`--json` for paths, `--filter <name>`
+  for one); PNGs land in `FilebrowserUI/build/compose-previews/renders/`. No window opens.
+- `FilesScreen` and `TrashScreen` only wire the view model; `FilesContent` and `TrashContent` take the UI state
+  and event lambdas. `PreviewTheme` provides an isolated Koin context (`KoinApplicationPreview`).
+- `ui-tooling-preview` and `preview-annotations` (`@SettledPreview`, lets dialogs finish fading in) are
+  desktop-only dependencies; the wasm bundle carries no preview code.
+- Not previewed: the name dialog's validation error (shows only after blur or submit) and the signed-in account
+  menu (needs a real OIDC sign-in); open menus and snackbars need interaction.
 
 ### 2026-11-16, `feature-14/kmp-ui`: simplifications
 - gRPC responses use the generated Kotlin DSL builders instead of Java builder chains.
@@ -168,6 +255,8 @@ Project aligned with the coding standards from the `standards` MCP server:
 - 464 tests, all Kotest, gate green; a deliberate token leak makes the log-capture test fail.
 
 ## Decisions
+- 2026-11-22: Files and Trash are tabs below the top app bar below 840dp of window width and a navigation rail from
+  840dp (owner's option B); no navigation bar.
 - No `.gitlab-ci.yml` ever existed; CI was written for GitHub Actions from scratch.
 - Package-by-feature layout not applied: the standard targets new projects, and moving packages has no gain here.
 - REST error `error` field is the exception's simple name (e.g. `NotFoundException`).

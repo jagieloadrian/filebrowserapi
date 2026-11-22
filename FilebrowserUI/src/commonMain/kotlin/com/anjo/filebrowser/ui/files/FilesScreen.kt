@@ -11,9 +11,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -40,14 +44,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,18 +62,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.anjo.filebrowser.ui.common.AppMenu
+import com.anjo.filebrowser.ui.common.AppBar
+import com.anjo.filebrowser.ui.common.BarAction
+import com.anjo.filebrowser.ui.common.ColumnsHeader
 import com.anjo.filebrowser.ui.common.ColumnsRow
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
+import com.anjo.filebrowser.ui.common.FileName
 import com.anjo.filebrowser.ui.common.Loadable
+import com.anjo.filebrowser.ui.common.LocalTimeOffset
 import com.anjo.filebrowser.ui.common.NameDialog
 import com.anjo.filebrowser.ui.common.QuotaBar
 import com.anjo.filebrowser.ui.common.SIZE_COLUMN
@@ -76,6 +87,7 @@ import com.anjo.filebrowser.ui.common.SkeletonList
 import com.anjo.filebrowser.ui.common.SnackbarEffect
 import com.anjo.filebrowser.ui.common.TIME_COLUMN
 import com.anjo.filebrowser.ui.common.TYPE_COLUMN
+import com.anjo.filebrowser.ui.common.Tooltip
 import com.anjo.filebrowser.ui.common.dividedItems
 import com.anjo.filebrowser.ui.common.fileType
 import com.anjo.filebrowser.ui.common.fitsColumns
@@ -86,7 +98,9 @@ import com.anjo.filebrowser.ui.model.Entry
 import com.anjo.filebrowser.ui.theme.Spacing
 import org.koin.compose.viewmodel.koinViewModel
 
+private const val UPLOAD = "Upload file"
 private val UPLOAD_BUTTON_CLEARANCE = 88.dp
+private val TYPE_COLUMN_MIN_WIDTH = 1000.dp
 
 private sealed interface NameRequest {
     data object NewFolder : NameRequest
@@ -96,35 +110,58 @@ private sealed interface NameRequest {
     ) : NameRequest
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
+fun FilesScreen(
+    tabs: @Composable () -> Unit,
+    viewModel: FilesViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
-    var nameRequest by remember { mutableStateOf<NameRequest?>(null) }
     LaunchedEffect(viewModel) { viewModel.refresh() }
     SnackbarEffect(viewModel.snackbar, snackbarHost)
+    FilesContent(
+        state = state,
+        snackbarHost = snackbarHost,
+        tabs = tabs,
+        onRefresh = viewModel::refresh,
+        onUpload = viewModel::uploadFromDevice,
+        onSearch = viewModel::search,
+        onOpen = viewModel::open,
+        onPreview = viewModel::preview,
+        onClosePreview = viewModel::closePreview,
+        onDownload = viewModel::download,
+        onCreateFolder = viewModel::createFolder,
+        onRename = viewModel::rename,
+        onDelete = viewModel::delete,
+    )
+}
 
+@Composable
+internal fun FilesContent(
+    state: FilesUiState,
+    snackbarHost: SnackbarHostState,
+    tabs: @Composable () -> Unit,
+    onRefresh: () -> Unit,
+    onUpload: () -> Unit,
+    onSearch: (String) -> Unit,
+    onOpen: (String) -> Unit,
+    onPreview: (Entry) -> Unit,
+    onClosePreview: () -> Unit,
+    onDownload: (Entry) -> Unit,
+    onCreateFolder: (String) -> Unit,
+    onRename: (Entry, String) -> Unit,
+    onDelete: (Entry) -> Unit,
+    listState: LazyListState = rememberLazyListState(),
+    initialMenuExpanded: Boolean = false,
+) {
+    var nameRequest by remember { mutableStateOf<NameRequest?>(null) }
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Files", Modifier.semantics { heading() }) },
-                actions = {
-                    IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
-                        Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
-                    }
-                    IconButton(onClick = viewModel::refresh) {
-                        Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
-                    }
-                    AppMenu()
-                },
-            )
-        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = viewModel::uploadFromDevice,
+                onClick = onUpload,
                 icon = { Icon(Icons.Outlined.Upload, contentDescription = null) },
-                text = { Text("Upload file") },
+                text = { Text(UPLOAD) },
+                modifier = Modifier.semantics { contentDescription = UPLOAD },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHost) },
@@ -134,25 +171,47 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
                 .padding(padding)
                 .fillMaxSize(),
         ) {
+            AppBar(
+                listOf(
+                    BarAction("New folder", Icons.Outlined.CreateNewFolder) { nameRequest = NameRequest.NewFolder },
+                    BarAction("Refresh", Icons.Outlined.Refresh, onClick = onRefresh),
+                ),
+                initialMenuExpanded = initialMenuExpanded,
+            )
+            tabs()
             WorkIndicator(state.working > 0)
-            QuotaBar(state.quota)
-            SearchField(state.query, viewModel::search)
-            Breadcrumbs(state.path, viewModel::open)
-            when (val entries = state.entries) {
-                Loadable.Loading -> {
-                    SkeletonList()
-                }
+            BoxWithConstraints {
+                val wide = fitsColumns()
+                val typed = fitsColumns(TYPE_COLUMN_MIN_WIDTH)
+                LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
+                    item { QuotaBar(state.quota) }
+                    item { SearchField(state.query, onSearch) }
+                    item { Breadcrumbs(state.path, onOpen) }
+                    when (val entries = state.entries) {
+                        Loadable.Loading -> {
+                            item { SkeletonList() }
+                        }
 
-                is Loadable.Failed -> {
-                    ErrorState(entries.message, viewModel::refresh)
-                }
+                        is Loadable.Failed -> {
+                            item { ErrorState(entries.message, onRefresh) }
+                        }
 
-                is Loadable.Ready -> {
-                    if (entries.value.isEmpty()) {
-                        NoEntries(state.query)
-                    } else {
-                        EntryList(entries.value, searching = state.query.isNotBlank(), viewModel) {
-                            nameRequest = NameRequest.Rename(it)
+                        is Loadable.Ready -> {
+                            if (entries.value.isEmpty()) {
+                                item { NoEntries(state.query) }
+                            } else {
+                                entryRows(
+                                    entries = entries.value,
+                                    searching = state.query.isNotBlank(),
+                                    wide = wide,
+                                    typed = typed,
+                                    onOpen = onOpen,
+                                    onPreview = onPreview,
+                                    onDownload = onDownload,
+                                    onRename = { nameRequest = NameRequest.Rename(it) },
+                                    onDelete = onDelete,
+                                )
+                            }
                         }
                     }
                 }
@@ -163,16 +222,16 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
     state.preview?.let { preview ->
         PreviewDialog(
             preview,
-            onClose = viewModel::closePreview,
-            onRetry = { viewModel.preview(preview.entry) },
-            onDownload = { viewModel.download(preview.entry) },
+            onClose = onClosePreview,
+            onRetry = { onPreview(preview.entry) },
+            onDownload = { onDownload(preview.entry) },
             onRename = {
-                viewModel.closePreview()
+                onClosePreview()
                 nameRequest = NameRequest.Rename(preview.entry)
             },
             onDelete = {
-                viewModel.closePreview()
-                viewModel.delete(preview.entry)
+                onClosePreview()
+                onDelete(preview.entry)
             },
         )
     }
@@ -186,7 +245,7 @@ fun FilesScreen(viewModel: FilesViewModel = koinViewModel()) {
             onDismiss = { nameRequest = null },
             onConfirm = { name ->
                 nameRequest = null
-                if (renamed == null) viewModel.createFolder(name) else viewModel.rename(renamed, name)
+                if (renamed == null) onCreateFolder(name) else onRename(renamed, name)
             },
         )
     }
@@ -215,7 +274,11 @@ private fun SearchField(
             if (query.isEmpty()) {
                 null
             } else {
-                { IconButton(onClick = { onSearch("") }) { Icon(Icons.Outlined.Close, contentDescription = "Clear search") } }
+                {
+                    Tooltip("Clear search") {
+                        IconButton(onClick = { onSearch("") }) { Icon(Icons.Outlined.Close, contentDescription = "Clear search") }
+                    }
+                }
             },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -230,8 +293,14 @@ private fun Breadcrumbs(
 ) {
     val parts = path.split('/').filter { it.isNotEmpty() }
     val crumbs = listOf("" to folderLabel("")) + parts.indices.map { i -> "/" + parts.take(i + 1).joinToString("/") to parts[i] }
+    val scroll = rememberScrollState()
+    LaunchedEffect(path, scroll.maxValue) { scroll.scrollTo(scroll.maxValue) }
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Spacing.s, vertical = Spacing.xs),
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scroll)
+            .padding(horizontal = Spacing.s, vertical = Spacing.xs)
+            .heightIn(min = LocalMinimumInteractiveComponentSize.current),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         crumbs.forEachIndexed { index, (target, label) ->
@@ -258,58 +327,72 @@ private fun NoEntries(query: String) {
     }
 }
 
-@Composable
-private fun EntryList(
+private fun LazyListScope.entryRows(
     entries: List<Entry>,
     searching: Boolean,
-    viewModel: FilesViewModel,
+    wide: Boolean,
+    typed: Boolean,
+    onOpen: (String) -> Unit,
+    onPreview: (Entry) -> Unit,
+    onDownload: (Entry) -> Unit,
     onRename: (Entry) -> Unit,
+    onDelete: (Entry) -> Unit,
 ) {
-    BoxWithConstraints {
-        val wide = fitsColumns()
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = UPLOAD_BUTTON_CLEARANCE)) {
-            dividedItems(entries, key = { it.path }) { entry ->
-                EntryRow(
-                    entry = entry,
-                    searching = searching,
-                    wide = wide,
-                    onOpen = { viewModel.open(entry.path) },
-                    onPreview = { viewModel.preview(entry) },
-                    onDownload = { viewModel.download(entry) },
-                    onRename = { onRename(entry) },
-                    onDelete = { viewModel.delete(entry) },
-                )
-            }
+    if (wide) {
+        stickyHeader {
+            ColumnsHeader(
+                listOfNotNull(
+                    ("Folder" to FOLDER_COLUMN).takeIf { searching },
+                    ("Type" to TYPE_COLUMN).takeIf { typed },
+                    "Size" to SIZE_COLUMN,
+                    "Modified" to TIME_COLUMN,
+                ),
+            )
         }
+    }
+    dividedItems(entries, key = { it.path }) { entry ->
+        EntryRow(
+            entry = entry,
+            searching = searching,
+            wide = wide,
+            typed = typed,
+            onOpen = { onOpen(entry.path) },
+            onPreview = { onPreview(entry) },
+            onDownload = { onDownload(entry) },
+            onRename = { onRename(entry) },
+            onDelete = { onDelete(entry) },
+        )
     }
 }
 
 @Composable
-private fun EntryRow(
+internal fun EntryRow(
     entry: Entry,
     searching: Boolean,
     wide: Boolean,
+    typed: Boolean,
     onOpen: () -> Unit,
     onPreview: () -> Unit,
     onDownload: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    initialMenuExpanded: Boolean = false,
 ) {
-    var menu by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(initialMenuExpanded) }
     val previewable = previewKind(entry) != null
-    val folder = if (searching) "In ${folderLabel(entry.parent)}" else null
     val size = if (entry.directory) null else formatSize(entry.size)
-    val modified = "Modified ${formatTime(entry.modified)}"
+    val modified = formatTime(entry.modified, LocalTimeOffset.current(entry.modified))
     val leading: @Composable () -> Unit = {
         Icon(
             if (entry.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
-            contentDescription = if (entry.directory) "Folder" else "File",
+            contentDescription = if (entry.directory || wide) null else "File",
         )
     }
     val trailing: @Composable () -> Unit = {
         Box {
-            IconButton(onClick = { menu = true }) {
-                Icon(Icons.Outlined.MoreVert, contentDescription = "Actions for ${entry.name}")
+            val label = "Actions for ${entry.name}"
+            Tooltip(label) {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = label) }
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (previewable) {
@@ -359,8 +442,8 @@ private fun EntryRow(
         ColumnsRow(
             entry.name,
             listOfNotNull(
-                folder?.let { it to FOLDER_COLUMN },
-                (if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN,
+                (folderLabel(entry.parent) to FOLDER_COLUMN).takeIf { searching },
+                ((if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN).takeIf { typed },
                 size.orEmpty() to SIZE_COLUMN,
                 modified to TIME_COLUMN,
             ),
@@ -370,8 +453,11 @@ private fun EntryRow(
         )
     } else {
         ListItem(
-            headlineContent = { Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            supportingContent = { Text(listOfNotNull(folder, size ?: "Folder", modified).joinToString(" · ")) },
+            headlineContent = { FileName(entry.name, maxLines = 2) },
+            supportingContent = {
+                val folder = if (searching) "In ${folderLabel(entry.parent)}" else null
+                Text(listOfNotNull(folder, size ?: "Folder", "Modified $modified").joinToString(" · "))
+            },
             leadingContent = leading,
             trailingContent = trailing,
             modifier = modifier,
@@ -383,11 +469,15 @@ private fun EntryRow(
 internal fun MenuItem(
     label: String,
     icon: ImageVector,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
     onClick: () -> Unit,
 ) {
     DropdownMenuItem(
         text = { Text(label) },
         leadingIcon = { Icon(icon, contentDescription = null) },
         onClick = onClick,
+        modifier = modifier,
+        colors = MenuDefaults.itemColors(textColor = color, leadingIconColor = color),
     )
 }

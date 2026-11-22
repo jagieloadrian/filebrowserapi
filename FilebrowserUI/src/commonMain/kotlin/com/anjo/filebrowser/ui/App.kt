@@ -1,7 +1,6 @@
 package com.anjo.filebrowser.ui
 
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -10,11 +9,11 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -38,7 +37,9 @@ import org.koin.compose.koinInject
 import org.koin.dsl.koinConfiguration
 import org.koin.plugin.module.dsl.module
 
-private enum class Destination(
+const val APP_NAME = "Filebrowser"
+
+internal enum class Destination(
     val icon: ImageVector,
     val selectedIcon: ImageVector,
 ) {
@@ -65,43 +66,63 @@ fun App() {
 @Composable
 internal fun Browser() {
     var destination by remember { mutableStateOf(Destination.FILES) }
-    BoxWithConstraints {
-        if (maxWidth >= Spacing.wide) {
-            Row {
-                NavigationRail {
-                    Destination.entries.forEach {
-                        NavigationRailItem(
-                            selected = it == destination,
-                            onClick = { destination = it },
-                            icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
-                            label = { Text(it.label) },
-                        )
-                    }
-                }
-                Screen(destination)
-            }
-        } else {
-            Column {
-                Column(Modifier.weight(1f)) { Screen(destination) }
-                NavigationBar {
-                    Destination.entries.forEach {
-                        NavigationBarItem(
-                            selected = it == destination,
-                            onClick = { destination = it },
-                            icon = { Icon(if (it == destination) it.selectedIcon else it.icon, contentDescription = null) },
-                            label = { Text(it.label) },
-                        )
-                    }
-                }
-            }
+    BrowserShell(destination, onNavigate = { destination = it }) { tabs ->
+        when (destination) {
+            Destination.FILES -> FilesScreen(tabs)
+            Destination.TRASH -> TrashScreen(tabs)
         }
     }
 }
 
 @Composable
-private fun Screen(destination: Destination) {
-    when (destination) {
-        Destination.FILES -> FilesScreen()
-        Destination.TRASH -> TrashScreen()
+internal fun BrowserShell(
+    destination: Destination,
+    onNavigate: (Destination) -> Unit,
+    content: @Composable (tabs: @Composable () -> Unit) -> Unit,
+) = BoxWithConstraints {
+    val rail = maxWidth >= Spacing.expanded
+    Row {
+        if (rail) DestinationRail(destination, onNavigate)
+        content { if (!rail) DestinationTabs(destination, onNavigate) }
     }
 }
+
+@Composable
+private fun DestinationTabs(
+    destination: Destination,
+    onNavigate: (Destination) -> Unit,
+) {
+    PrimaryTabRow(selectedTabIndex = destination.ordinal) {
+        Destination.entries.forEach {
+            Tab(
+                selected = it == destination,
+                onClick = { onNavigate(it) },
+                text = { Text(it.label) },
+                icon = { DestinationIcon(it, it == destination) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DestinationRail(
+    destination: Destination,
+    onNavigate: (Destination) -> Unit,
+) {
+    NavigationRail {
+        Destination.entries.forEach {
+            NavigationRailItem(
+                selected = it == destination,
+                onClick = { onNavigate(it) },
+                icon = { DestinationIcon(it, it == destination) },
+                label = { Text(it.label) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DestinationIcon(
+    destination: Destination,
+    selected: Boolean,
+) = Icon(if (selected) destination.selectedIcon else destination.icon, contentDescription = null)

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -12,12 +13,14 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -26,21 +29,27 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isHeading
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.pressKey
-import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.test.waitUntilExactlyOneExists
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import com.anjo.filebrowser.ui.api.FilebrowserApi
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.FakeBrowser
@@ -48,6 +57,7 @@ import com.anjo.filebrowser.ui.auth.FakeIdentityProvider
 import com.anjo.filebrowser.ui.auth.settled
 import com.anjo.filebrowser.ui.common.COLUMN_DIVIDER
 import com.anjo.filebrowser.ui.common.ROW_DIVIDER
+import com.anjo.filebrowser.ui.common.formatTime
 import com.anjo.filebrowser.ui.files.FilesViewModel
 import com.anjo.filebrowser.ui.files.PREVIEW_LINE
 import com.anjo.filebrowser.ui.theme.AppearanceSettings
@@ -55,6 +65,7 @@ import com.anjo.filebrowser.ui.trash.TrashViewModel
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withTests
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.comparables.shouldBeGreaterThanOrEqualTo
 import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
 import io.kotest.matchers.ints.shouldBeInRange
 import io.kotest.matchers.shouldBe
@@ -67,22 +78,49 @@ import org.koin.core.context.stopKoin
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
+import kotlin.time.Instant
 
 private val NARROWEST_WIDTH = 320.dp
 private val HEIGHT = 640.dp
-private val WIDE_WIDTH = 1000.dp
-private val NAVIGATION_RAIL = 80.dp
+private val WIDE_WIDTH = 1200.dp
+private val MEDIUM_WIDTH = 1000.dp
+private val RAIL_WIDTH = 80.dp
+private val MIN_NAME_WIDTH = 200.dp
+private val PHONE_WIDTH = 360.dp
+private val WINDOW = Size(WIDE_WIDTH.value, HEIGHT.value)
 private const val LARGE_TEXT = 2f
 private const val LONG_NAME = "alexandra.konstantinopoulou"
 private const val ACCOUNT_MENU = "Account menu for $LONG_NAME"
 private const val PREVIEW_TIMEOUT_MS = 5_000L
 private const val MAX_COMPOSED_LINES = 100
+private const val TOOLTIP_DELAY_MS = 100L
+private const val FILES_LEADING_ITEMS = 3
+private val TIME = formatTime(Instant.parse("2026-11-13T10:00:00Z"))
+
+private data class Layout(
+    val name: String,
+    val width: Dp,
+    val rail: Boolean,
+)
+
+private data class TrashWidth(
+    val name: String,
+    val width: Dp,
+    val columns: Boolean,
+    val restoreButton: Boolean,
+)
 
 private data class Dividers(
     val layout: String,
     val destination: String,
     val width: Dp,
     val columnDividers: Int,
+)
+
+private data class NameTooltip(
+    val case: String,
+    val name: String,
+    val copies: Int,
 )
 
 private data class Preview(
@@ -96,7 +134,12 @@ private data class TopBar(
     val actions: List<String>,
 )
 
-private fun backend(
+private data class TitleFit(
+    val width: Dp,
+    val fontScale: Float,
+)
+
+internal fun backend(
     api: FilebrowserApi,
     session: AuthSession,
 ) = module {
@@ -110,6 +153,16 @@ private fun backend(
 private fun SemanticsNodeInteractionsProvider.destination(label: String) = onNode(isSelectable() and hasText(label))
 
 private fun SemanticsNodeInteractionsProvider.action(label: String) = onNode(hasText(label) or hasContentDescription(label))
+
+private fun SemanticsNodeInteractionsProvider.titleCutShort(): Boolean {
+    val title = mutableListOf<TextLayoutResult>()
+    onNode(isHeading() and hasText(APP_NAME))
+        .fetchSemanticsNode()
+        .config[SemanticsActions.GetTextLayoutResult]
+        .action
+        ?.invoke(title)
+    return title.single().run { multiParagraph.intrinsics.maxIntrinsicWidth > size.width }
+}
 
 @OptIn(ExperimentalTestApi::class)
 class AppTest :
@@ -134,23 +187,38 @@ class AppTest :
                     signIn()
                 }.also { it.settled() }
 
-        test("should switch between files and trash when the window has its narrowest width") {
-            val session = signedIn()
-            runComposeUiTest {
-                // given
-                setContent {
-                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
-                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+        context("should switch between files and trash with tabs below 840dp and a navigation rail from 840dp") {
+            withTests(
+                nameFn = { it.name },
+                Layout("tabs at the narrowest width", NARROWEST_WIDTH, rail = false),
+                Layout("tabs just below 840dp", 839.dp, rail = false),
+                Layout("rail at 840dp", 840.dp, rail = true),
+                Layout("rail when wide", WIDE_WIDTH, rail = true),
+            ) { layout ->
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    // given
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(layout.width, HEIGHT)) { Browser() }
+                        }
+                    }
+                    destination("Files").assertIsDisplayed().assertIsSelected()
+
+                    // when
+                    destination("Trash").assertIsDisplayed().performClick()
+
+                    // then
+                    destination("Trash").assertIsSelected()
+                    action("Empty trash").assertIsDisplayed()
+                    val title = onNode(isHeading() and hasText(APP_NAME)).getUnclippedBoundsInRoot()
+                    val trash = destination("Trash").getUnclippedBoundsInRoot()
+                    if (layout.rail) {
+                        trash.right shouldBeLessThanOrEqualTo title.left
+                    } else {
+                        trash.top shouldBeGreaterThanOrEqualTo title.bottom
                     }
                 }
-                destination("Files").assertIsDisplayed().assertIsSelected()
-
-                // when
-                destination("Trash").assertIsDisplayed().performClick()
-
-                // then
-                destination("Trash").assertIsSelected()
-                onNode(isHeading() and hasText("Trash")).assertIsDisplayed()
             }
         }
 
@@ -159,7 +227,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/report.pdf", size = 2048)
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -168,10 +236,30 @@ class AppTest :
                 }
 
                 // then
-                onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH - NAVIGATION_RAIL)
+                onNodeWithText("report.pdf").assertWidthIsAtLeast(WIDE_WIDTH - RAIL_WIDTH)
                 onNodeWithText("PDF file", useUnmergedTree = true).assertIsDisplayed()
-                onNodeWithText("2.0 KB", useUnmergedTree = true).assertIsDisplayed()
-                onNodeWithText("Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("2.0\u00A0KB", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText(TIME, useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+
+        test("should leave the type column out when the columns fit but the list beside the rail is narrower than 1000dp") {
+            // given
+            val session = signedIn()
+            api.entries += file("/report.pdf", size = 2048)
+
+            runSkikoComposeUiTest(WINDOW) {
+                // when
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(MEDIUM_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+
+                // then
+                onNodeWithText("Size", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("Type", useUnmergedTree = true).assertDoesNotExist()
+                onNodeWithText("PDF file", useUnmergedTree = true).assertDoesNotExist()
             }
         }
 
@@ -180,7 +268,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/report.pdf", size = 2048)
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -192,23 +280,50 @@ class AppTest :
 
                 // then
                 onNodeWithText("PDF file", useUnmergedTree = true).assertDoesNotExist()
-                onNodeWithText("2.0 KB · Modified 2026-11-13 10:00 UTC", useUnmergedTree = true).assertIsDisplayed()
+                onNodeWithText("2.0\u00A0KB · Modified $TIME", useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+
+        context("should show the whole name in a tooltip only when the mouse rests on a name cut short by its column") {
+            withTests(
+                nameFn = { it.case },
+                NameTooltip("tooltip for a name cut short", "quarterly-report-".repeat(10) + "final.pdf", copies = 2),
+                NameTooltip("no tooltip for a name that fits", "report.pdf", copies = 1),
+            ) { case ->
+                // given
+                val session = signedIn()
+                api.entries += file("/${case.name}")
+                runSkikoComposeUiTest(WINDOW) {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
+                        }
+                    }
+                    mainClock.autoAdvance = false
+
+                    // when
+                    onNodeWithText(case.name, useUnmergedTree = true).performMouseInput { moveTo(center) }
+                    mainClock.advanceTimeBy(TOOLTIP_DELAY_MS)
+
+                    // then
+                    onAllNodesWithText(case.name, useUnmergedTree = true).fetchSemanticsNodes() shouldHaveSize case.copies
+                }
             }
         }
 
         context("should separate the rows with one divider fewer than rows and the columns only when the window is wide") {
             withTests(
                 nameFn = { it.layout },
-                Dividers("files wide", "Files", WIDE_WIDTH, columnDividers = 9),
+                Dividers("files wide", "Files", WIDE_WIDTH, columnDividers = 12),
                 Dividers("files compact", "Files", NARROWEST_WIDTH, columnDividers = 0),
-                Dividers("trash wide", "Trash", WIDE_WIDTH, columnDividers = 9),
+                Dividers("trash wide", "Trash", WIDE_WIDTH, columnDividers = 12),
                 Dividers("trash compact", "Trash", NARROWEST_WIDTH, columnDividers = 0),
             ) { case ->
                 // given
                 val session = signedIn()
                 api.entries += listOf(folder("/Documents"), file("/a.txt"), file("/b.txt"))
                 api.trashItems += listOf(trashed("2", "/b.txt"), trashed("3", "/c.txt"))
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(case.width, HEIGHT)) { Browser() }
@@ -225,12 +340,47 @@ class AppTest :
             }
         }
 
+        context("should keep trash names at least 200dp wide beside the columns and the Restore icon or text button") {
+            withTests(
+                nameFn = { it.name },
+                TrashWidth("no columns below 964dp of list", RAIL_WIDTH + 963.dp, columns = false, restoreButton = false),
+                TrashWidth("columns and the icon from 964dp of list", RAIL_WIDTH + 964.dp, columns = true, restoreButton = false),
+                TrashWidth("columns and the icon below 1040dp of list", RAIL_WIDTH + 1039.dp, columns = true, restoreButton = false),
+                TrashWidth("columns and the text button from 1040dp of list", RAIL_WIDTH + 1040.dp, columns = true, restoreButton = true),
+            ) { case ->
+                // given
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(case.width, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // when
+                    destination("Trash").performClick()
+
+                    // then
+                    val name = onNodeWithText("Name", useUnmergedTree = true)
+                    if (case.columns) {
+                        name.getUnclippedBoundsInRoot().width shouldBeGreaterThanOrEqualTo MIN_NAME_WIDTH
+                    } else {
+                        name.assertDoesNotExist()
+                    }
+                    val restore = onNodeWithContentDescription("Restore a.txt")
+                    if (case.columns) restore.assertIsDisplayed() else restore.assertDoesNotExist()
+                    val button = onNode(hasContentDescription("Restore a.txt") and hasText("Restore"))
+                    if (case.restoreButton) button.assertIsDisplayed() else button.assertDoesNotExist()
+                }
+            }
+        }
+
         test("should draw the column dividers over the full row height when the window is wide") {
             // given
             val session = signedIn()
             api.entries += file("/report.pdf", size = 2048)
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -241,8 +391,8 @@ class AppTest :
                 // then
                 val rowHeight = onNodeWithText("report.pdf").getUnclippedBoundsInRoot().height
                 val dividers = onAllNodesWithTag(COLUMN_DIVIDER, useUnmergedTree = true)
-                dividers.fetchSemanticsNodes() shouldHaveSize 3
-                repeat(3) { dividers[it].assertHeightIsEqualTo(rowHeight) }
+                dividers.fetchSemanticsNodes() shouldHaveSize 6
+                (3 until 6).forEach { dividers[it].assertHeightIsEqualTo(rowHeight) }
             }
         }
 
@@ -257,7 +407,7 @@ class AppTest :
                 val session = signedIn()
                 api.entries += listOf(folder("/Documents"), file("/notes.txt"), file("/archive.zip"))
 
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     // when
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -267,6 +417,52 @@ class AppTest :
 
                     // then
                     onNodeWithText(name).fetchSemanticsNode().config[SemanticsActions.OnClick].label shouldBe expected
+                }
+            }
+        }
+
+        context("should name the trashed item in its row and in its menu actions for screen readers") {
+            withTests(nameFn = { it.first }, "wide" to WIDE_WIDTH, "compact" to NARROWEST_WIDTH) { (_, width) ->
+                // given
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(width, HEIGHT)) { Browser() }
+                        }
+                    }
+                    destination("Trash").performClick()
+
+                    // when
+                    onNodeWithContentDescription("Actions for a.txt").performClick()
+
+                    // then
+                    onNodeWithText("a.txt").assert(hasText(TIME, substring = true))
+                    listOf("Restore a.txt", "Delete a.txt forever").forEach {
+                        onNode(hasAnyAncestor(isPopup()) and hasContentDescription(it)).assertIsDisplayed()
+                    }
+                }
+            }
+        }
+
+        context("should tell screen readers a row is a folder once") {
+            withTests(nameFn = { it.first }, "wide" to WIDE_WIDTH, "compact" to NARROWEST_WIDTH) { (_, width) ->
+                // given
+                val session = signedIn()
+                api.entries += folder("/Documents")
+
+                runSkikoComposeUiTest(WINDOW) {
+                    // when
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            Box(Modifier.requiredSize(width, HEIGHT)) { Browser() }
+                        }
+                    }
+
+                    // then
+                    onNodeWithText("Documents")
+                        .assert(hasText("Folder", substring = true))
+                        .assert(!hasContentDescription("Folder"))
                 }
             }
         }
@@ -285,7 +481,7 @@ class AppTest :
                 val session = signedIn()
                 api.entries += file("/${case.name}", size = case.bytes.size.toLong())
                 api.contents["/${case.name}"] = case.bytes
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -310,7 +506,7 @@ class AppTest :
                 val text = ("x".repeat(63) + "\n").repeat(16_384).encodeToByteArray()
                 api.entries += file("/big.log", size = text.size.toLong())
                 api.contents["/big.log"] = text
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -337,7 +533,7 @@ class AppTest :
                 // given
                 val session = signedIn()
                 api.entries += file("/$name")
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                             Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -363,7 +559,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/notes.txt", size = 11)
             api.contents["/notes.txt"] = "hello world".encodeToByteArray()
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -386,7 +582,7 @@ class AppTest :
             val code = "fun main() = println(\"hi\") // greet".encodeToByteArray()
             api.entries += file("/Main.kt", size = code.size.toLong())
             api.contents["/Main.kt"] = code
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -415,7 +611,7 @@ class AppTest :
             val session = signedIn()
             api.entries += file("/notes.txt")
             api.downloadGate = CompletableDeferred()
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(WIDE_WIDTH, HEIGHT)) { Browser() }
@@ -438,7 +634,7 @@ class AppTest :
             // given
             val session = signedIn()
             api.entries += file("/huge.png", size = 21L * 1024 * 1024)
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -455,11 +651,53 @@ class AppTest :
             }
         }
 
+        test("should keep the breadcrumb row height when the path grows from Home to a folder") {
+            // given
+            val session = signedIn()
+            api.entries += folder("/Documents")
+            runSkikoComposeUiTest(WINDOW) {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                val home = onNode(isHeading() and hasText("Home")).getUnclippedBoundsInRoot()
+
+                // when
+                onNodeWithText("Documents").performClick()
+
+                // then
+                val documents = onNode(isHeading() and hasText("Documents")).getUnclippedBoundsInRoot()
+                documents.top shouldBe home.top
+            }
+        }
+
+        test("should scroll the breadcrumbs to the current folder when the path grows wider than the window") {
+            // given
+            val session = signedIn()
+            api.entries += listOf(folder("/Quarterly reports 2026"), folder("/Quarterly reports 2026/Northern region final"))
+            runSkikoComposeUiTest(WINDOW) {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                onNodeWithText("Quarterly reports 2026").performClick()
+
+                // when
+                onNodeWithText("Northern region final").performClick()
+
+                // then
+                onNode(isHeading() and hasText("Northern region final")).getUnclippedBoundsInRoot().right shouldBeLessThanOrEqualTo
+                    NARROWEST_WIDTH
+            }
+        }
+
         test("should mark the empty folder title as a heading") {
             // given
             val session = signedIn()
 
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 // when
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -476,7 +714,7 @@ class AppTest :
             // given
             val session = signedIn()
             api.entries += (10..29).map { file("/file-$it.txt") }
-            runComposeUiTest {
+            runSkikoComposeUiTest(WINDOW) {
                 setContent {
                     KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
                         Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
@@ -484,7 +722,7 @@ class AppTest :
                 }
 
                 // when
-                onNode(hasScrollToIndexAction()).performScrollToIndex(19)
+                onNode(hasScrollToIndexAction()).performScrollToIndex(FILES_LEADING_ITEMS + 19)
 
                 // then
                 val lastActions = onNodeWithContentDescription("Actions for file-29.txt").getUnclippedBoundsInRoot()
@@ -497,14 +735,35 @@ class AppTest :
             }
         }
 
-        context("should keep the title and every top bar action reachable when the window has its narrowest width") {
+        test("should scroll the quota, the search field and the breadcrumbs away with the file list") {
+            // given
+            val session = signedIn()
+            api.entries += (10..29).map { file("/file-$it.txt") }
+            runSkikoComposeUiTest(WINDOW) {
+                setContent {
+                    KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                        Box(Modifier.requiredSize(NARROWEST_WIDTH, HEIGHT)) { Browser() }
+                    }
+                }
+                onNodeWithText("Search in this folder").assertIsDisplayed()
+
+                // when
+                onNode(hasScrollToIndexAction()).performScrollToIndex(FILES_LEADING_ITEMS + 19)
+
+                // then
+                onNodeWithText("Search in this folder").assertDoesNotExist()
+                onNode(isHeading() and hasText("Home")).assertDoesNotExist()
+            }
+        }
+
+        context("should keep the app name and every top bar action reachable when the window has its narrowest width") {
             withTests(
                 nameFn = { it.destination },
                 TopBar("Files", listOf("New folder", "Refresh", ACCOUNT_MENU)),
                 TopBar("Trash", listOf("Empty trash", "Refresh", ACCOUNT_MENU)),
             ) { topBar ->
                 val session = signedIn()
-                runComposeUiTest {
+                runSkikoComposeUiTest(WINDOW) {
                     // given
                     setContent {
                         KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
@@ -516,10 +775,63 @@ class AppTest :
                     destination(topBar.destination).performClick()
 
                     // then
-                    onNode(isHeading() and hasText(topBar.destination)).assertIsDisplayed()
+                    onNode(isHeading() and hasText(APP_NAME)).assertIsDisplayed()
                     topBar.actions.forEach { action(it).assertIsDisplayed() }
                     onNodeWithContentDescription(ACCOUNT_MENU).performClick()
                     onNodeWithText("Sign out").assertIsDisplayed()
+                }
+            }
+        }
+
+        context("should show the whole app name and every top bar action under More options at font scale 2.0 on a 360dp phone") {
+            withTests(
+                nameFn = { it.destination },
+                TopBar("Files", listOf("New folder", "Refresh", "Sign out")),
+                TopBar("Trash", listOf("Empty trash", "Refresh", "Sign out")),
+            ) { topBar ->
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    // given
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = LARGE_TEXT)) {
+                                Box(Modifier.requiredSize(PHONE_WIDTH, HEIGHT)) { Browser() }
+                            }
+                        }
+                    }
+                    destination(topBar.destination).performClick()
+
+                    // when
+                    onNodeWithContentDescription("More options").performClick()
+
+                    // then
+                    titleCutShort() shouldBe false
+                    topBar.actions.forEach { onNode(hasAnyAncestor(isPopup()) and hasText(it)).performScrollTo().assertIsDisplayed() }
+                }
+            }
+        }
+
+        context("should show the whole app name in the top app bar at every font scale on a phone") {
+            withTests(
+                nameFn = { "${it.width} at font scale ${it.fontScale}" },
+                TitleFit(NARROWEST_WIDTH, 1f),
+                TitleFit(NARROWEST_WIDTH, 1.3f),
+                TitleFit(PHONE_WIDTH, 1.5f),
+            ) { case ->
+                // given
+                val session = signedIn()
+                runSkikoComposeUiTest(WINDOW) {
+                    // when
+                    setContent {
+                        KoinApplication(configuration = koinConfiguration { modules(backend(api, session)) }) {
+                            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, case.fontScale)) {
+                                Box(Modifier.requiredSize(case.width, HEIGHT)) { Browser() }
+                            }
+                        }
+                    }
+
+                    // then
+                    titleCutShort() shouldBe false
                 }
             }
         }

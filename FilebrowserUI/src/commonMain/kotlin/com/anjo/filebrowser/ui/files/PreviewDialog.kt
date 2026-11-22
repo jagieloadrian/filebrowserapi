@@ -32,8 +32,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconToggleButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -73,6 +73,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.anjo.filebrowser.ui.common.EmptyState
 import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.Loadable
+import com.anjo.filebrowser.ui.common.Tooltip
 import com.anjo.filebrowser.ui.common.formatSize
 import com.anjo.filebrowser.ui.model.FilePreview
 import com.anjo.filebrowser.ui.model.PreviewContent
@@ -122,20 +123,28 @@ internal fun PreviewDialog(
                             Text(preview.entry.name, Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         },
                         navigationIcon = {
-                            IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, contentDescription = "Close preview") }
+                            Tooltip("Close preview") {
+                                IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, contentDescription = "Close preview") }
+                            }
                         },
                         actions = {
                             if (content is PreviewContent.Text) {
-                                IconToggleButton(checked = wrap, onCheckedChange = { wrap = it }) {
-                                    Icon(Icons.AutoMirrored.Outlined.WrapText, contentDescription = "Wrap lines")
+                                Tooltip("Wrap lines") {
+                                    OutlinedIconToggleButton(checked = wrap, onCheckedChange = { wrap = it }) {
+                                        Icon(Icons.AutoMirrored.Outlined.WrapText, contentDescription = "Wrap lines")
+                                    }
                                 }
                                 if (syntax != null) {
-                                    IconToggleButton(checked = highlight, onCheckedChange = { highlight = it }) {
-                                        Icon(Icons.Outlined.Code, contentDescription = "Highlight code")
+                                    Tooltip("Highlight code") {
+                                        OutlinedIconToggleButton(checked = highlight, onCheckedChange = { highlight = it }) {
+                                            Icon(Icons.Outlined.Code, contentDescription = "Highlight code")
+                                        }
                                     }
                                 }
                             }
-                            IconButton(onClick = onDownload) { Icon(Icons.Outlined.Download, contentDescription = "Download") }
+                            Tooltip("Download") {
+                                IconButton(onClick = onDownload) { Icon(Icons.Outlined.Download, contentDescription = "Download") }
+                            }
                             MoreActions(onRename, onDelete)
                         },
                     )
@@ -169,7 +178,9 @@ private fun MoreActions(
 ) {
     var menu by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = "More actions") }
+        Tooltip("More actions") {
+            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = "More actions") }
+        }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             MenuItem("Rename", Icons.Outlined.DriveFileRenameOutline) {
                 menu = false

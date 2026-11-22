@@ -10,7 +10,7 @@ private const val MIN_HEIGHT = 480
 
 fun main() =
     application {
-        Window(onCloseRequest = ::exitApplication, title = "Filebrowser") {
+        Window(onCloseRequest = ::exitApplication, title = APP_NAME) {
             LaunchedEffect(window) { window.minimumSize = Dimension(MIN_WIDTH, MIN_HEIGHT) }
             App()
         }
