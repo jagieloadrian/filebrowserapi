@@ -149,27 +149,6 @@ internal fun FilesContent(
 ) {
     var nameRequest by remember { mutableStateOf<NameRequest?>(null) }
     Scaffold(
-        topBar = {
-            Column {
-                TopAppBar(
-                    title = { Text("Files", Modifier.semantics { heading() }) },
-                    actions = {
-                        Tooltip("New folder") {
-                            IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
-                                Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
-                            }
-                        }
-                        Tooltip("Refresh") {
-                            IconButton(onClick = onRefresh) {
-                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
-                            }
-                        }
-                        AppMenu()
-                    },
-                )
-                tabs()
-            }
-        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onUpload,
@@ -185,6 +164,23 @@ internal fun FilesContent(
                 .padding(padding)
                 .fillMaxSize(),
         ) {
+            TopAppBar(
+                title = { Text("Files", Modifier.semantics { heading() }) },
+                actions = {
+                    Tooltip("New folder") {
+                        IconButton(onClick = { nameRequest = NameRequest.NewFolder }) {
+                            Icon(Icons.Outlined.CreateNewFolder, contentDescription = "New folder")
+                        }
+                    }
+                    Tooltip("Refresh") {
+                        IconButton(onClick = onRefresh) {
+                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                        }
+                    }
+                    AppMenu()
+                },
+            )
+            tabs()
             WorkIndicator(state.working > 0)
             BoxWithConstraints {
                 val wide = fitsColumns()

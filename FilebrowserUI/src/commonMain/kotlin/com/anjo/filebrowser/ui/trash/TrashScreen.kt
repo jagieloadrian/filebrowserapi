@@ -124,38 +124,6 @@ internal fun TrashContent(
     BoxWithConstraints {
         val wide = fitsColumns()
         Scaffold(
-            topBar = {
-                Column {
-                    TopAppBar(
-                        title = { Text("Trash", Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        actions = {
-                            if (items.isNotEmpty() && wide) {
-                                TextButton(
-                                    onClick = { purge = Purge.All },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                ) { Text("Empty trash") }
-                            } else if (items.isNotEmpty()) {
-                                Tooltip("Empty trash") {
-                                    IconButton(onClick = { purge = Purge.All }) {
-                                        Icon(
-                                            Icons.Outlined.DeleteSweep,
-                                            contentDescription = "Empty trash",
-                                            tint = MaterialTheme.colorScheme.error,
-                                        )
-                                    }
-                                }
-                            }
-                            Tooltip("Refresh") {
-                                IconButton(onClick = onRefresh) {
-                                    Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
-                                }
-                            }
-                            AppMenu()
-                        },
-                    )
-                    tabs()
-                }
-            },
             snackbarHost = { SnackbarHost(snackbarHost) },
         ) { padding ->
             Column(
@@ -163,6 +131,34 @@ internal fun TrashContent(
                     .padding(padding)
                     .fillMaxSize(),
             ) {
+                TopAppBar(
+                    title = { Text("Trash", Modifier.semantics { heading() }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    actions = {
+                        if (items.isNotEmpty() && wide) {
+                            TextButton(
+                                onClick = { purge = Purge.All },
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            ) { Text("Empty trash") }
+                        } else if (items.isNotEmpty()) {
+                            Tooltip("Empty trash") {
+                                IconButton(onClick = { purge = Purge.All }) {
+                                    Icon(
+                                        Icons.Outlined.DeleteSweep,
+                                        contentDescription = "Empty trash",
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                        }
+                        Tooltip("Refresh") {
+                            IconButton(onClick = onRefresh) {
+                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                            }
+                        }
+                        AppMenu()
+                    },
+                )
+                tabs()
                 WorkIndicator(state.working > 0)
                 LazyColumn(Modifier.fillMaxSize()) {
                     item { QuotaBar(state.quota) }
