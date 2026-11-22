@@ -1,8 +1,19 @@
 # Project Status
 
-Last update: 2026-11-19, branch `feature-14/kmp-ui`.
+Last update: 2026-11-22, branch `feature-14/kmp-ui`.
 
 ## Completed
+
+### 2026-11-22, `feature-14/kmp-ui`: third design review fixes
+- Trash row menu: Restore first, Delete forever (error colour) second at every width; wide rows keep the Restore
+  button. The delete-forever dialog says "This cannot be undone.", like the empty-trash dialog.
+- The top app bar shows the app name (`APP_NAME`, "Filebrowser", also the window title and sign-in heading)
+  instead of the destination, which the tabs already show.
+- Times join date and time with a plain space, so they wrap between them at font scale 2.0 (sizes keep the NBSP).
+- Rows read the time offset from `LocalTimeOffset` (default `localOffset`); `PreviewTheme` provides UTC, so
+  preview renders match between machines and CI.
+- Previews (38): the wide trash row menu open; the files phone list at 2.0 scrolled to the first row
+  (`FilesContent` takes a hoisted `LazyListState`).
 
 ### 2026-11-19, `feature-14/kmp-ui`: second design review fixes, tabs, accessibility tests
 - Trash: wide rows show a Restore text button, Delete forever stays in the row menu (compact: both in the menu);
@@ -326,9 +337,9 @@ Project aligned with the coding standards from the `standards` MCP server:
   attributes `secondary`, strings `tertiary`, comments italic `onSurfaceVariant`.
 
 ## Next steps and risks
-- Previews show times in the time zone of the machine that renders them, so renders in CI (UTC) and locally differ.
-- A click on a wide trash row opens a menu holding only Delete forever (Restore is the visible button); add Restore
-  to that menu too if users expect it there.
+- Trash rows from 840 dp to about 950 dp leave the name almost no width (the columns, Restore and the menu take
+  about 835 dp); the files list drops its Type column below 1000 dp for the same reason.
+- At font scale 2.0 on a 360 dp phone the top app bar title is cut to "Filebro...".
 - Preview, not checked in a real window or browser (offscreen desktop tests only, no Wasm test target): Escape and
   focus in the dialog, scrolling speed of 1 MiB of text in the browser, selection across lines, horizontal scroll
   with wrap off, the dialog sizes, scaled JPEG and WebP decoding on Wasm, `Range` through nginx. Jumping far into a
