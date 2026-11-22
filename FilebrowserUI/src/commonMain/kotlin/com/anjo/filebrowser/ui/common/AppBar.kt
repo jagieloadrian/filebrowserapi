@@ -33,6 +33,7 @@ class BarAction(
 fun AppBar(
     actions: List<BarAction>,
     leading: @Composable () -> Unit = {},
+    initialMenuExpanded: Boolean = false,
 ) = BoxWithConstraints {
     val icons = maxWidth >= ACTION_ICONS_MIN_WIDTH * LocalDensity.current.fontScale
     TopAppBar(
@@ -40,7 +41,7 @@ fun AppBar(
         actions = {
             leading()
             if (icons) actions.forEach { ActionIcon(it) }
-            AppMenu(actions = if (icons) emptyList() else actions)
+            AppMenu(actions = if (icons) emptyList() else actions, initiallyExpanded = initialMenuExpanded)
         },
     )
 }

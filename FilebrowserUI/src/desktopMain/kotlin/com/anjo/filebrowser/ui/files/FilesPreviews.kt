@@ -125,6 +125,7 @@ private fun StaticFiles(
     state: FilesUiState,
     tabs: @Composable () -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
+    initialMenuExpanded: Boolean = false,
 ) = FilesContent(
     state = state,
     snackbarHost = remember { SnackbarHostState() },
@@ -140,6 +141,7 @@ private fun StaticFiles(
     onRename = { _, _ -> },
     onDelete = {},
     listState = listState,
+    initialMenuExpanded = initialMenuExpanded,
 )
 
 @Composable
@@ -190,6 +192,11 @@ private fun FilesPhoneLargeTextScrolledPreview() =
     LargeText {
         PreviewTheme { StaticFiles(LOADED, listState = rememberLazyListState(initialFirstVisibleItemIndex = FIRST_ROW_INDEX)) }
     }
+
+@SettledPreview
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
+@Composable
+private fun FilesMoreOptionsLargeTextPreview() = LargeText { PreviewTheme { StaticFiles(LOADED, initialMenuExpanded = true) } }
 
 @SettledPreview
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = ROW_MENU_HEIGHT_DP)

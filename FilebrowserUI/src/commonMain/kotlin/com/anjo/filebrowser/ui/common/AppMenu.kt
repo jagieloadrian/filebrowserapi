@@ -60,11 +60,12 @@ fun AppMenu(
     session: AuthSession = koinInject(),
     settings: AppearanceSettings = koinInject(),
     actions: List<BarAction> = emptyList(),
+    initiallyExpanded: Boolean = false,
 ) {
     val auth by session.state.collectAsState()
     val appearance by settings.state.collectAsState()
     val user = (auth as? AuthState.SignedIn)?.let { it.user ?: ACCOUNT }
-    var open by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf(initiallyExpanded) }
     Box {
         val (label, icon) =
             when {

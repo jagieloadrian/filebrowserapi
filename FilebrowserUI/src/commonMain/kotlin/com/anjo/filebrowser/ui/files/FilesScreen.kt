@@ -152,6 +152,7 @@ internal fun FilesContent(
     onRename: (Entry, String) -> Unit,
     onDelete: (Entry) -> Unit,
     listState: LazyListState = rememberLazyListState(),
+    initialMenuExpanded: Boolean = false,
 ) {
     var nameRequest by remember { mutableStateOf<NameRequest?>(null) }
     Scaffold(
@@ -175,6 +176,7 @@ internal fun FilesContent(
                     BarAction("New folder", Icons.Outlined.CreateNewFolder) { nameRequest = NameRequest.NewFolder },
                     BarAction("Refresh", Icons.Outlined.Refresh, onClick = onRefresh),
                 ),
+                initialMenuExpanded = initialMenuExpanded,
             )
             tabs()
             WorkIndicator(state.working > 0)

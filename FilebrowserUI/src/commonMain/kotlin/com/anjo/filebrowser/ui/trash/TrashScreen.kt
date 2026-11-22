@@ -122,6 +122,7 @@ internal fun TrashContent(
     onRestore: (TrashItem) -> Unit,
     onDeleteForever: (TrashItem) -> Unit,
     onEmptyTrash: () -> Unit,
+    initialMenuExpanded: Boolean = false,
 ) {
     var purge by remember { mutableStateOf<Purge?>(null) }
     val items = (state.items as? Loadable.Ready)?.value.orEmpty()
@@ -151,6 +152,7 @@ internal fun TrashContent(
                             ) { Text(EMPTY_TRASH) }
                         }
                     },
+                    initialMenuExpanded = initialMenuExpanded,
                 )
                 tabs()
                 WorkIndicator(state.working > 0)

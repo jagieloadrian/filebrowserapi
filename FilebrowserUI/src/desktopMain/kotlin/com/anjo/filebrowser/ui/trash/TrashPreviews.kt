@@ -10,6 +10,7 @@ import com.anjo.filebrowser.ui.DIALOG_HEIGHT_DP
 import com.anjo.filebrowser.ui.DIALOG_WIDTH_DP
 import com.anjo.filebrowser.ui.Destination
 import com.anjo.filebrowser.ui.LARGE_TEXT
+import com.anjo.filebrowser.ui.LargeText
 import com.anjo.filebrowser.ui.MEDIUM_HEIGHT_DP
 import com.anjo.filebrowser.ui.MEDIUM_TEXT
 import com.anjo.filebrowser.ui.PHONE_HEIGHT_DP
@@ -49,6 +50,7 @@ private val LOADED = TrashUiState(items = Loadable.Ready(ITEMS), quota = PREVIEW
 private fun StaticTrash(
     state: TrashUiState,
     tabs: @Composable () -> Unit = {},
+    initialMenuExpanded: Boolean = false,
 ) = TrashContent(
     state = state,
     snackbarHost = remember { SnackbarHostState() },
@@ -57,6 +59,7 @@ private fun StaticTrash(
     onRestore = {},
     onDeleteForever = {},
     onEmptyTrash = {},
+    initialMenuExpanded = initialMenuExpanded,
 )
 
 @Composable
@@ -76,6 +79,11 @@ private fun TrashPhoneMediumTextPreview() = Trash(LOADED)
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
 @Composable
 private fun TrashPhoneLargeTextPreview() = Trash(LOADED)
+
+@SettledPreview
+@Preview(widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP, fontScale = LARGE_TEXT)
+@Composable
+private fun TrashMoreOptionsLargeTextPreview() = LargeText { PreviewTheme { StaticTrash(LOADED, initialMenuExpanded = true) } }
 
 @SettledPreview
 @Preview(widthDp = PHONE_WIDTH_DP, heightDp = ROW_MENU_HEIGHT_DP)
