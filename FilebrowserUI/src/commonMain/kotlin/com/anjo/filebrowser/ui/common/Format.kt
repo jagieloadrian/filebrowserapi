@@ -1,5 +1,6 @@
 package com.anjo.filebrowser.ui.common
 
+import androidx.compose.runtime.staticCompositionLocalOf
 import kotlin.math.roundToLong
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -22,6 +23,8 @@ fun formatSize(bytes: Long): String {
 }
 
 expect fun localOffset(instant: Instant): Duration
+
+val LocalTimeOffset = staticCompositionLocalOf<(Instant) -> Duration> { ::localOffset }
 
 fun formatTime(
     instant: Instant,

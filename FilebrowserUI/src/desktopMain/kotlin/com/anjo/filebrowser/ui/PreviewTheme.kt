@@ -3,9 +3,11 @@ package com.anjo.filebrowser.ui
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import com.anjo.filebrowser.ui.auth.AuthSession
 import com.anjo.filebrowser.ui.auth.LoopbackBrowser
+import com.anjo.filebrowser.ui.common.LocalTimeOffset
 import com.anjo.filebrowser.ui.model.Quota
 import com.anjo.filebrowser.ui.platform.SettingsStorage
 import com.anjo.filebrowser.ui.theme.AppearanceSettings
@@ -18,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import org.koin.compose.KoinApplicationPreview
 import org.koin.dsl.module
+import kotlin.time.Duration
 
 internal const val PHONE_WIDTH_DP = 360
 internal const val PHONE_HEIGHT_DP = 760
@@ -60,6 +63,8 @@ internal fun PreviewTheme(
             )
         },
     ) {
-        FilebrowserTheme { Surface(Modifier.fillMaxSize(), content = content) }
+        CompositionLocalProvider(LocalTimeOffset provides { Duration.ZERO }) {
+            FilebrowserTheme { Surface(Modifier.fillMaxSize(), content = content) }
+        }
     }
 }

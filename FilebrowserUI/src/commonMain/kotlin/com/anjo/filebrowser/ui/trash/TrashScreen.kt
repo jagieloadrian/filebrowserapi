@@ -61,6 +61,7 @@ import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
 import com.anjo.filebrowser.ui.common.FileName
 import com.anjo.filebrowser.ui.common.Loadable
+import com.anjo.filebrowser.ui.common.LocalTimeOffset
 import com.anjo.filebrowser.ui.common.QuotaBar
 import com.anjo.filebrowser.ui.common.SIZE_COLUMN
 import com.anjo.filebrowser.ui.common.SkeletonList
@@ -232,6 +233,7 @@ internal fun TrashRow(
 ) {
     var menu by remember { mutableStateOf(initialMenuExpanded) }
     val size = if (item.directory) null else formatSize(item.size)
+    val deleted = formatTime(item.deletedAt, LocalTimeOffset.current(item.deletedAt))
     val restoreLabel = "Restore ${item.name}"
     val leading: @Composable () -> Unit = {
         Icon(
@@ -265,7 +267,7 @@ internal fun TrashRow(
     if (wide) {
         ColumnsRow(
             item.name,
-            listOf(folderLabel(item.parent) to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, formatTime(item.deletedAt) to TIME_COLUMN),
+            listOf(folderLabel(item.parent) to FOLDER_COLUMN, size.orEmpty() to SIZE_COLUMN, deleted to TIME_COLUMN),
             leading,
             trailing = {
                 TextButton(
@@ -285,7 +287,7 @@ internal fun TrashRow(
         ListItem(
             headlineContent = { FileName(item.name, maxLines = 2) },
             supportingContent = {
-                Text(listOfNotNull("From ${folderLabel(item.parent)}", size, "Deleted ${formatTime(item.deletedAt)}").joinToString(" · "))
+                Text(listOfNotNull("From ${folderLabel(item.parent)}", size, "Deleted $deleted").joinToString(" · "))
             },
             leadingContent = leading,
             trailingContent = overflow,

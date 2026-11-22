@@ -76,6 +76,7 @@ import com.anjo.filebrowser.ui.common.ErrorState
 import com.anjo.filebrowser.ui.common.FOLDER_COLUMN
 import com.anjo.filebrowser.ui.common.FileName
 import com.anjo.filebrowser.ui.common.Loadable
+import com.anjo.filebrowser.ui.common.LocalTimeOffset
 import com.anjo.filebrowser.ui.common.NameDialog
 import com.anjo.filebrowser.ui.common.QuotaBar
 import com.anjo.filebrowser.ui.common.SIZE_COLUMN
@@ -385,6 +386,7 @@ internal fun EntryRow(
     var menu by remember { mutableStateOf(initialMenuExpanded) }
     val previewable = previewKind(entry) != null
     val size = if (entry.directory) null else formatSize(entry.size)
+    val modified = formatTime(entry.modified, LocalTimeOffset.current(entry.modified))
     val leading: @Composable () -> Unit = {
         Icon(
             if (entry.directory) Icons.Outlined.Folder else Icons.Outlined.Description,
@@ -448,7 +450,7 @@ internal fun EntryRow(
                 (folderLabel(entry.parent) to FOLDER_COLUMN).takeIf { searching },
                 ((if (entry.directory) "Folder" else fileType(entry.name)) to TYPE_COLUMN).takeIf { typed },
                 size.orEmpty() to SIZE_COLUMN,
-                formatTime(entry.modified) to TIME_COLUMN,
+                modified to TIME_COLUMN,
             ),
             leading,
             trailing,
@@ -459,7 +461,7 @@ internal fun EntryRow(
             headlineContent = { FileName(entry.name, maxLines = 2) },
             supportingContent = {
                 val folder = if (searching) "In ${folderLabel(entry.parent)}" else null
-                Text(listOfNotNull(folder, size ?: "Folder", "Modified ${formatTime(entry.modified)}").joinToString(" · "))
+                Text(listOfNotNull(folder, size ?: "Folder", "Modified $modified").joinToString(" · "))
             },
             leadingContent = leading,
             trailingContent = trailing,
